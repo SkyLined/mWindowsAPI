@@ -95,8 +95,3 @@ for sTypeName in globals().keys():
     globals()["P" + sTypeName] = POINTER(cType);
     globals()["LP" + sTypeName] = POINTER(cType);
     globals()["PP" + sTypeName] = POINTER(POINTER(cType));
-
-################################################################################
-# Structures
-################################################################################
-from Types_structures import *;

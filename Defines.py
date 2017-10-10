@@ -1,3 +1,5 @@
+from PrimitiveTypes import *;
+
 ################################################################################
 # Non-numeric defines
 ################################################################################
@@ -16,11 +18,15 @@ CTRL_C_EVENT                            =          0; # https://docs.microsoft.c
 #DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
 DELETE                                  = 0x00010000;
 #EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-ERROR_INSUFFICIENT_BUFFER               =       0x7A;
 #FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 #HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
 HEAP_ZERO_MEMORY                        = 0x00000008;
+#IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+INVALID_FILE_SIZE                       = 0xFFFFFFFF;
+INVALID_HANDLE_VALUE                    = HANDLE(-1).value;
 #MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MAX_MODULE_NAME32                       =        255;
+MAX_PATH                                =        260;
 MEM_COMMIT                              =     0x1000;
 MEM_FREE                                =    0x10000;
 MEM_IMAGE                               =  0x1000000;
@@ -53,11 +59,19 @@ PROCESS_VM_WRITE                        =     0x0020;
 READ_CONTROL                            = 0x00020000;
 #SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
 STACK_SIZE_PARAM_IS_A_RESERVATION       = 0x00010000;
+STILL_ACTIVE                            =      0x103;
 STD_ERROR_HANDLE                        =        -12;
 STD_INPUT_HANDLE                        =        -10;
 STD_OUTPUT_HANDLE                       =        -11;
 SYNCHRONIZE                             = 0x00100000;
 #TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+TH32CS_INHERIT                          = 0x80000000;
+TH32CS_SNAPALL                          = 0x0000000F;
+TH32CS_SNAPHEAPLIST                     = 0x00000001;
+TH32CS_SNAPMODULE                       = 0x00000008;
+TH32CS_SNAPMODULE32                     = 0x00000010;
+TH32CS_SNAPPROCESS                      = 0x00000002;
+TH32CS_SNAPTHREAD                       = 0x00000004;
 TOKEN_QUERY                             =     0x0008;
 TokenIntegrityLevel                     =         25;
 #WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW

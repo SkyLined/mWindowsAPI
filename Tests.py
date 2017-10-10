@@ -1,6 +1,14 @@
-from Defines import *;
-from KERNEL32 import KERNEL32;
-from Types import *;
+import os, sys;
+
+sModuleFolderPath = os.path.dirname(os.path.abspath(__file__));
+sBaseFolderPath = os.path.dirname(sModuleFolderPath);
+sys.path.extend([
+  sBaseFolderPath,
+  sModuleFolderPath,
+  os.path.join(sModuleFolderPath, "modules"),
+]);
+
+from mWindowsAPI import *;
 
 if __name__ == "__main__":
   uTestColor = 0x0A; # Bright green
