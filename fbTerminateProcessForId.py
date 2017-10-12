@@ -29,7 +29,7 @@ def fbTerminateProcessForId(uProcessId):
   # The process exists: give it up to five seconds to die:
   uWaitForSingleObjectResult = KERNEL32.WaitForSingleObject(hProcess, 5000);
   uWaitForSingleObjectError = KERNEL32.GetLastError();
-  if uWaitForSingleObjectResult == WIN32_FROM_HRESULT(ERROR_ACCESS_DENIED):
+  if uWaitForSingleObjectError == WIN32_FROM_HRESULT(ERROR_ACCESS_DENIED):
     # We do not have access to the process to terminate it.
     assert not bTerminated, \
         "WaitForSingleObject(0x%08X, 1000) = 0x%08X => Error 0x%08X" % \
