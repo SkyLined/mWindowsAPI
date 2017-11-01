@@ -10,7 +10,6 @@ def fsReadRegistryValue(sValueName):
 
 class cWindowsVersion(object):
   def __init__(oSelf):
-    print "now";
     oSelf.__sProductName = None;
     oSelf.__sReleaseId = None;
     oSelf.__sCurrentBuild = None;
