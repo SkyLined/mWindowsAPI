@@ -51,7 +51,6 @@ if __name__ == "__main__":
   assert oNullVirtualAllocation.bFree, \
       "Expected no memory to be allocated at address 0";
   print "    + There are 0x%X bytes of free memory at address 0." % oNullVirtualAllocation.uSize;
-
   # fbTerminateProcessForId
   print "  * Testing fbTerminateProcessForId...";
   fbTerminateProcessForId(oNotepadProcess.pid);
