@@ -53,10 +53,14 @@ if __name__ == "__main__":
   print "    + There are 0x%X bytes of free memory at address 0." % oNullVirtualAllocation.uSize;
 
   # fbTerminateProcessForId
+  print "  * Testing fbTerminateProcessForId...";
   fbTerminateProcessForId(oNotepadProcess.pid);
   assert oNotepadProcess.poll() != None, \
       "Notepad.exe was not terminated!";
   # fdsProcessesExecutableName_by_uId (make sure notepad.exe is removed)
   assert oNotepadProcess.pid not in fdsProcessesExecutableName_by_uId(), \
       "Notepad.exe is still reported to exist after being terminated!?";
-  print "  + Terminated.";
+  print "  + Notepad was terminated.";
+
+  print "* Testing windows version/registry functions...";
+  print "  + %s" % oWindowsVersion;
