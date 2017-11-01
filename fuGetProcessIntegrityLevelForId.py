@@ -16,7 +16,7 @@ def fuGetProcessIntegrityLevelForId(uProcessId):
       assert KERNEL32.GetLastError() == WIN32_FROM_HRESULT(ERROR_INSUFFICIENT_BUFFER), \
           "GetTokenInformation(...) => Error 0x%08X" % KERNEL32.GetLastError();
       # Allocate memory to store a TOKEN_MANDATORY_LABEL struct:
-      poTokenMandatoryLabel = CAST(BUFFER(dwTokenMandatoryLabelSize.value), POINTER(TOKEN_MANDATORY_LABEL));
+      poTokenMandatoryLabel = CAST(POINTER(TOKEN_MANDATORY_LABEL), BUFFER(dwTokenMandatoryLabelSize.value));
       # Get the TOKEN_MANDATORY_LABEL struct:
       if not ADVAPI32.GetTokenInformation(
         hToken,

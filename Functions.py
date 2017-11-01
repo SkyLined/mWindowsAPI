@@ -1,6 +1,6 @@
 import ctypes;
 
-CAST = ctypes.cast;
+CAST = lambda cType, oInstance: ctypes.cast(oInstance, cType);
 SIZEOF = ctypes.sizeof;
 
 def BUFFER(uSize):
