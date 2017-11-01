@@ -20,6 +20,16 @@ def POINTER(cType_or_xInstance):
     # If this is an instance return a pointer to the instance.
     return ctypes.byref(cType_or_xInstance);
 
+def POINTER_32(cType_or_uAddress = None):
+  if cType_or_uAddress is None or type(cType_or_uAddress).__class__ == type:
+    return ctypes.c_ulong;
+  return ctypes.c_ulong(cType_or_uAddress);
+
+def POINTER_64(cType_or_uAddress = None):
+  if cType_or_uAddress is None or type(cType_or_uAddress).__class__ == type:
+    return ctypes.c_ulonglong;
+  return ctypes.c_ulonglong(cType_or_uAddress);
+
 def STR(sData_or_uSize, uSize = None):
   return ctypes.create_string_buffer(sData_or_uSize, uSize);
 
