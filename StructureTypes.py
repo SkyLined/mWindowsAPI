@@ -128,27 +128,25 @@ def fcStructure_32(sName, *axFields):
   return fcStructureOrUnion(ctypes.Structure, sName, axFields, 32);
 def fcStructure_64(sName, *axFields):
   return fcStructureOrUnion(ctypes.Structure, sName, axFields, 64);
+def fcUnion(sName, *axFields):
+  return fcStructureOrUnion(ctypes.Union, sName, axFields);
 
 # Defining a structure also defines "P<struct_name>" and "PP<struct_name>" as a
 # pointer-to-structure and a pointer-to-pointer-to-structure respectively.
+def fDefineHelper(fcDefineType, fPointer, sName, *atxFields):
+  cType = fcDefineType(sName, *atxFields);
+  globals()[sName] = cType;
+  globals()["LP" + sName] = fPointer(cType);
+  globals()["P" + sName] = fPointer(cType);
+  globals()["PP" + sName] = fPointer(fPointer(cType));
 def fDefineStructure(sName, *atxFields):
-  cStructure = fcStructure(sName, *atxFields);
-  globals()[sName] = cStructure;
-  globals()["LP" + sName] = POINTER(cStructure);
-  globals()["P" + sName] = POINTER(cStructure);
-  globals()["PP" + sName] = POINTER(POINTER(cStructure));
+  fDefineHelper(fcStructure, POINTER, sName, *atxFields);
 def fDefineStructure32(sName, *atxFields):
-  cStructure = fcStructure_32(sName, *atxFields);
-  globals()[sName] = cStructure;
-  globals()["LP" + sName] = POINTER(cStructure);
-  globals()["P" + sName] = POINTER(cStructure);
-  globals()["PP" + sName] = POINTER(POINTER(cStructure));
+  fDefineHelper(fcStructure_32, POINTER_32, sName, *atxFields);
 def fDefineStructure64(sName, *atxFields):
-  cStructure = fcStructure_64(sName, *atxFields);
-  globals()[sName] = cStructure;
-  globals()["LP" + sName] = POINTER(cStructure);
-  globals()["P" + sName] = POINTER(cStructure);
-  globals()["PP" + sName] = POINTER(POINTER(cStructure));
+  fDefineHelper(fcStructure_64, POINTER_64, sName, *atxFields);
+def fDefineUnion(sName, *atxFields):
+  fDefineHelper(fcUnion, POINTER, sName, *atxFields);
 
 ################################################################################
 # Simple structures that contain only primitives and no other structures are   #
@@ -156,16 +154,68 @@ def fDefineStructure64(sName, *atxFields):
 # those structures are defined and will therefore be defined in a second round #
 ################################################################################
 
+#UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
+fDefineStructure32("UNICODE_STRING_32",
+  (USHORT,      "Length"),
+  (USHORT,      "MaximumLength"),
+  (PWSTR_32,    "Buffer"),
+);
+fDefineStructure64("UNICODE_STRING_64",
+  (USHORT,      "Length"),
+  (USHORT,      "MaximumLength"),
+  (PWSTR_64,    "Buffer"),
+);
+
 #CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 fDefineStructure("COORD", 
   (SHORT,       "X"),
   (SHORT,       "Y"),
 );
-
+fDefineStructure32("CURDIR_32",
+  (UNICODE_STRING_32, "DosPath"),
+  (HANDLE_32,   "Handle"),
+);
+fDefineStructure64("CURDIR_64",
+  (UNICODE_STRING_64, "DosPath"),
+  (HANDLE_64,   "Handle"),
+);
 #FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 fDefineStructure("FILETIME",
   (DWORD,       "dwLowDateTime"),
   (DWORD,       "dwHighDateTime"),
+);
+#IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+fDefineStructure("IO_COUNTERS",
+  (ULONGLONG,   "ReadOperationCount"),
+  (ULONGLONG,   "WriteOperationCount"),
+  (ULONGLONG,   "OtherOperationCount"),
+  (ULONGLONG,   "ReadTransferCount"),
+  (ULONGLONG,   "WriteTransferCount"),
+  (ULONGLONG,   "OtherTransferCount"),
+);
+#LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
+fDefineUnion("LARGE_INTEGER",
+  STRUCT(
+    (DWORD,     "LowPart"),
+    (LONG,      "HighPart"),
+  ),
+  (STRUCT(
+    (DWORD,       "LowPart"),
+    (LONG,        "HighPart"),
+  ),            "u"),
+  (LONGLONG,    "QuadPart"),
+);
+fDefineStructure("LIST_ENTRY",
+  (PVOID,       "Flink"), # Should be PLIST_ENTRY but circular references are not implemented.
+  (PVOID,       "Blink"), # Should be PLIST_ENTRY but circular references are not implemented.
+);
+fDefineStructure32("LIST_ENTRY_32",
+  (PVOID_32,    "Flink"), # Should be PLIST_ENTRY_32 but circular references are not implemented.
+  (PVOID_32,    "Blink"), # Should be PLIST_ENTRY_32 but circular references are not implemented.
+);
+fDefineStructure64("LIST_ENTRY_64",
+  (PVOID_64,    "Flink"), # Should be PLIST_ENTRY_64 but circular references are not implemented.
+  (PVOID_64,    "Blink"), # Should be PLIST_ENTRY_64 but circular references are not implemented.
 );
 #MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 fDefineStructure("MEMORY_BASIC_INFORMATION", 
@@ -228,10 +278,10 @@ fDefineStructure("OVERLAPPED",
   (PULONG,      "InternalHigh"),
   UNION(
     STRUCT(
-      (DWORD, "Offset"),
-      (DWORD, "OffsetHigh"),
+      (DWORD,   "Offset"),
+      (DWORD,   "OffsetHigh"),
     ),
-    (PVOID, "Pointer"),
+    (PVOID,     "Pointer"),
   ),
   (HANDLE,      "hEvent"),
 );
@@ -239,6 +289,48 @@ fDefineStructure("OVERLAPPED",
 fDefineStructure("POINT",
   (LONG,        "x"),
   (LONG,        "y"),
+);
+fDefineStructure32("PEB_LDR_DATA_32", 
+  (BYTE * 8,    "Reserved1"),
+  (PVOID_32 * 3, "Reserved2"),
+  (LIST_ENTRY_32, "InMemoryOrderModuleList"),
+);
+fDefineStructure64("PEB_LDR_DATA_64", 
+  (BYTE * 8,    "Reserved1"),
+  (PVOID_64 * 3, "Reserved2"),
+  (LIST_ENTRY_64, "InMemoryOrderModuleList"),
+);
+fDefineStructure("PROCESS_BASIC_INFORMATION",
+  (PVOID,       "Reserved1"),
+  (PVOID,       "PebBaseAddress"), # Should be PPEB, but PEB is defined differently on x86 than on x64, so not sure which this points to.
+  (PVOID * 2,   "Reserved2"),
+  (ULONG_PTR,   "UniqueProcessId"),
+  (PVOID,       "Reserved3"),
+);
+fDefineStructure("PROCESS_MEMORY_COUNTERS",
+  (DWORD,       "cb"),
+  (DWORD,       "PageFaultCount"),
+  (SIZE_T,      "PeakWorkingSetSize"),
+  (SIZE_T,      "WorkingSetSize"),
+  (SIZE_T,      "QuotaPeakPagedPoolUsage"),
+  (SIZE_T,      "QuotaPagedPoolUsage"),
+  (SIZE_T,      "QuotaPeakNonPagedPoolUsage"),
+  (SIZE_T,      "QuotaNonPagedPoolUsage"),
+  (SIZE_T,      "PagefileUsage"),
+  (SIZE_T,      "PeakPagefileUsage"),
+);
+fDefineStructure("PROCESS_MEMORY_COUNTERS_EX",
+  (DWORD,       "cb"),
+  (DWORD,       "PageFaultCount"),
+  (SIZE_T,      "PeakWorkingSetSize"),
+  (SIZE_T,      "WorkingSetSize"),
+  (SIZE_T,      "QuotaPeakPagedPoolUsage"),
+  (SIZE_T,      "QuotaPagedPoolUsage"),
+  (SIZE_T,      "QuotaPeakNonPagedPoolUsage"),
+  (SIZE_T,      "QuotaNonPagedPoolUsage"),
+  (SIZE_T,      "PagefileUsage"),
+  (SIZE_T,      "PeakPagefileUsage"),
+  (SIZE_T,      "PrivateUsage"),
 );
 fDefineStructure("PROCESSENTRY32A",
   (DWORD,       "dwSize"),
@@ -271,8 +363,12 @@ fDefineStructure("RECT",
   (LONG,        "right"),
   (LONG,        "bottom"),
 );
-
 #SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
+fDefineStructure("SECURITY_ATTRIBUTES",
+  (DWORD,       "nLength"),
+  (LPVOID,      "lpSecurityDescriptor"),
+  (BOOL,        "bInheritHandle"),
+);
 fDefineStructure("SID");
 fDefineStructure("SIZE",
   (LONG,        "cx"),
@@ -304,7 +400,7 @@ fDefineStructure("SYSTEM_INFO",
 );
 
 ################################################################################
-# Structures that contain other structures                                     #
+# Structures that contain or refer to other structures                         #
 ################################################################################
 
 #CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
@@ -314,6 +410,59 @@ fDefineStructure("CONSOLE_SCREEN_BUFFER_INFO",
   (WORD,        "wAttributes"),
   (SMALL_RECT,  "srWindow"),
   (COORD,       "dwMaximumWindowSize"),
+);
+#JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ
+fDefineStructure("JOBOBJECT_BASIC_LIMIT_INFORMATION",
+  (LARGE_INTEGER, "PerProcessUserTimeLimit"),
+  (LARGE_INTEGER, "PerJobUserTimeLimit"),
+  (DWORD,       "LimitFlags"),
+  (SIZE_T,      "MinimumWorkingSetSize"),
+  (SIZE_T,      "MaximumWorkingSetSize"),
+  (DWORD,       "ActiveProcessLimit"),
+  (ULONG_PTR,   "Affinity"),
+  (DWORD,       "PriorityClass"),
+  (DWORD,       "SchedulingClass"),
+);
+fDefineStructure("JOBOBJECT_EXTENDED_LIMIT_INFORMATION",
+  (JOBOBJECT_BASIC_LIMIT_INFORMATION, "BasicLimitInformation"),
+  (IO_COUNTERS, "IoInfo"),
+  (SIZE_T,      "ProcessMemoryLimit"),
+  (SIZE_T,      "JobMemoryLimit"),
+  (SIZE_T,      "PeakProcessMemoryUsed"),
+  (SIZE_T,      "PeakJobMemoryUsed"),
+);
+#RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+fDefineStructure32("RTL_USER_PROCESS_PARAMETERS_32",
+  (UINT32,      "MaximumLength"),
+  (UINT32,      "Length"),
+  (UINT32,      "Flags"),
+  (UINT32,      "DebugFlags"),
+  (HANDLE_32,   "ConsoleHandle"),
+  (UINT32,      "ConsoleFlags"),
+  (HANDLE_32,   "StandardInput"),
+  (HANDLE_32,   "StandardOutput"),
+  (HANDLE_32,   "StandardError"),
+  (CURDIR_32,   "CurrentDirectory"),
+  (UNICODE_STRING_32, "DllPath"),
+  (UNICODE_STRING_32, "ImagePathName"),
+  (UNICODE_STRING_32, "CommandLine"),
+  (PVOID_32,    "Environment"),
+  # There's more, but I don't need it
+);
+fDefineStructure64("RTL_USER_PROCESS_PARAMETERS_64",
+  (UINT32,      "MaximumLength"),
+  (UINT32,      "Length"),
+  (UINT32,      "Flags"),
+  (UINT32,      "DebugFlags"),
+  (HANDLE_64,   "ConsoleHandle"),
+  (UINT32,      "ConsoleFlags"),
+  (HANDLE_64,   "StandardInput"),
+  (HANDLE_64,   "StandardOutput"),
+  (HANDLE_64,   "StandardError"),
+  (CURDIR_64,   "CurrentDirectory"),
+  (UNICODE_STRING_64, "DllPath"),
+  (UNICODE_STRING_64, "ImagePathName"),
+  (UNICODE_STRING_64, "CommandLine"),
 );
 #SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
 fDefineStructure("SID_AND_ATTRIBUTES",
@@ -325,3 +474,32 @@ fDefineStructure("TOKEN_MANDATORY_LABEL",
   (SID_AND_ATTRIBUTES, "Label"),
 );
 
+################################################################################
+# Structures that contain or refer to other structures which in turn refer to  #
+# other structures as well                                                     #
+################################################################################
+
+#PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+fDefineStructure32("PEB_32",
+  (BYTE,        "InheritedAddressSpace"),
+  (BYTE,        "ReadImageFileExecOptions"),
+  (BYTE,        "BeingDebugged"),
+  (BYTE,        "BitField"),
+  (PVOID_32,    "Mutant"),
+  (PVOID_32,    "ImageBaseAddress"),
+  (PPEB_LDR_DATA_32, "Ldr"),
+  (PRTL_USER_PROCESS_PARAMETERS_32, "ProcessParameters"),
+  # There's lots more, but since I do not need it, I did not define it.
+);
+fDefineStructure64("PEB_64",
+  (BYTE,        "InheritedAddressSpace"),
+  (BYTE,        "ReadImageFileExecOptions"),
+  (BYTE,        "BeingDebugged"),
+  (BYTE,        "BitField"),
+  (BYTE * 4,    "Padding0"),
+  (PVOID_64,    "Mutant"),
+  (PVOID_64,    "ImageBaseAddress"),
+  (PPEB_LDR_DATA_64, "Ldr"),
+  (PRTL_USER_PROCESS_PARAMETERS_64, "ProcessParameters"),
+  # There's lots more, but since I do not need it, I did not define it.
+);
