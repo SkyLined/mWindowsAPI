@@ -48,6 +48,7 @@ HMODULE = ctypes.c_void_p;
 HMONITOR = ctypes.c_void_p;
 HPALETTE = ctypes.c_void_p;
 HPEN = ctypes.c_void_p;
+HRESULT = ctypes.c_long;
 HRGN = ctypes.c_void_p;
 HRSRC = ctypes.c_void_p;
 HSTR = ctypes.c_void_p;
@@ -60,19 +61,27 @@ INT8 = ctypes.c_byte;
 INT16 = ctypes.c_short;
 INT32 = ctypes.c_int;
 INT64 = ctypes.c_longlong;
+#JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ
+JOBOBJECTINFOCLASS = ctypes.c_size_t; # defined as an enum, so I'm guessing its size depends on the architecture.
 #LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
 LONG = ctypes.c_long;
+LONGLONG = ctypes.c_longlong;
+LPASTR = ctypes.c_char_p;
 LPCOLESTR = ctypes.c_wchar_p;
 LPCSTR = ctypes.c_char_p;
+LPCASTR = ctypes.c_char_p;
+LPCWSTR = ctypes.c_wchar_p;
 LPCVOID = ctypes.c_void_p;
 LPCWSTR = ctypes.c_wchar_p;
 LPOLESTR = ctypes.c_wchar_p;
 LPSTR = ctypes.c_char_p;
+LPTHREAD_START_ROUTINE = ctypes.c_void_p;
 LPVOID = ctypes.c_void_p;
 LPWSTR = ctypes.c_wchar_p;
 #OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 OLESTR = ctypes.c_wchar_p;
 #PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PROCESSINFOCLASS = ctypes.c_size_t; # defined as an enum, so I'm guessing its size depends on the architecture.
 PVOID = ctypes.c_void_p;
 #SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
 SHORT = ctypes.c_short;
@@ -122,6 +131,8 @@ for sTypeName in globals().keys():
 # 32/64 bit values
 SIZE_T_32 = ctypes.c_ulong;
 SIZE_T_64 = ctypes.c_ulonglong;
+HANDLE_32 = ctypes.c_ulong;
+HANDLE_64 = ctypes.c_ulonglong;
 PSIZE_T_32 = POINTER_32(SIZE_T_32);
 PSIZE_T_64 = POINTER_64(SIZE_T_64);
 PPSIZE_T_32 = POINTER_32(POINTER_32(SIZE_T_32));
@@ -130,3 +141,7 @@ PVOID_32 = POINTER_32();
 PVOID_64 = POINTER_64();
 PPVOID_32 = POINTER_32(POINTER_32());
 PPVOID_64 = POINTER_64(POINTER_64());
+PWSTR_32 = POINTER_32(ctypes.c_wchar);
+PPWSTR_32 = POINTER_32(POINTER_32(ctypes.c_wchar));
+PWSTR_64 = POINTER_64(ctypes.c_wchar);
+PPWSTR_64 = POINTER_64(POINTER_64(ctypes.c_wchar));
