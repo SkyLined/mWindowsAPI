@@ -4,8 +4,13 @@ from StructureTypes import *;
 
 KERNEL32 = cDLL("kernel32.dll");
 
+KERNEL32.fDefineFunction(BOOL,    "AssignProcessToJobObject", HANDLE, HANDLE);
 KERNEL32.fDefineFunction(BOOL,    "CloseHandle", HANDLE);
 KERNEL32.fDefineFunction(HANDLE,  "CreateToolhelp32Snapshot", DWORD, DWORD);
+KERNEL32.fDefineFunction(HANDLE,  "CreateJobObjectA", LPSECURITY_ATTRIBUTES, LPCASTR);
+KERNEL32.fDefineFunction(HANDLE,  "CreateJobObjectW", LPSECURITY_ATTRIBUTES, LPCWSTR);
+KERNEL32.fDefineFunction(HANDLE,  "CreateRemoteThread", HANDLE, LPSECURITY_ATTRIBUTES, SIZE_T, LPTHREAD_START_ROUTINE, LPVOID, DWORD, LPDWORD);
+KERNEL32.fDefineFunction(BOOL,    "DebugBreakProcess", HANDLE);
 KERNEL32.fDefineFunction(BOOL,    "K32EnumProcesses", PDWORD, DWORD, PDWORD);
 KERNEL32.fDefineFunction(BOOL,    "GenerateConsoleCtrlEvent", DWORD, DWORD);
 KERNEL32.fDefineFunction(BOOL,    "GetConsoleMode", HANDLE, PDWORD);
@@ -23,19 +28,29 @@ KERNEL32.fDefineFunction(HANDLE,  "HeapCreate", DWORD, SIZE_T, SIZE_T);
 KERNEL32.fDefineFunction(BOOL,    "HeapFree", HANDLE, DWORD, LPVOID);
 KERNEL32.fDefineFunction(LPVOID,  "HeapReAlloc", HANDLE, DWORD, LPVOID, SIZE_T);
 KERNEL32.fDefineFunction(BOOL,    "IsWow64Process", HANDLE, PBOOL);
+KERNEL32.fDefineFunction(BOOL,    "IsProcessInJob", HANDLE, HANDLE, PBOOL);
+KERNEL32.fDefineFunction(BOOL,    "K32GetProcessMemoryInfo", HANDLE, PPROCESS_MEMORY_COUNTERS, DWORD);
 KERNEL32.fDefineFunction(BOOL,    "Module32First", HANDLE, LPMODULEENTRY32A);
 KERNEL32.fDefineFunction(BOOL,    "Module32FirstW", HANDLE, LPMODULEENTRY32W);
 KERNEL32.fDefineFunction(BOOL,    "Module32Next", HANDLE, LPMODULEENTRY32A);
 KERNEL32.fDefineFunction(BOOL,    "Module32NextW", HANDLE, LPMODULEENTRY32W);
+KERNEL32.fDefineFunction(HANDLE,  "OpenThread", DWORD, BOOL, DWORD);
 KERNEL32.fDefineFunction(HANDLE,  "OpenProcess", DWORD, BOOL, DWORD);
 KERNEL32.fDefineFunction(BOOL,    "OpenProcessToken", HANDLE, DWORD, PHANDLE);
 KERNEL32.fDefineFunction(BOOL,    "Process32First", HANDLE, LPPROCESSENTRY32A);
 KERNEL32.fDefineFunction(BOOL,    "Process32FirstW", HANDLE, LPPROCESSENTRY32W);
 KERNEL32.fDefineFunction(BOOL,    "Process32Next", HANDLE, LPPROCESSENTRY32A);
 KERNEL32.fDefineFunction(BOOL,    "Process32NextW", HANDLE, LPPROCESSENTRY32W);
+KERNEL32.fDefineFunction(BOOL,    "QueryInformationJobObject", HANDLE, JOBOBJECTINFOCLASS, LPVOID, DWORD, LPDWORD);
 KERNEL32.fDefineFunction(BOOL,    "ReadProcessMemory", HANDLE, LPCVOID, LPVOID, SIZE_T, PSIZE_T);
+KERNEL32.fDefineFunction(BOOL,    "SetInformationJobObject", HANDLE, JOBOBJECTINFOCLASS, LPVOID, DWORD);
 KERNEL32.fDefineFunction(BOOL,    "SetConsoleTextAttribute", HANDLE, WORD);
 KERNEL32.fDefineFunction(BOOL,    "TerminateProcess", HANDLE, UINT);
+KERNEL32.fDefineFunction(BOOL,    "TerminateThread", HANDLE, DWORD);
+KERNEL32.fDefineFunction(LPVOID,  "VirtualAlloc", LPVOID, SIZE_T, DWORD, DWORD);
+KERNEL32.fDefineFunction(LPVOID,  "VirtualAllocEx", HANDLE, LPVOID, SIZE_T, DWORD, DWORD);
+KERNEL32.fDefineFunction(BOOL,    "VirtualFree", LPVOID, SIZE_T, DWORD);
+KERNEL32.fDefineFunction(BOOL,    "VirtualFreeEx", HANDLE, LPVOID, SIZE_T, DWORD);
 KERNEL32.fDefineFunction(BOOL,    "VirtualProtect", LPVOID, SIZE_T, DWORD, PDWORD);
 KERNEL32.fDefineFunction(BOOL,    "VirtualProtectEx", HANDLE, LPVOID, SIZE_T, DWORD, PDWORD);
 KERNEL32.fDefineFunction(SIZE_T,  "VirtualQuery", LPCVOID, PMEMORY_BASIC_INFORMATION, SIZE_T);
@@ -45,4 +60,3 @@ KERNEL32.fDefineFunction(BOOL,    "WriteConsoleA", HANDLE, LPCSTR, DWORD, LPDWOR
 KERNEL32.fDefineFunction(BOOL,    "WriteConsoleW", HANDLE, LPCWSTR, DWORD, LPDWORD, LPVOID);
 KERNEL32.fDefineFunction(BOOL,    "WriteFile", HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED);
 KERNEL32.fDefineFunction(BOOL,    "WriteProcessMemory", HANDLE, LPVOID, LPCVOID, SIZE_T, PSIZE_T);
-
