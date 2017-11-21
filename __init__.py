@@ -17,6 +17,7 @@ from foCreateVirtualAllocationInProcessForId import foCreateVirtualAllocationInP
 from foGetRegistryValue import foGetRegistryValue;
 from fSendCtrlCToProcessForId import fSendCtrlCToProcessForId;
 from fsGetOSISA import fsGetOSISA;
+from fsGetPythonISA import fsGetPythonISA;
 from fSuspendProcessForId import fSuspendProcessForId;
 from fbTerminateThreadForId import fbTerminateThreadForId;
 from fuCreateThreadInProcessForIdAndAddress import fuCreateThreadInProcessForIdAndAddress;
