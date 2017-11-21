@@ -8,7 +8,7 @@ class cVirtualAllocation(object):
         "KERNEL32.OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, %d/0x%X): 0x%X" % \
         (uProcessId, uProcessId, KERNEL32.GetLastError());
     try:
-      # accessing a virtual allocation in a 64-bit processes from 32-bit Python is theoretically possible with a few
+      # Accessing a virtual allocation in a 64-bit processes from 32-bit Python is theoretically possible with a few
       # hacks, but very complex and not worth the effort IMHO.
       # https://stackoverflow.com/questions/5714297/is-it-possible-to-read-process-memory-of-a-64-bit-process-from-a-32bit-app
       # For now, we simply detect this an throw an error.
@@ -57,7 +57,8 @@ class cVirtualAllocation(object):
         uType = oMemoryBasicInformation.Type,
       );
     finally:
-      KERNEL32.CloseHandle(hProcess);
+      assert KERNEL32.CloseHandle(hProcess), \
+          "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
   
   def __init__(oSelf, uProcessId, uAllocationBaseAddress, uAllocationProtection, uStartAddress, uSize, uState, uProtection, uType):
     oSelf.__uProcessId = uProcessId;
@@ -69,10 +70,13 @@ class cVirtualAllocation(object):
     oSelf.__uProtection = uProtection;
     oSelf.__uType = uType;
     oSelf.__sData = None;
+    oSelf.__bFreed = False;
   
   # Allocation start address and protection
   @property
   def uAllocationBaseAddress(oSelf):
+    assert not oSelf.__bFreed, \
+        "This virtual allocation has been freed; you can no longer use this property";
     return oSelf.__uAllocationBaseAddress;
   @property
   def uAllocationProtection(oSelf):
@@ -94,16 +98,20 @@ class cVirtualAllocation(object):
   # Start/End address and size
   @property
   def uStartAddress(oSelf):
+    assert not oSelf.__bFreed, \
+        "This virtual allocation has been freed; you can no longer use this property";
     return oSelf.__uStartAddress;
   
   @property
   def uSize(oSelf):
+    assert not oSelf.__bFreed, \
+        "This virtual allocation has been freed; you can no longer use this property";
     return oSelf.__uSize;
 
   @property
   def uEndAddress(oSelf):
-    if oSelf.__uStartAddress is None:
-      return None;
+    assert not oSelf.__bFreed, \
+        "This virtual allocation has been freed; you can no longer use this property";
     return oSelf.__uStartAddress + oSelf.__uSize;
   
   # State
@@ -151,6 +159,8 @@ class cVirtualAllocation(object):
   
   @uProtection.setter
   def uProtection(oSelf, uNewProtection):
+    assert not oSelf.__bFreed, \
+        "This virtual allocation has been freed; you can  no longer set this property";
     hProcess = KERNEL32.OpenProcess(PROCESS_VM_OPERATION, FALSE, oSelf.__uProcessId);
     assert hProcess, \
         "KERNEL32.OpenProcess(PROCESS_VM_OPERATION, FALSE, %d/0x%X): 0x%X" % \
@@ -168,10 +178,13 @@ class cVirtualAllocation(object):
            (oSelf.__uProcessId, oSelf.__uProcessId, lpAddress.value, nSize.value, flNewProtection.value, KERNEL32.GetLastError());
       oSelf.__uProtection = uNewProtection;
     finally:
-      KERNEL32.CloseHandle(hProcess);
+      assert KERNEL32.CloseHandle(hProcess), \
+          "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
 
   @sProtection.setter
   def sProtection(oSelf, sNewProtection):
+    assert not oSelf.__bFreed, \
+        "This virtual allocation has been freed; you can  no longer set this property";
     # uNewProtection can also be one of the following strings:
     uNewProtection = {
       "PAGE_NOACCESS": PAGE_NOACCESS,
@@ -213,14 +226,13 @@ class cVirtualAllocation(object):
   # Data
   @property
   def sData(oSelf):
-    assert oSelf.__uStartAddress is not None, \
-        "Cannot read data from an invalid virtual allocation";
-    oSelf.__sData = oSelf.fsReadDataForOffsetAndSize(0, oSelf.__uSize);
+    assert not oSelf.__bFreed, \
+        "This virtual allocation has been freed; you can  no longer use this property";
+    if not oSelf.__sData:
+      oSelf.__sData = oSelf.fsReadDataForOffsetAndSize(0, oSelf.__uSize);
     return oSelf.__sData;
   
-  def fsReadDataForOffsetAndSize(oSelf, uOffset, uSize):
-    assert oSelf.__uStartAddress is not None, \
-        "Cannot read data from an invalid virtual allocation";
+  def fsReadDataForOffsetAndSize(oSelf, uOffset, uSize, bUnicode = False):
     # Sanity checks
     assert oSelf.bAllocated, \
         "Cannot read memory that is not allocated!";
@@ -234,6 +246,8 @@ class cVirtualAllocation(object):
     assert uOffset + uSize <= oSelf.__uSize, \
         "Offset 0x%X + size 0x%X is outside of the vrtual allocation of 0x%X bytes at 0x%08X" % \
         (uOffset, uSize, oSelf.__uSize, oSelf.__uStartAddress);
+    assert not bUnicode or uSize % 2 == 0, \
+        "Cannot read a Unicode string that has an odd number of bytes (%d)" % uSize;
     if oSelf.__sData:
       return oSelf.__sData[uOffset: uOffset + uSize];
     # Modify protection to make sure the pages can be read.
@@ -248,7 +262,7 @@ class cVirtualAllocation(object):
         "KERNEL32.OpenProcess(PROCESS_VM_READ, FALSE, %d/0x%X): 0x%X" % \
         (oSelf.__uProcessId, oSelf.__uProcessId, KERNEL32.GetLastError());
     try:
-      sBuffer = STR(uSize);
+      sBuffer = bUnicode and WSTR(uSize / 2) or STR(uSize);
       uBytesRead = SIZE_T(0);
       assert KERNEL32.ReadProcessMemory(
         hProcess,
@@ -260,9 +274,12 @@ class cVirtualAllocation(object):
           "KERNEL32.ReadProcessMemory(%d/0x%X, 0x%08X, ..., 0x%X, *0x%X): 0x%X" % \
            (oSelf.__uProcessId, oSelf.__uProcessId, lpBaseAddress.value, nSize.value, uBytesRead.value, KERNEL32.GetLastError());
       # Return read data as a string.
+      if bUnicode:
+        return sBuffer.value;
       return sBuffer.raw;
     finally:
-      KERNEL32.CloseHandle(hProcess);
+      assert KERNEL32.CloseHandle(hProcess), \
+          "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
       # Restore original protection if needed
       if uOriginalProtection in [PAGE_NOACCESS, PAGE_EXECUTE]:
         oSelf.uProtection = uOriginalProtection;
@@ -292,3 +309,29 @@ class cVirtualAllocation(object):
     print "| uProtection            = 0x%X (%s)" % (oSelf.uProtection, oSelf.sProtection);
     print "| uType                  = 0x%X (%s)" % (oSelf.uType, oSelf.sType);
     print "'".ljust(80, "-");
+  
+  def fFree(oSelf):
+    # Try to open the process...
+    hProcess = KERNEL32.OpenProcess(PROCESS_VM_OPERATION, FALSE, oSelf.__uProcessId);
+    assert hProcess, \
+        "OpenProcess(PROCESS_VM_OPERATION, FALSE, 0x%08X) => Error 0x%08X" % (oSelf.__uProcessId, KERNEL32.GetLastError());
+    try:
+      assert KERNEL32.VirtualFreeEx(
+          hProcess,
+          CAST(LPVOID, oSelf.__uStartAddress), # lpAddress
+          0, # dwSize
+          MEM_RELEASE, # dwFreeType
+      ), "VirtualFreeEx(0x%08X, 0x%08X, 0, MEM_RELEASE) => Error 0x%08X" % (oSelf.__uProcessId, uAddress, KERNEL32.GetLastError());
+    finally:
+      assert KERNEL32.CloseHandle(hProcess), \
+          "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
+    # Mark this virtual allocation as freed
+    oSelf.__uAllocationBaseAddress = None;
+    oSelf.__uAllocationProtection = PAGE_NOACCESS;
+    oSelf.__uStartAddress = None;
+    oSelf.__uSize = None;
+    oSelf.__uState = MEM_FREE;
+    oSelf.__uProtection = PAGE_NOACCESS;
+    oSelf.__uType = 0;
+    oSelf.__sData = None;
+    oSelf.__bFreed = True;
