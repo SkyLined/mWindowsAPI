@@ -16,12 +16,8 @@ class cVirtualAllocation(object):
       from fsGetOSISA import fsGetOSISA;
       if fsGetOSISA() == "x64":
         # Next we find out if the python process is 32-bit, as this problem can only occur in a 32-bit python process:
-        import platform;
-        sPythonISA = {
-          "32bit": "x86",
-          "64bit": "x64",
-        }[platform.architecture()[0]];
-        if sPythonISA == "x86":
+        from fsGetPythonISA import fsGetPythonISA;
+        if fsGetPythonISA() == "x86":
           # Finally we find out if the remote process is 64-bit:
           bIsWow64Process = BOOL();
           assert KERNEL32.IsWow64Process(hProcess, POINTER(bIsWow64Process)), \
