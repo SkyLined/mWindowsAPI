@@ -32,28 +32,80 @@ if __name__ == "__main__":
   # Test process functions
   oNotepadProcess = subprocess.Popen("notepad.exe");
   print "  + Started notepad process %d..." % oNotepadProcess.pid;
-  # fdsProcessesExecutableName_by_uId (make sure notepad.exe is included)
-  print "  * Testing fdsProcessesExecutableName_by_uId...";
-  dsProcessesExecutableName_by_uId = fdsProcessesExecutableName_by_uId();
-  sProcessesExecutableName = dsProcessesExecutableName_by_uId.get(oNotepadProcess.pid);
-  assert sProcessesExecutableName, \
-      "Notepad.exe process %d not found in process list!" % oNotepadProcess.pid;
-  assert sProcessesExecutableName == "notepad.exe", \
-      "Notepad.exe process %d is reported to run %s" % sProcessesExecutableName;
-  # fuGetProcessIntegrityLevelForId
-  print "  * Testing fuGetProcessIntegrityLevelForId...";
-  uProcessIntegrityLevel = fuGetProcessIntegrityLevelForId(oNotepadProcess.pid);
-  assert uProcessIntegrityLevel is not None, \
-      "Notepad.exe process %d integrity level could not be determined!" % oNotepadProcess.pid;
-  print "    + IntegrityLevel = 0x%X." % uProcessIntegrityLevel;
-  print "  * Testing cVirtualAllocation...";
-  oNullVirtualAllocation = cVirtualAllocation.foGetForProcessIdAndAddress(oNotepadProcess.pid, 0);
-  assert oNullVirtualAllocation.bFree, \
-      "Expected no memory to be allocated at address 0";
-  print "    + There are 0x%X bytes of free memory at address 0." % oNullVirtualAllocation.uSize;
-  # fbTerminateProcessForId
-  print "  * Testing fbTerminateProcessForId...";
-  fbTerminateProcessForId(oNotepadProcess.pid);
+  try:
+    # cProcessInformation
+    print "  * Testing cProcessInformation...";
+    oProcessInformation = cProcessInformation.foGetForId(oNotepadProcess.pid);
+    print "    + ISA = %s" % repr(oProcessInformation.sISA);
+    print "    + Binary start address = 0x%08X" % oProcessInformation.uBinaryStartAddress;
+    print "    + Binary Path = %s" % repr(oProcessInformation.sBinaryPath);
+    print "    + Command line = %s" % repr(oProcessInformation.sCommandLine);
+    # cVirtualAllocation
+    oBinaryVirtualAllocation = cVirtualAllocation.foGetForProcessIdAndAddress( \
+        oNotepadProcess.pid, oProcessInformation.uBinaryStartAddress);
+    assert oBinaryVirtualAllocation.bAllocated, \
+        "Expected memory to be allocated at address 0x%08X" % oProcessInformation.uBinaryStartAddress;
+    assert oBinaryVirtualAllocation.uStartAddress == oProcessInformation.uBinaryStartAddress, \
+        "Expected binary virtual allocation to start at address 0x%08X, not 0x%08X" % \
+          (oProcessInformation.uBinaryStartAddress, oBinaryVirtualAllocation.uStartAddress);
+    print "    + There are 0x%X bytes of memory allocated at address 0x%08X." % \
+        (oBinaryVirtualAllocation.uSize, oBinaryVirtualAllocation.uStartAddress);
+    
+    # fdsProcessesExecutableName_by_uId (make sure notepad.exe is included)
+    print "  * Testing fdsProcessesExecutableName_by_uId...";
+    dsProcessesExecutableName_by_uId = fdsProcessesExecutableName_by_uId();
+    sProcessesExecutableName = dsProcessesExecutableName_by_uId.get(oNotepadProcess.pid);
+    assert sProcessesExecutableName, \
+        "Notepad.exe process %d not found in process list!" % oNotepadProcess.pid;
+    assert sProcessesExecutableName == "notepad.exe", \
+        "Notepad.exe process %d is reported to run %s" % sProcessesExecutableName;
+    # fuGetProcessIntegrityLevelForId
+    print "  * Testing fuGetProcessIntegrityLevelForId...";
+    uProcessIntegrityLevel = fuGetProcessIntegrityLevelForId(oNotepadProcess.pid);
+    assert uProcessIntegrityLevel is not None, \
+        "Notepad.exe process %d integrity level could not be determined!" % oNotepadProcess.pid;
+    print "    + IntegrityLevel = 0x%X." % uProcessIntegrityLevel;
+    # fuGetProcessMemoryUsage
+    # foCreateVirtualAllocationInProcessForId
+    # cVirtualAllocation
+    print "  * Testing Memory management functions...";
+    uProcessMemoryUsage = fuGetProcessMemoryUsage(oNotepadProcess.pid);
+    print "    + Memory usage = 0x%X." % uProcessMemoryUsage;
+    uMemoryAllocationSize = 0x1234000;
+    oVirtualAllocation = foCreateVirtualAllocationInProcessForId(oNotepadProcess.pid, uMemoryAllocationSize);
+    assert oVirtualAllocation is not None, \
+        "Attempt to allocate 0x%X bytes failed" % uMemoryAllocationSize;
+    assert oVirtualAllocation.uSize == uMemoryAllocationSize, \
+        "Attempted to allocate 0x%X bytes, but got 0x%X" % (uMemoryAllocationSize, oVirtualAllocation.uSize);
+    uProcessMemoryUsageAfterAllocation = fuGetProcessMemoryUsage(oNotepadProcess.pid);
+    print "    + Memory usage after allocating 0x%X bytes = 0x%X." % \
+        (oVirtualAllocation.uSize, uProcessMemoryUsageAfterAllocation);
+    assert uProcessMemoryUsageAfterAllocation >= uProcessMemoryUsage + uMemoryAllocationSize, \
+        "Process memory usage was expected to be at least 0x%X after allocation, but is 0x%X" % \
+        (uProcessMemoryUsage + uMemoryAllocationSize, uProcessMemoryUsageAfterAllocation);
+    oVirtualAllocation.fFree();
+    uProcessMemoryUsageAfterFree = fuGetProcessMemoryUsage(oNotepadProcess.pid);
+    print "    + Memory usage after freeing memory = 0x%X." % uProcessMemoryUsageAfterFree;
+    assert uProcessMemoryUsageAfterFree >= uProcessMemoryUsage, \
+        "Process memory usage was expected to be at least 0x%X after free, but is 0x%X" % \
+        (uProcessMemoryUsage, uProcessMemoryUsageAfterFree);
+
+    # cJobObject
+    print "  * Testing cJobObject...";
+    oJobObject = cJobObject(oNotepadProcess.pid);
+    oJobObject.fSetMaxTotalMemoryUse(uProcessMemoryUsageAfterFree + uMemoryAllocationSize / 2);
+    oVirtualAllocation = foCreateVirtualAllocationInProcessForId(oNotepadProcess.pid, uMemoryAllocationSize);
+    assert oVirtualAllocation is None, \
+        "Attempt to allocate 0x%X bytes succeeded despite JobObject memory allocation limits" % uMemoryAllocationSize;
+    print "    + JobObject memory limits applied correctly.";
+    
+    # fbTerminateProcessForId
+    print "  * Testing fbTerminateProcessForId...";
+    fbTerminateProcessForId(oNotepadProcess.pid);
+  except:
+    oNotepadProcess.terminate();
+    oNotepadProcess.wait();
+    raise;
   assert oNotepadProcess.poll() != None, \
       "Notepad.exe was not terminated!";
   # fdsProcessesExecutableName_by_uId (make sure notepad.exe is removed)
