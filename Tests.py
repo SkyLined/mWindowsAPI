@@ -11,6 +11,13 @@ sys.path.extend([
 from mWindowsAPI import *;
 
 if __name__ == "__main__":
+  # Test registry access
+  print "* Testing Registry access...";
+  # cWindowsVersion uses foGetRegistryValue
+  print "  Windows version: %s" %  oWindowsVersion;
+  # Test fsGetOSISA
+  print "  Windows ISA: %s" % fsGetOSISA();
+  
   # Test console functions
   print "* Testing KERNEL32 console functions...";
   hStdOut = KERNEL32.GetStdHandle(STD_OUTPUT_HANDLE);
@@ -18,6 +25,8 @@ if __name__ == "__main__":
   assert KERNEL32.GetConsoleScreenBufferInfo(hStdOut, PCONSOLE_SCREEN_BUFFER_INFO(oConsoleScreenBufferInfo)), \
       "GetConsoleScreenBufferInfo(0x%08X, ...) => Error 0x%08X" % \
       (hStdOut, KERNEL32.GetLastError());
+  print "  Console buffer size (WxH): %d x %d" % (oConsoleScreenBufferInfo.dwSize.X, oConsoleScreenBufferInfo.dwSize.Y);
+  print "  Console window size (WxH): %d x %d" % (oConsoleScreenBufferInfo.dwMaximumWindowSize.X, oConsoleScreenBufferInfo.dwMaximumWindowSize.Y);
   uOriginalColor = oConsoleScreenBufferInfo.wAttributes & 0xFF;
   uTestColor = (uOriginalColor & 0xF0) | 0x0A; # Bright green foreground, keep same background.
   assert KERNEL32.SetConsoleTextAttribute(hStdOut, uTestColor), \
@@ -27,6 +36,7 @@ if __name__ == "__main__":
   assert KERNEL32.SetConsoleTextAttribute(hStdOut, uOriginalColor), \
       "SetConsoleTextAttribute(0x%08X, 0x%02X) => Error 0x%08X" % \
       (hStdOut, uOriginalColor, KERNEL32.GetLastError());
+  foGetRegistryValue
   
   print "* Testing process functions...";
   # Test process functions
@@ -102,6 +112,11 @@ if __name__ == "__main__":
     # fbTerminateProcessForId
     print "  * Testing fbTerminateProcessForId...";
     fbTerminateProcessForId(oNotepadProcess.pid);
+    
+    # TODO: add test for fbTerminateThreadForId, fDebugBreakProcessForId, fSuspendProcessForId, \
+    # fuCreateThreadInProcessForIdAndAddress and fSendCtrlCToProcessForId.
+    # This will require attaching a debugger to the process to determine a thread id, resume the application, or catch
+    # the exceptions these functions throw.
   except:
     oNotepadProcess.terminate();
     oNotepadProcess.wait();
@@ -112,6 +127,3 @@ if __name__ == "__main__":
   assert oNotepadProcess.pid not in fdsProcessesExecutableName_by_uId(), \
       "Notepad.exe is still reported to exist after being terminated!?";
   print "  + Notepad was terminated.";
-
-  print "* Testing windows version/registry functions...";
-  print "  + %s" % oWindowsVersion;
