@@ -3,15 +3,24 @@ from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
 from cPipe import cPipe;
+from cProcessInformation import cProcessInformation;
 
 class cConsoleProcess(object):
   @staticmethod
-  def foCreateForBinaryPathAndArguments(sBinaryPath, asArguments, sWorkingDirectory = None, bSuspended = False):
-    oStdInPipe = cPipe(bInheritableInput = False); # The output is inheritted and used as stdin, the input is sent by us
+  def foCreateForBinaryPathAndArguments(
+    sBinaryPath,
+    asArguments,
+    sWorkingDirectory = None,
+    bRedirectStdIn = True,
+    bRedirectStdOut = True,
+    bRedirectStdErr = True,
+    bSuspended = False,
+  ):
+    oStdInPipe = bRedirectStdIn and cPipe(bInheritableInput = False) or None;
     try:
-      oStdOutPipe = cPipe(bInheritableOutput = False); # The input is inheritted and used as stdout, the output is read by us
+      oStdOutPipe = bRedirectStdOut and cPipe(bInheritableOutput = False) or None;
       try:
-        oStdErrPipe = cPipe(bInheritableOutput = False); # The input is inheritted and used as stderr, the output is read by us.
+        oStdErrPipe = bRedirectStdErr and cPipe(bInheritableOutput = False) or None;
         try:
           sCommandLine = " ".join([
             (s and (s[0] == '"' or s.find(" ") == -1)) and s or '"%s"' % s.replace('"', '\\"')
@@ -23,9 +32,9 @@ class cConsoleProcess(object):
           oStartupInfo.lpDesktop = NULL;
           oStartupInfo.lpDesktop = NULL;
           oStartupInfo.dwFlags = STARTF_USESTDHANDLES;
-          oStartupInfo.hStdInput = oStdInPipe.hOutput;
-          oStartupInfo.hStdOutput = oStdOutPipe.hInput;
-          oStartupInfo.hStdError = oStdErrPipe.hInput;
+          oStartupInfo.hStdInput = oStdInPipe and oStdInPipe.hOutput or KERNEL32.GetStdHandle(STD_INPUT_HANDLE);
+          oStartupInfo.hStdOutput = oStdOutPipe and oStdOutPipe.hInput or KERNEL32.GetStdHandle(STD_OUTPUT_HANDLE);
+          oStartupInfo.hStdError = oStdErrPipe and oStdErrPipe.hInput or KERNEL32.GetStdHandle(STD_ERROR_HANDLE);
           oProcessInformation = PROCESS_INFORMATION();
           
           if not KERNEL32.CreateProcessW(
@@ -42,12 +51,12 @@ class cConsoleProcess(object):
           ):
             uError = KERNEL32.GetLastError();
             try:
-              oStdErrPipe.fClose();
+              oStdErrPipe and oStdErrPipe.fClose();
             finally:
               try:
-                oStdOutPipe.fClose();
+                oStdOutPipe and oStdOutPipe.fClose();
               finally:
-                oStdInPipe.fClose();
+                oStdInPipe and oStdInPipe.fClose();
             assert HRESULT_FROM_WIN32(uError) in [ERROR_FILE_NOT_FOUND, ERROR_INVALID_NAME], \
                 "CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...) => Error 0x%08X." % \
                 (repr(sBinaryPath), repr(sCommandLine), uFlags, sWorkingDirectory, uError);
@@ -62,13 +71,13 @@ class cConsoleProcess(object):
               assert KERNEL32.CloseHandle(oProcessInformation.hThread), \
                   "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
         except:
-          oStdErrPipe.fClose();
+          oStdErrPipe and oStdErrPipe.fClose();
           raise;
       except:
-        oStdOutPipe.fClose();
+        oStdOutPipe and oStdOutPipe.fClose();
         raise;
     except:
-      oStdInPipe.fClose();
+      oStdInPipe and oStdInPipe.fClose();
       raise;
   
   def __init__(oSelf, uId, oStdInPipe, oStdOutPipe, oStdErrPipe):
@@ -76,13 +85,19 @@ class cConsoleProcess(object):
     oSelf.oStdInPipe = oStdInPipe;
     oSelf.oStdOutPipe = oStdOutPipe;
     oSelf.oStdErrPipe = oStdErrPipe;
+    oSelf.__oInformation = None;
   
   def fClose(oSelf):
     try:
-      oSelf.oStdInPipe.fClose();
+      oSelf.oStdInPipe and oSelf.oStdInPipe.fClose();
     finally:
       try:
-        oSelf.oStdOutPipe.fClose();
+        oSelf.oStdOutPipe and oSelf.oStdOutPipe.fClose();
       finally:
-        oSelf.oStdErrPipe.fClose();
-              
+        oSelf.oStdErrPipe and oSelf.oStdErrPipe.fClose();
+
+  @property
+  def oInformation(oSelf):
+    if oSelf.__oInformation is None:
+      oSelf.__oInformation = cProcessInformation.foGetForId(oSelf.uId);
+    return oSelf.__oInformation;
