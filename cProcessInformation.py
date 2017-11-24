@@ -1,3 +1,5 @@
+import os;
+
 from mDefines import *;
 from mTypes import *;
 from mDLLs import KERNEL32, NTDLL;
@@ -93,4 +95,5 @@ class cProcessInformation(object):
     oSelf.sISA = sISA;
     oSelf.uBinaryStartAddress = uBinaryStartAddress;
     oSelf.sBinaryPath = sBinaryPath;
+    oSelf.sBinaryName = os.path.basename(sBinaryPath);
     oSelf.sCommandLine = sCommandLine;
