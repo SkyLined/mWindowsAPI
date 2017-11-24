@@ -2,7 +2,6 @@ from mDefines import *;
 from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
-from fhDuplicateHandle import fhDuplicateHandle;
 
 guBufferSize = 1;
 
