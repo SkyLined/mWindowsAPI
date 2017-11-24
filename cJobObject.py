@@ -1,4 +1,7 @@
-from mWindowsAPI import *;
+from mDefines import *;
+from mFunctions import *;
+from mTypes import *;
+from mDLLs import KERNEL32;
 
 class cJobObject(object):
   def __init__(oSelf, *auProcessIds):

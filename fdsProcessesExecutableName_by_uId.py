@@ -1,4 +1,7 @@
-from mWindowsAPI import *;
+from mDefines import *;
+from mFunctions import *;
+from mTypes import *;
+from mDLLs import KERNEL32;
 
 def fdsProcessesExecutableName_by_uId():
   dsProcessExecutableName_by_uIds = {};

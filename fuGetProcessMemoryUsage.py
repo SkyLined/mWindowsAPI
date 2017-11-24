@@ -1,4 +1,7 @@
-from mWindowsAPI import *;
+from mDefines import *;
+from mFunctions import *;
+from mTypes import *;
+from mDLLs import KERNEL32;
 
 def fuGetProcessMemoryUsage(uProcessId):
   # Try to open the process...

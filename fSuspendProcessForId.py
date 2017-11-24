@@ -1,4 +1,7 @@
-from mWindowsAPI import *;
+from mDefines import *;
+from mFunctions import *;
+from mTypes import *;
+from mDLLs import KERNEL32, NTDLL;
 
 def fSuspendProcessForId(uProcessId):
   hProcess = KERNEL32.OpenProcess(THREAD_SUSPEND_RESUME, FALSE, uProcessId);

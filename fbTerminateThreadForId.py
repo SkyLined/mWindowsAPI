@@ -1,4 +1,7 @@
-from mWindowsAPI import *;
+from mDefines import *;
+from mFunctions import *;
+from mTypes import *;
+from mDLLs import KERNEL32;
 
 def fbTerminateThreadForId(uThreadId):
   hThread = KERNEL32.OpenThread(THREAD_TERMINATE, FALSE, uThreadId);

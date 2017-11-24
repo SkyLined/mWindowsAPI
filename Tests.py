@@ -1,4 +1,4 @@
-import os, sys, subprocess;
+import os, sys, subprocess, threading, time;
 
 sModuleFolderPath = os.path.dirname(os.path.abspath(__file__));
 sBaseFolderPath = os.path.dirname(sModuleFolderPath);
@@ -76,13 +76,12 @@ if __name__ == "__main__":
         "Notepad.exe process %d integrity level could not be determined!" % oNotepadProcess.pid;
     print "    + IntegrityLevel = 0x%X." % uProcessIntegrityLevel;
     # fuGetProcessMemoryUsage
-    # foCreateVirtualAllocationInProcessForId
     # cVirtualAllocation
     print "  * Testing Memory management functions...";
     uProcessMemoryUsage = fuGetProcessMemoryUsage(oNotepadProcess.pid);
     print "    + Memory usage = 0x%X." % uProcessMemoryUsage;
     uMemoryAllocationSize = 0x1234000;
-    oVirtualAllocation = foCreateVirtualAllocationInProcessForId(oNotepadProcess.pid, uMemoryAllocationSize);
+    oVirtualAllocation = cVirtualAllocation.foCreateInProcessForId(oNotepadProcess.pid, uMemoryAllocationSize);
     assert oVirtualAllocation is not None, \
         "Attempt to allocate 0x%X bytes failed" % uMemoryAllocationSize;
     assert oVirtualAllocation.uSize == uMemoryAllocationSize, \
@@ -104,7 +103,7 @@ if __name__ == "__main__":
     print "  * Testing cJobObject...";
     oJobObject = cJobObject(oNotepadProcess.pid);
     oJobObject.fSetMaxTotalMemoryUse(uProcessMemoryUsageAfterFree + uMemoryAllocationSize / 2);
-    oVirtualAllocation = foCreateVirtualAllocationInProcessForId(oNotepadProcess.pid, uMemoryAllocationSize);
+    oVirtualAllocation = cVirtualAllocation.foCreateInProcessForId(oNotepadProcess.pid, uMemoryAllocationSize);
     assert oVirtualAllocation is None, \
         "Attempt to allocate 0x%X bytes succeeded despite JobObject memory allocation limits" % uMemoryAllocationSize;
     print "    + JobObject memory limits applied correctly.";
@@ -112,18 +111,91 @@ if __name__ == "__main__":
     # fbTerminateProcessForId
     print "  * Testing fbTerminateProcessForId...";
     fbTerminateProcessForId(oNotepadProcess.pid);
+    assert oNotepadProcess.poll() != None, \
+        "Notepad.exe was not terminated!";
+    # fdsProcessesExecutableName_by_uId (make sure notepad.exe is removed)
+    assert oNotepadProcess.pid not in fdsProcessesExecutableName_by_uId(), \
+        "Notepad.exe is still reported to exist after being terminated!?";
+    print "  + Notepad was terminated.";
     
     # TODO: add test for fbTerminateThreadForId, fDebugBreakProcessForId, fSuspendProcessForId, \
     # fuCreateThreadInProcessForIdAndAddress and fSendCtrlCToProcessForId.
     # This will require attaching a debugger to the process to determine a thread id, resume the application, or catch
     # the exceptions these functions throw.
+    
+    # cPipe
+    print "* Testing cPipe...";
+    def fTestPipe(oPipe):
+      sWrittenBytes = "test\0test";
+      oPipe.fWriteBytes(sWrittenBytes + "\n");
+      sReadBytes = oPipe.fsReadLine();
+      assert sReadBytes == sWrittenBytes, \
+          "Expected %s, got %s" % (repr(sWrittenBytes), repr(sReadBytes));
+      oPipe.fWriteBytes(sWrittenBytes + "\r\n");
+      sReadBytes = oPipe.fsReadLine();
+      assert sReadBytes == sWrittenBytes, \
+          "Expected %s, got %s" % (repr(sWrittenBytes), repr(sReadBytes));
+      oPipe.fWriteBytes(sWrittenBytes);
+      oPipe.fClose(bInput = True);
+      sReadBytes = oPipe.fsReadBytes(len(sWrittenBytes));
+      assert sReadBytes == sWrittenBytes, \
+          "Expected %s, got %s" % (repr(sWrittenBytes), repr(sReadBytes));
+      sReadBytes = oPipe.fsReadBytes(len(sWrittenBytes));
+      assert sReadBytes == "", \
+          "Read %s after closing pipe for write" % repr(sReadBytes);
+      oPipe.fClose();
+      sReadBytes = oPipe.fsReadBytes(len(sWrittenBytes));
+      assert sReadBytes == "", \
+          "Read %s from a completely closed pipe" % repr(sReadBytes);
+      try:
+        oPipe.fWriteBytes("test");
+      except IOError:
+        pass;
+      else:
+        raise AssertionError("Should not be able to write to a closed pipe!");
+    fTestPipe(cPipe());
+    print "  * Testing cPipe with non-inheritable handles...";
+    fTestPipe(cPipe(bInheritableInput = False, bInheritableOutput = False));
+    # cConsoleProcess, fSuspendProcessForId
+    print "* Testing cConsoleProcess...";
+    sExpectedOutput = "Test";
+    oConsoleProcess = cConsoleProcess.foCreateForBinaryPathAndArguments(
+      os.environ.get("ComSpec"),
+      ["/K", "ECHO %s&ECHO OFF" % sExpectedOutput],
+    );
+    sExpectedOutput += "\r\n";
+    print "  * Reading process output...";
+    sActualOutput = oConsoleProcess.oStdOutPipe.fsReadBytes(len(sExpectedOutput));
+    assert sActualOutput == sExpectedOutput, \
+        "Expected %s, got %s" % (repr(sExpectedOutput), repr(sActualOutput));
+    # Suspend the process to test for a known issue: attempting to close handles on a
+    # suspended process will hang until the process is resumed or killed.
+    fSuspendProcessForId(oConsoleProcess.uId);
+    def fPipeReadingThread():
+      print "  * Reading end of console process output in thread...";
+      sBytesRead = oConsoleProcess.oStdOutPipe.fsReadBytes();
+      assert sBytesRead == "", \
+          "Expected %s, got %s" % (repr(""), repr(sBytesRead));
+    oReadThread = threading.Thread(target = fPipeReadingThread);
+    oReadThread.start();
+    def fKillProcessThread():
+      time.sleep(1);
+      print "  * Terminating console process...";
+      fbTerminateProcessForId(oConsoleProcess.uId);
+    oKillProcessThread = threading.Thread(target = fKillProcessThread);
+    oKillProcessThread.start();
+    print "  * Closing pipes...";
+    # This will hang until the process is killed...
+    oConsoleProcess.fClose();
+    print "  * Waiting for kill process thread...";
+    oKillProcessThread.join();
+    print "  * Waiting for end of console process output in thread...";
+    oReadThread.join();
+    print "  * Reading end of output...";
+    sReadBytes = oConsoleProcess.oStdOutPipe.fsReadBytes(1);
+    assert sReadBytes == "", \
+        "Read %s from a completely closed pipe" % repr(sReadBytes);
   except:
     oNotepadProcess.terminate();
     oNotepadProcess.wait();
     raise;
-  assert oNotepadProcess.poll() != None, \
-      "Notepad.exe was not terminated!";
-  # fdsProcessesExecutableName_by_uId (make sure notepad.exe is removed)
-  assert oNotepadProcess.pid not in fdsProcessesExecutableName_by_uId(), \
-      "Notepad.exe is still reported to exist after being terminated!?";
-  print "  + Notepad was terminated.";

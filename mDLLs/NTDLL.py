@@ -1,6 +1,5 @@
 from cDLL import cDLL;
-from PrimitiveTypes import *;
-from StructureTypes import *;
+from ..mTypes import *;
 
 NTDLL = cDLL("ntdll.dll");
 

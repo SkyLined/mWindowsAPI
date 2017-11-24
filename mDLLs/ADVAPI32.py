@@ -1,6 +1,5 @@
 from cDLL import cDLL;
-from PrimitiveTypes import *;
-from StructureTypes import *;
+from ..mTypes import *;
 
 ADVAPI32 = cDLL("Advapi32.dll");
 ADVAPI32.fDefineFunction(BOOL, "GetTokenInformation", HANDLE, TOKEN_INFORMATION_CLASS, LPVOID, DWORD, PDWORD);

@@ -1,4 +1,7 @@
-from mWindowsAPI import *;
+from mDefines import *;
+from mFunctions import *;
+from mTypes import *;
+from mDLLs import KERNEL32;
 
 def fDebugBreakProcessForId(uProcessId):
   hProcess = KERNEL32.OpenProcess(0x1F0FFF, FALSE, uProcessId);

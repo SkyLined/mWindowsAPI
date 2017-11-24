@@ -1,5 +1,5 @@
 import ctypes;
-from Functions import *;
+from ..mFunctions import *;
 
 # We want a list of the names of the primitive types defined below so we can
 # automatically generate pointer-to-types for them. We will do this by getting

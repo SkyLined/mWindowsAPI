@@ -1,4 +1,7 @@
-from mWindowsAPI import *;
+from mDefines import *;
+from mFunctions import *;
+from mTypes import *;
+from mDLLs import KERNEL32;
 from fdsProcessesExecutableName_by_uId import fdsProcessesExecutableName_by_uId;
 
 def fbTerminateProcessForId(uProcessId):

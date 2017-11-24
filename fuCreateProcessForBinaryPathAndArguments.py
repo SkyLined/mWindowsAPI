@@ -1,0 +1,41 @@
+from mDefines import *;
+from mFunctions import *;
+from mTypes import *;
+from mDLLs import KERNEL32;
+
+def fuCreateProcessForBinaryPathAndArguments(sBinaryPath, asArguments, sWorkingDirectory = None, bSuspended = False):
+  sCommandLine = " ".join([
+    (s and (s[0] == '"' or s.find(" ") == -1)) and s or '"%s"' % s.replace('"', '\\"')
+    for s in [sBinaryPath] + asArguments
+  ]);
+  uFlags = (bSuspended and CREATE_SUSPENDED or 0);
+  oStartupInfo = STARTUPINFOW();
+  oStartupInfo.cb = SIZEOF(oStartupInfo);
+  oStartupInfo.lpDesktop = NULL;
+  oStartupInfo.lpDesktop = NULL;
+  oStartupInfo.dwFlags = 0;
+  oProcessInformation = PROCESS_INFORMATION();
+  if not KERNEL32.CreateProcessW(
+    sBinaryPath, # lpApplicationName
+    sCommandLine, # lpCommandLine
+    NULL, # lpProcessAttributes
+    NULL, # lpThreadAttributes
+    FALSE, # bInheritHandles
+    uFlags, # dwCreationFlags
+    NULL, # lpEnvironment
+    sWorkingDirectory, # lpCurrentDirectory
+    POINTER(oStartupInfo), # lpStartupInfo
+    POINTER(oProcessInformation), # lpProcessInformation
+  ):
+    uError = KERNEL32.GetLastError();
+    assert HRESULT_FROM_WIN32(uError) in [ERROR_FILE_NOT_FOUND, ERROR_INVALID_NAME], \
+        "CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...) => Error 0x%08X." % \
+        (repr(sBinaryPath), repr(sCommandLine), uFlags, sWorkingDirectory, uError);
+    return None;
+  try:
+    return oProcessInformation.dwProcessId;
+  finally:
+    assert KERNEL32.CloseHandle(oProcessInformation.hProcess), \
+        "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
+    assert KERNEL32.CloseHandle(oProcessInformation.hThread), \
+        "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());

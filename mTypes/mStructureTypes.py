@@ -1,7 +1,7 @@
 import ctypes;
-from Defines import *;
-from Functions import *;
-from PrimitiveTypes import *;
+from ..mDefines import *;
+from ..mFunctions import *;
+from mPrimitiveTypes import *;
 
 uNamelessStructureOrUnionsCounter = 0;
 
@@ -307,6 +307,12 @@ fDefineStructure("PROCESS_BASIC_INFORMATION",
   (ULONG_PTR,   "UniqueProcessId"),
   (PVOID,       "Reserved3"),
 );
+fDefineStructure("PROCESS_INFORMATION",
+  (HANDLE,      "hProcess"),
+  (HANDLE,      "hThread"),
+  (DWORD,       "dwProcessId"),
+  (DWORD,       "dwThreadId"),
+);
 fDefineStructure("PROCESS_MEMORY_COUNTERS",
   (DWORD,       "cb"),
   (DWORD,       "PageFaultCount"),
@@ -379,6 +385,46 @@ fDefineStructure("SMALL_RECT",
   (SHORT,       "Top"),
   (SHORT,       "Right"),
   (SHORT,       "Bottom"),
+);
+fDefineStructure("STARTUPINFOA",
+  (DWORD,       "cb"),
+  (LPSTR,       "lpReserved"),
+  (LPSTR,       "lpDesktop"),
+  (LPSTR,       "lpTitle"),
+  (DWORD,       "dwX"),
+  (DWORD,       "dwY"),
+  (DWORD,       "dwXSize"),
+  (DWORD,       "dwYSize"),
+  (DWORD,       "dwXCountChars"),
+  (DWORD,       "dwYCountChars"),
+  (DWORD,       "dwFillAttribute"),
+  (DWORD,       "dwFlags"),
+  (WORD,        "wShowWindow"),
+  (WORD,        "cbReserved2"),
+  (LPBYTE,      "lpReserved2"),
+  (HANDLE,      "hStdInput"),
+  (HANDLE,      "hStdOutput"),
+  (HANDLE,      "hStdError"),
+);
+fDefineStructure("STARTUPINFOW",
+  (DWORD,       "cb"),
+  (LPWSTR,      "lpReserved"),
+  (LPWSTR,      "lpDesktop"),
+  (LPWSTR,      "lpTitle"),
+  (DWORD,       "dwX"),
+  (DWORD,       "dwY"),
+  (DWORD,       "dwXSize"),
+  (DWORD,       "dwYSize"),
+  (DWORD,       "dwXCountChars"),
+  (DWORD,       "dwYCountChars"),
+  (DWORD,       "dwFillAttribute"),
+  (DWORD,       "dwFlags"),
+  (WORD,        "wShowWindow"),
+  (WORD,        "cbReserved2"),
+  (LPBYTE,      "lpReserved2"),
+  (HANDLE,      "hStdInput"),
+  (HANDLE,      "hStdOutput"),
+  (HANDLE,      "hStdError"),
 );
 fDefineStructure("SYSTEM_INFO",
   UNION (
