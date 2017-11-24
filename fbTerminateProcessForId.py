@@ -3,52 +3,57 @@ from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
 from fdsProcessesExecutableName_by_uId import fdsProcessesExecutableName_by_uId;
+from fsGetErrorMessage import fsGetErrorMessage;
 
-def fbTerminateProcessForId(uProcessId):
+guTimeout = 5000; # Give an application 5 seconds to terminate.
+
+def fbTerminateProcessForId(uProcessId, uTimeout = None):
+  if uTimeout is None:
+    uTimeout = guTimeout;
   # Try to open the process so we can terminate it...
-  hProcess = KERNEL32.OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, FALSE, uProcessId);
+  uFlags = PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE;
+  hProcess = HANDLE(KERNEL32.OpenProcess(uFlags, FALSE, uProcessId));
   try:
     if hProcess:
-        # We can open it, try to terminate it.
-        bTerminated = KERNEL32.TerminateProcess(hProcess, 0);
-        uTerminateProcessError = KERNEL32.GetLastError();
-        assert bTerminated or uTerminateProcessError == WIN32_FROM_HRESULT(ERROR_ACCESS_DENIED), \
-            "TerminateProcess(0x%08X, 0) => Error 0x%08X" % (hProcess, uTerminateProcessError)
+      # We can open it, try to terminate it.
+      bTerminated = KERNEL32.TerminateProcess(hProcess, 0);
+      uTerminateProcessError = KERNEL32.GetLastError();
+      sTerminateProcessCall = "TerminateProcess(0x%08X, 0)" % (hProcess.value,);
+      sTerminateProcessResult = bTerminated and (sTerminateProcessCall + " = TRUE") \
+          or fsGetErrorMessage(sTerminateProcessCall, uTerminateProcessError);
+      assert bTerminated or HRESULT_FROM_WIN32(uTerminateProcessError) == ERROR_ACCESS_DENIED, \
+          sTerminateProcessResult;
     else:
+      # Failed to open the process for termination.
       bTerminated = False;
-      uTerminateProcessError = None;
-      # Failed to open the process for termination. Try to open the process with
-      # less privileges; just enough see if it's still running...
-      hProcess = KERNEL32.OpenProcess(SYNCHRONIZE, FALSE, uProcessId);
+      sTerminateProcessResult = None;
+      # The process may have been terminated already: try to open the process again with just enough privileges to see
+      # if it's still running:
+      uFlags = SYNCHRONIZE;
+      hProcess = KERNEL32.OpenProcess(uFlags, FALSE, uProcessId);
       if not hProcess:
-        # We cannot open the process. This means it must not exist, or something
-        # is wrong:
-        assert uProcessId not in fdsProcessesExecutableName_by_uId(), \
-            "OpenProcess(0x%08X, FALSE, %d/0x%X) => Error 0x%08X (after %d tries)" % \
-            (PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, \
-            uProcessId, uProcessId, KERNEL32.GetLastError(), uTryIndex + 1);
-        # The process does not exist, assume it was terminated long ago, but not
-        # by this function.
-        return False;
-    # The process exists: give it up to five seconds to die:
-    uWaitForSingleObjectResult = KERNEL32.WaitForSingleObject(hProcess, 5000);
-    uWaitForSingleObjectError = KERNEL32.GetLastError();
-    if uWaitForSingleObjectError == WIN32_FROM_HRESULT(ERROR_ACCESS_DENIED):
-      # We do not have access to the process to terminate it.
-      assert not bTerminated, \
-          "WaitForSingleObject(0x%08X, 1000) = 0x%08X => Error 0x%08X" % \
-          (hProcess, uWaitForSingleObjectResult, uWaitForSingleObjectError);
-    else:
-      # It should be terminated now, either by us, or it already was.
-      assert uWaitForSingleObjectResult == WAIT_OBJECT_0, \
-          ", ".join([
-            "TerminateProcess(0x%08X, 0) => %s" % \
-                (hProcess, uTerminateProcessError is not None and "Error 0x%08X" % uTerminateProcessError or "OK"),
-            "WaitForSingleObject(0x%08X, 1000) = 0x%08X => Error 0x%08X" % \
-                (hProcess, uWaitForSingleObjectResult, uWaitForSingleObjectError),
-          ]);
+        uOpenProcessError = KERNEL32.GetLastError();
+        # We cannot open the process: see if there even is a process running with the given id:
+        auExistingProcessIds = fdsProcessesExecutableName_by_uId();
+        assert uProcessId not in auExistingProcessIds, \
+            fsGetErrorMessage("OpenProcess(0x%08X, FALSE, %d/0x%X)" % \
+            (uFlags, uProcessId, uProcessId, uTryIndex + 1), uOpenProcessError);
+        # The process does not exist, assume it was already terminated.
+        return False; # Terminated, but not by this function.
+    # The process exists: wait for it to die. If we did not terminate it, do not wait forever:
+    uWaitForSingleObjectResult = KERNEL32.WaitForSingleObject(hProcess, bTerminated and INFINITE or guTimeout);
+    if uWaitForSingleObjectResult != WAIT_OBJECT_0:
+      uWaitForSingleObjectError = KERNEL32.GetLastError();
+      sWaitForSingleObjectCall = "WaitForSingleObject(0x%08X, %d) = 0x%08X" % \
+          (hProcess.value, guTimeout, uWaitForSingleObjectResult);
+      sCalls = (sTerminateProcessResult and sTerminateProcessResult + ", " or "") + sWaitForSingleObjectCall;
+      assert uWaitForSingleObjectResult != WAIT_TIMEOUT, \
+          "Could not wait for process to die: %s" % sCalls;
+      assert uWaitForSingleObjectResult != WAIT_FAILED, \
+          fsGetErrorMessage(sCalls, uWaitForSingleObjectError);
+      raise AssertionError("%s => Unhandled result value" % sCalls)
     return bTerminated;
   finally:
     if hProcess:
       assert KERNEL32.CloseHandle(hProcess), \
-          "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
+          fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess.value,));

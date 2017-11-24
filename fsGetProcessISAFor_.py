@@ -3,23 +3,24 @@ from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
 from fsGetOSISA import fsGetOSISA;
+from fsGetErrorMessage import fsGetErrorMessage;
 
 def fsGetProcessISAForId(uProcessId):
-  hProcess = KERNEL32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, uProcessId);
+  uFlags = PROCESS_QUERY_LIMITED_INFORMATION;
+  hProcess = KERNEL32.OpenProcess(uFlags, FALSE, uProcessId);
   assert hProcess, \
-      "OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, 0x%08X) => Error 0x%08X" % (uProcessId, KERNEL32.GetLastError());
+      fsGetErrorMessage("OpenProcess(0x%08X, FALSE, 0x%08X)" % (uFlags, uProcessId,));
   try:
     return fsGetProcessISAForHandle(hProcess);
   finally:
     assert KERNEL32.CloseHandle(hProcess), \
-        "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
+        fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
 
 def fsGetProcessISAForHandle(hProcess):
   if fsGetOSISA() == "x86":
     return "x86";
   bIsWow64Process = BOOL();
   assert KERNEL32.IsWow64Process(hProcess, POINTER(bIsWow64Process)), \
-        "KERNEL32.IsWow64Process(%d/0x%X, ...): 0x%X" % \
-        (uProcessId, uProcessId, uErrorCode);
+        fsGetErrorMessage("IsWow64Process(%d/0x%X, ...)" % (uProcessId, uProcessId,));
   return bIsWow64Process and "x86" or "x64";
 

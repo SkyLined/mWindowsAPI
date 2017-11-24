@@ -4,6 +4,7 @@ from mTypes import *;
 from mDLLs import KERNEL32;
 from cPipe import cPipe;
 from cProcessInformation import cProcessInformation;
+from fsGetErrorMessage import fsGetErrorMessage;
 
 class cConsoleProcess(object):
   @staticmethod
@@ -49,7 +50,7 @@ class cConsoleProcess(object):
             POINTER(oStartupInfo), # lpStartupInfo
             POINTER(oProcessInformation), # lpProcessInformation
           ):
-            uError = KERNEL32.GetLastError();
+            uCreateProcessError = KERNEL32.GetLastError();
             try:
               oStdErrPipe and oStdErrPipe.fClose();
             finally:
@@ -57,19 +58,19 @@ class cConsoleProcess(object):
                 oStdOutPipe and oStdOutPipe.fClose();
               finally:
                 oStdInPipe and oStdInPipe.fClose();
-            assert HRESULT_FROM_WIN32(uError) in [ERROR_FILE_NOT_FOUND, ERROR_INVALID_NAME], \
-                "CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...) => Error 0x%08X." % \
-                (repr(sBinaryPath), repr(sCommandLine), uFlags, sWorkingDirectory, uError);
+            assert HRESULT_FROM_WIN32(uCreateProcessError) in [ERROR_FILE_NOT_FOUND, ERROR_INVALID_NAME], \
+                fsGetErrorMessage("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
+                (repr(sBinaryPath), repr(sCommandLine), uFlags, sWorkingDirectory), uCreateProcessError);
             return None;
           try:
             return cConsoleProcess(oProcessInformation.dwProcessId, oStdInPipe, oStdOutPipe, oStdErrPipe);
           finally:
             try:
               assert KERNEL32.CloseHandle(oProcessInformation.hProcess), \
-                  "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
+                  fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
             finally:
               assert KERNEL32.CloseHandle(oProcessInformation.hThread), \
-                  "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
+                  fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
         except:
           oStdErrPipe and oStdErrPipe.fClose();
           raise;

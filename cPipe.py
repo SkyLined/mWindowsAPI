@@ -2,6 +2,7 @@ from mDefines import *;
 from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
+from fsGetErrorMessage import fsGetErrorMessage;
 
 guBufferSize = 1;
 
@@ -18,20 +19,22 @@ class cPipe(object):
       POINTER(oSelf.hInput), # hWritePipe
       POINTER(oSecurityAttributes), # lpPipeAttributes
       0, # nSize
-    ), "CreatePipe(..., ..., ..., 0) => Error 0x%08X" % KERNEL32.GetLastError();
+    ), fsGetErrorMessage("CreatePipe(..., ..., ..., 0)");
     if not bInheritableInput:
+      uFlags = HANDLE_FLAG_INHERIT;
       try:
-        assert KERNEL32.SetHandleInformation(oSelf.hInput, HANDLE_FLAG_INHERIT, FALSE), \
-            "SetHandleInformation(0x%08X, HANDLE_FLAG_INHERIT, FALSE) => Error 0x%08X" % \
-            (oSelf.hInput.value, KERNEL32.GetLastError());
+        assert KERNEL32.SetHandleInformation(oSelf.hInput, uFlags, FALSE), \
+            fsGetErrorMessage("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % \
+            (oSelf.hInput.value, uFlags,));
       except:
         oSelf.fClose();
         raise;
     if not bInheritableOutput:
+      uFlags = HANDLE_FLAG_INHERIT;
       try:
-        assert KERNEL32.SetHandleInformation(oSelf.hOutput, HANDLE_FLAG_INHERIT, FALSE), \
-            "SetHandleInformation(0x%08X, HANDLE_FLAG_INHERIT, FALSE) => Error 0x%08X" % \
-            (oSelf.hOutput.value, KERNEL32.GetLastError());
+        assert KERNEL32.SetHandleInformation(oSelf.hOutput, uFlags, FALSE), \
+            fsGetErrorMessage("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % \
+            (oSelf.hOutput.value, uFlags,));
       except:
         oSelf.fClose();
         raise;
@@ -45,15 +48,15 @@ class cPipe(object):
       if bInput:
         if not KERNEL32.CloseHandle(oSelf.hInput):
           # It is OK if we cannot close this HANDLE because it is already closed, otherwise we throw an exception.
-          uError = KERNEL32.GetLastError();
-          assert HRESULT_FROM_WIN32(uError) in [ERROR_INVALID_HANDLE], \
-              "CloseHandle(0x%08X) => Error 0x%08X" % (oSelf.hInput.value, uError);
+          uCloseHandleError = KERNEL32.GetLastError();
+          assert HRESULT_FROM_WIN32(uCloseHandleError) in [ERROR_INVALID_HANDLE], \
+              fsGetErrorMessage("CloseHandle(0x%08X)" % (oSelf.hInput.value,), uCloseHandleError);
     finally:
       if bOutput:
         if not KERNEL32.CloseHandle(oSelf.hOutput):
-          uError = KERNEL32.GetLastError();
-          assert HRESULT_FROM_WIN32(uError) in [ERROR_INVALID_HANDLE], \
-              "CloseHandle(0x%08X) => Error 0x%08X" % (oSelf.hOutput.value, uError);
+          uCloseHandleError = KERNEL32.GetLastError();
+          assert HRESULT_FROM_WIN32(uCloseHandleError) in [ERROR_INVALID_HANDLE], \
+              fsGetErrorMessage("CloseHandle(0x%08X)" % (oSelf.hOutput.value,), uCloseHandleError);
 
   def fuReadByte(oSelf):
     oByte = BYTE();
@@ -66,13 +69,14 @@ class cPipe(object):
       POINTER(dwBytesRead), # lpNumberOfBytesRead
       NULL, # lpOverlapped
     ):
-      uLastError = KERNEL32.GetLastError();
-      assert HRESULT_FROM_WIN32(uLastError) in [ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE], \
-          "ReadFile(0x%08X, ..., 0x%X, ..., NULL) => Error 0x%08X" % \
-          (oSelf.hOutput.value, SIZEOF(oByte), KERNEL32.GetLastError());
+      uReadFileError = KERNEL32.GetLastError();
+      assert HRESULT_FROM_WIN32(uReadFileError) in [ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE], \
+          fsGetErrorMessage("ReadFile(0x%08X, ..., 0x%X, ..., NULL)" % (oSelf.hOutput.value, SIZEOF(oByte),), \
+          uReadFileError);
       raise IOError("Pipe closed");
     assert dwBytesRead.value == 1, \
-        "Read %d bytes instead of 1" % dwBytesRead.value;
+        "ReadFile(0x%08X, ..., 0x%X, ..., NULL) => read 0x%X bytes" % \
+        (oSelf.hOutput.value, SIZEOF(oByte), dwBytesRead.value);
     return oByte.value;
 
   def fsReadLine(oSelf):
@@ -112,11 +116,12 @@ class cPipe(object):
       POINTER(dwBytesWritten), # lpNumberOfBytesWritten
       NULL, # lpOverlapped
     ):
-      uLastError = KERNEL32.GetLastError();
-      assert HRESULT_FROM_WIN32(uLastError) in [ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE], \
-          "WriteFile(0x%08X, ..., 0x%X, ..., NULL) => Error 0x%08X" % \
-          (oSelf.hInput.value, SIZEOF(oBuffer), KERNEL32.GetLastError());
+      uWriteFileError = KERNEL32.GetLastError();
+      assert HRESULT_FROM_WIN32(uWriteFileError) in [ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE], \
+          fsGetErrorMessage("WriteFile(0x%08X, ..., 0x%X, ..., NULL)" % \
+          (oSelf.hInput.value, SIZEOF(oBuffer)), uWriteFileError);
       # The pipe had been closed; throw an IOError.
       raise IOError("Pipe closed");
     assert dwBytesWritten.value == len(sData), \
-        "Expected to write %d bytes, but wrote %d." % (len(sData), dwBytesWritten.value);
+        "WriteFile(0x%08X, ..., 0x%X, ..., NULL) => wrote 0x%X bytes" % \
+        (oSelf.hInput.value, SIZEOF(oBuffer), dwBytesWritten.value);

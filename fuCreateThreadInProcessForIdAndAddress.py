@@ -2,13 +2,13 @@ from mDefines import *;
 from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
+from fsGetErrorMessage import fsGetErrorMessage;
 
 def fuCreateThreadInProcessForIdAndAddress(uProcessId, uAddress, bSuspended = False):
-  hProcess = KERNEL32.OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | \
-      PROCESS_VM_WRITE | PROCESS_VM_READ, FALSE, uProcessId);
+  uFlags = PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ;
+  hProcess = KERNEL32.OpenProcess(uFlags, FALSE, uProcessId);
   assert hProcess, \
-      "OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | " \
-      "PROCESS_VM_READ, FALSE, %d/0x%X) => Error 0x%08X." % (uProcessId, uProcessId, KERNEL32.GetLastError());
+      fsGetErrorMessage("OpenProcess(0x%08X, FALSE, %d/0x%X)" % (uFlags, uProcessId, uProcessId));
   try:
     uThreadId = DWORD();
     hThread = KERNEL32.CreateRemoteThread(
@@ -21,11 +21,10 @@ def fuCreateThreadInProcessForIdAndAddress(uProcessId, uAddress, bSuspended = Fa
       POINTER(uThreadId), # lpThreadId
     );
     assert hThread, \
-        "CreateRemoteThread(0x%08X, NULL, 0, 0x%08X, 0, 0, ...) => Error 0x%08X" % \
-        (hProcess, uAddress, KERNEL32.GetLastError());
+        fsGetErrorMessage("CreateRemoteThread(0x%08X, NULL, 0, 0x%08X, 0, 0, ...)" % (hProcess.value, uAddress));
     assert KERNEL32.CloseHandle(hThread), \
-        "CloseHandle(0x%X) => Error 0x%08X" % (hThread, KERNEL32.GetLastError());
+        fsGetErrorMessage("CloseHandle(0x%X)" % (hThread.value,));
     return uThreadId.value;
   finally:
     assert KERNEL32.CloseHandle(hProcess), \
-        "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
+        fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess.value,));

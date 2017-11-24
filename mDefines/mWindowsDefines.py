@@ -40,6 +40,7 @@ HANDLE_FLAG_INHERIT                     = 0x00000001;
 HANDLE_FLAG_PROTECT_FROM_CLOSE          = 0x00000002;
 HEAP_ZERO_MEMORY                        = 0x00000008;
 #IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+INFINITE                                = 0xFFFFFFFF;
 INHERIT_PARENT_AFFINITY                 = 0x00010000
 INVALID_FILE_SIZE                       = 0xFFFFFFFF;
 INVALID_HANDLE_VALUE                    = ctypes.c_void_p(-1).value;
@@ -97,6 +98,7 @@ PAGE_NOACCESS                           =        0x1;
 PAGE_READONLY                           =        0x2;
 PAGE_READWRITE                          =        0x4;
 PAGE_WRITECOPY                          =        0x8;
+PROCESS_ALL_ACCESS                      =   0x1F0FFF;
 PROCESS_CREATE_PROCESS                  =     0x0080;
 PROCESS_CREATE_THREAD                   =     0x0002;
 PROCESS_DUP_HANDLE                      =     0x0040;

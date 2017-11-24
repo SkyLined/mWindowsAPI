@@ -6,6 +6,7 @@ from mDLLs import KERNEL32, NTDLL;
 from cVirtualAllocation import cVirtualAllocation;
 from fsGetPythonISA import fsGetPythonISA;
 from fsGetProcessISAFor_ import fsGetProcessISAForHandle;
+from fsGetErrorMessage import fsGetErrorMessage;
 
 def foGetVirtualAllocationHelper(uProcessId, uAddress, sNameInError):
   
@@ -20,14 +21,15 @@ class cProcessInformation(object):
   @staticmethod
   def foGetForId(uProcessId):
     # Try to open the process...
-    hProcess = KERNEL32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, uProcessId);
+    uFlags = PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ;
+    hProcess = KERNEL32.OpenProcess(uFlags, FALSE, uProcessId);
     assert hProcess, \
-        "OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, 0x%08X) => Error 0x%08X" % (uProcessId, KERNEL32.GetLastError());
+        fsGetErrorMessage("OpenProcess(0x%08X, FALSE, 0x%08X)" % (uFlags, uProcessId,));
     try:
       return cProcessInformation.foGetForProcessIdAndHandle(uProcessId, hProcess);
     finally:
       assert KERNEL32.CloseHandle(hProcess), \
-          "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
+          fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess.value,));
   
   @staticmethod
   def foGetForProcessIdAndHandle(uProcessId, hProcess):
@@ -42,19 +44,20 @@ class cProcessInformation(object):
       return cProcessInformation(sProcessISA, None, None, None);
     oProcessBasicInformation = PROCESS_BASIC_INFORMATION();
     uReturnLength = ULONG();
+    uProcessInformationClass = ProcessBasicInformation;
     uNTStatus = NTDLL.ZwQueryInformationProcess(
       hProcess,# ProcessHandle
-      ProcessBasicInformation, # ProcessInformationClass
+      uProcessInformationClass, # ProcessInformationClass
       CAST(PVOID, POINTER(oProcessBasicInformation)), # ProcessInformation
       SIZEOF(oProcessBasicInformation), # ProcessInformationLength
       POINTER(uReturnLength), # ReturnLength
     );
     assert uNTStatus == STATUS_SUCCESS, \
-        "ZwQueryInformationProcess(0x%X, ProcessBasicInformation, ..., 0x%X, ...) == 0x%08X" % \
-        (hProcess, SIZEOF(oProcessBasicInformation), uNTStatus);
+        "ZwQueryInformationProcess(0x%X, 0x%08X, ..., 0x%X, ...) = 0x%08X" % \
+        (hProcess, uProcessInformationClass, SIZEOF(oProcessBasicInformation), uNTStatus);
     assert uReturnLength.value == SIZEOF(oProcessBasicInformation), \
-        "ZwQueryInformationProcess(0x%X, ProcessBasicInformation, ..., 0x%X, ...) wrote 0x%X bytes" % \
-        (hProcess, SIZEOF(oProcessBasicInformation), uReturnLength.value);
+        "ZwQueryInformationProcess(0x%X, 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % \
+        (hProcess, uProcessInformationClass, SIZEOF(oProcessBasicInformation), uReturnLength.value);
     
     # Read PEB
     uPEBAddress = oProcessBasicInformation.PebBaseAddress;

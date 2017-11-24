@@ -2,15 +2,17 @@ from mDefines import *;
 from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
+from fsGetErrorMessage import fsGetErrorMessage;
 
 def fDebugBreakProcessForId(uProcessId):
-  hProcess = KERNEL32.OpenProcess(0x1F0FFF, FALSE, uProcessId);
+  uFlags = PROCESS_ALL_ACCESS;
+  hProcess = KERNEL32.OpenProcess(uFlags, FALSE, uProcessId);
   assert hProcess, \
-    "OpenProcess(PROCESS_ALL_ACCESS, FALSE, %d/0x%X) => Error 0x%08X." % (uProcessId, uProcessId, KERNEL32.GetLastError());
+    fsGetErrorMessage("OpenProcess(0x%08X, FALSE, %d/0x%X)" % (uFlags, uProcessId, uProcessId,));
   try:
     assert KERNEL32.DebugBreakProcess(hProcess), \
-        "DebugBreakProcess(0x%08X) => Error %08X." % (hProcess, KERNEL32.GetLastError());
+        fsGetErrorMessage("DebugBreakProcess(0x%08X)" % (hProcess.value,));
     return True;
   finally:
     assert KERNEL32.CloseHandle(hProcess), \
-        "CloseHandle(0x%X) => Error 0x%08X" % (hProcess, KERNEL32.GetLastError());
+        fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess.value,));

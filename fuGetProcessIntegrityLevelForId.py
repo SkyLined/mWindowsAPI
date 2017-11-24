@@ -2,6 +2,7 @@ from mDefines import *;
 from mFunctions import *;
 from mTypes import *;
 from mDLLs import ADVAPI32, KERNEL32;
+from fsGetErrorMessage import fsGetErrorMessage;
 
 def fuGetProcessIntegrityLevelForId(uProcessId):
   hProcess = KERNEL32.OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, uProcessId);
@@ -14,10 +15,13 @@ def fuGetProcessIntegrityLevelForId(uProcessId):
     try:
       # Find out how large a TOKEN_MANDATORY_LABEL struct is:
       dwTokenMandatoryLabelSize = DWORD();
-      assert not ADVAPI32.GetTokenInformation(hToken, TokenIntegrityLevel, None, 0, PDWORD(dwTokenMandatoryLabelSize)), \
-          "GetTokenInformation(...) succeeded unexpectedly";
-      assert KERNEL32.GetLastError() == WIN32_FROM_HRESULT(ERROR_INSUFFICIENT_BUFFER), \
-          "GetTokenInformation(...) => Error 0x%08X" % KERNEL32.GetLastError();
+      uFlags = TokenIntegrityLevel;
+      assert not ADVAPI32.GetTokenInformation(hToken, uFlags, NULL, 0, PDWORD(dwTokenMandatoryLabelSize)), \
+          "GetTokenInformation(0x%08X, 0x%08X, NULL, 0, ...) => No error" % (hToken.value, uFlags,);
+      uGetTokenInformationError = KERNEL32.GetLastError();
+      assert HRESULT_FROM_WIN32(uGetTokenInformationError) == ERROR_INSUFFICIENT_BUFFER, \
+          fsGetErrorMessage("GetTokenInformation(0x%08X, 0x%08X, NULL, 0, ...)" % (hToken.value, uFlags,), \
+          uGetTokenInformationError);
       # Allocate memory to store a TOKEN_MANDATORY_LABEL struct:
       poTokenMandatoryLabel = CAST(POINTER(TOKEN_MANDATORY_LABEL), BUFFER(dwTokenMandatoryLabelSize.value));
       # Get the TOKEN_MANDATORY_LABEL struct:
@@ -30,7 +34,7 @@ def fuGetProcessIntegrityLevelForId(uProcessId):
       ):
         return None;
       oTokenMandatoryLabel = poTokenMandatoryLabel.contents;
-      # Found out the index of the last Sid Sub Authority
+      # Find out the index of the last Sid Sub Authority
       puSidSubAuthorityCount = ADVAPI32.GetSidSubAuthorityCount(oTokenMandatoryLabel.Label.Sid);
       uLastSidSubAuthorityIndex = puSidSubAuthorityCount.contents.value - 1;
       # Get the last Sid Sub Authority
