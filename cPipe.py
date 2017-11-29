@@ -83,17 +83,17 @@ class cPipe(object):
     sData = "";
     while 1:
       try:
-        sChar = chr(oSelf.fuReadByte());
+        uByte = oSelf.fuReadByte();
       except IOError:
         if sData == "":
           raise;
         break;
-      if sChar == "\n":
+      if uByte == 0x0A: # LF
+        if sData.endswith("\r"):
+          # If EOL was CRLF, strip CR:
+          sData = sData[:-1];
         break;
-      sData += sChar;
-    if sData[-1] == "\r":
-      # If EOL was CRLF, strip CR:
-      sData = sData[:-1];
+      sData += chr(uByte);
     return sData;
   
   def fsReadBytes(oSelf, uNumberOfBytes = None):
