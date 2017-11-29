@@ -126,7 +126,7 @@ if __name__ == "__main__":
     # cPipe
     print "* Testing cPipe...";
     def fTestPipe(oPipe):
-      sWrittenBytes = "test\0test";
+      sWrittenBytes = "test\0test\x7f\x80\xff";
       oPipe.fWriteBytes(sWrittenBytes + "\n");
       sReadBytes = oPipe.fsReadLine();
       assert sReadBytes == sWrittenBytes, \
