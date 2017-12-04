@@ -2,7 +2,7 @@ from mDefines import *;
 from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
-from fsGetOSISA import fsGetOSISA;
+from oSystemInfo import oSystemInfo;
 from fsGetErrorMessage import fsGetErrorMessage;
 
 def fsGetProcessISAForId(uProcessId):
@@ -17,7 +17,7 @@ def fsGetProcessISAForId(uProcessId):
         fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
 
 def fsGetProcessISAForHandle(hProcess):
-  if fsGetOSISA() == "x86":
+  if oSystemInfo.sOSISA == "x86":
     return "x86";
   bIsWow64Process = BOOL();
   assert KERNEL32.IsWow64Process(hProcess, POINTER(bIsWow64Process)), \
