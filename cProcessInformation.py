@@ -9,12 +9,9 @@ from fsGetProcessISAFor_ import fsGetProcessISAForHandle;
 from fsGetErrorMessage import fsGetErrorMessage;
 
 def foGetVirtualAllocationHelper(uProcessId, uAddress, sNameInError):
-  
-  oVirtualAllocation = cVirtualAllocation.foGetForProcessIdAndAddress(uProcessId, uAddress);
-  assert oVirtualAllocation, \
-      "Cannot read virtual allocation for %s at address 0x%08X" % (sNameInError, uAddress);
+  oVirtualAllocation = cVirtualAllocation(uProcessId, uAddress);
   assert oVirtualAllocation.bAllocated, \
-      "No allocation for %s at address 0x%08X" % (sNameInError, uAddress);
+      "No allocation for %s at address 0x%08X%s" % (sNameInError, uAddress, oVirtualAllocation.fDump() or "");
   return oVirtualAllocation;
 
 class cProcessInformation(object):
