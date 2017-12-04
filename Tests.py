@@ -15,8 +15,13 @@ if __name__ == "__main__":
   print "* Testing Registry access...";
   # cWindowsVersion uses foGetRegistryValue
   print "  Windows version: %s" %  oWindowsVersion;
-  # Test fsGetOSISA
-  print "  Windows ISA: %s" % fsGetOSISA();
+  print "* Testing oSystemInfo...";
+  # Test oSystemInfo
+  print "  Windows ISA:     %s" % oSystemInfo.sOSISA;
+  print "  Processors:      %d" % oSystemInfo.uNumberOfProcessors;
+  print "  Address range:   0x%08X - 0x%08X" % (oSystemInfo.uMinimumApplicationAddress, oSystemInfo.uMaximumApplicationAddress);
+  print "  Page size:       0x%X" % oSystemInfo.uPageSize;
+  print "  Allocation granularity: 0x%X" % oSystemInfo.uAllocationAddressGranularity;
   
   # Test console functions
   print "* Testing KERNEL32 console functions...";
@@ -36,23 +41,24 @@ if __name__ == "__main__":
   assert KERNEL32.SetConsoleTextAttribute(hStdOut, uOriginalColor), \
       "SetConsoleTextAttribute(0x%08X, 0x%02X) => Error 0x%08X" % \
       (hStdOut, uOriginalColor, KERNEL32.GetLastError());
-  foGetRegistryValue
   
   print "* Testing process functions...";
   # Test process functions
-  oNotepadProcess = subprocess.Popen("notepad.exe");
-  print "  + Started notepad process %d..." % oNotepadProcess.pid;
+  sTestApplicationPath = os.getenv("ComSpec");
+  oTestProcess = subprocess.Popen(sTestApplicationPath);
+  print "  + Started test process %d..." % oTestProcess.pid;
   try:
+    print "  * Testing fSuspendProcessForId...";
+    fSuspendProcessForId(oTestProcess.pid);
     # cProcessInformation
     print "  * Testing cProcessInformation...";
-    oProcessInformation = cProcessInformation.foGetForId(oNotepadProcess.pid);
+    oProcessInformation = cProcessInformation.foGetForId(oTestProcess.pid);
     print "    + ISA = %s" % repr(oProcessInformation.sISA);
     print "    + Binary start address = 0x%08X" % oProcessInformation.uBinaryStartAddress;
     print "    + Binary Path = %s" % repr(oProcessInformation.sBinaryPath);
     print "    + Command line = %s" % repr(oProcessInformation.sCommandLine);
     # cVirtualAllocation
-    oBinaryVirtualAllocation = cVirtualAllocation.foGetForProcessIdAndAddress( \
-        oNotepadProcess.pid, oProcessInformation.uBinaryStartAddress);
+    oBinaryVirtualAllocation = cVirtualAllocation(oTestProcess.pid, oProcessInformation.uBinaryStartAddress);
     assert oBinaryVirtualAllocation.bAllocated, \
         "Expected memory to be allocated at address 0x%08X" % oProcessInformation.uBinaryStartAddress;
     assert oBinaryVirtualAllocation.uStartAddress == oProcessInformation.uBinaryStartAddress, \
@@ -61,39 +67,51 @@ if __name__ == "__main__":
     print "    + There are 0x%X bytes of memory allocated at address 0x%08X." % \
         (oBinaryVirtualAllocation.uSize, oBinaryVirtualAllocation.uStartAddress);
     
-    # fdsProcessesExecutableName_by_uId (make sure notepad.exe is included)
+    # fdsProcessesExecutableName_by_uId (make sure test process binary is included)
     print "  * Testing fdsProcessesExecutableName_by_uId...";
     dsProcessesExecutableName_by_uId = fdsProcessesExecutableName_by_uId();
-    sProcessesExecutableName = dsProcessesExecutableName_by_uId.get(oNotepadProcess.pid);
+    sProcessesExecutableName = dsProcessesExecutableName_by_uId.get(oTestProcess.pid);
     assert sProcessesExecutableName, \
-        "Notepad.exe process %d not found in process list!" % oNotepadProcess.pid;
-    assert sProcessesExecutableName == "notepad.exe", \
-        "Notepad.exe process %d is reported to run %s" % sProcessesExecutableName;
+        "Test process id %d/0x%X not found in process list!" % (oTestProcess.pid, oTestProcess.pid);
+    assert sProcessesExecutableName.lower() == os.path.basename(sTestApplicationPath).lower(), \
+        "Text process %d/0x%X is reported to run %s" % (oTestProcess.pid, sProcessesExecutableName);
     # fuGetProcessIntegrityLevelForId
     print "  * Testing fuGetProcessIntegrityLevelForId...";
-    uProcessIntegrityLevel = fuGetProcessIntegrityLevelForId(oNotepadProcess.pid);
+    uProcessIntegrityLevel = fuGetProcessIntegrityLevelForId(oTestProcess.pid);
     assert uProcessIntegrityLevel is not None, \
-        "Notepad.exe process %d integrity level could not be determined!" % oNotepadProcess.pid;
+        "Test process %d/0x%X integrity level could not be determined!" % (oTestProcess.pid, oTestProcess.pid);
     print "    + IntegrityLevel = 0x%X." % uProcessIntegrityLevel;
     # fuGetProcessMemoryUsage
-    # cVirtualAllocation
+    # cVirtualAllocation.foCreateInProcessForId()
+    # cVirtualAllocation.fAllocate()
+    # cVirtualAllocation.fFree()
     print "  * Testing Memory management functions...";
-    uProcessMemoryUsage = fuGetProcessMemoryUsage(oNotepadProcess.pid);
+    uProcessMemoryUsage = fuGetProcessMemoryUsage(oTestProcess.pid);
     print "    + Memory usage = 0x%X." % uProcessMemoryUsage;
-    uMemoryAllocationSize = 0x1234000;
-    oVirtualAllocation = cVirtualAllocation.foCreateInProcessForId(oNotepadProcess.pid, uMemoryAllocationSize);
+    uMemoryAllocationSize = 0x1230000;
+    oVirtualAllocation = cVirtualAllocation.foCreateInProcessForId(oTestProcess.pid, uMemoryAllocationSize, bReserved = True);
+    oVirtualAllocation.fDump();
     assert oVirtualAllocation is not None, \
-        "Attempt to allocate 0x%X bytes failed" % uMemoryAllocationSize;
+        "Attempt to reserve 0x%X bytes failed" % uMemoryAllocationSize;
     assert oVirtualAllocation.uSize == uMemoryAllocationSize, \
-        "Attempted to allocate 0x%X bytes, but got 0x%X" % (uMemoryAllocationSize, oVirtualAllocation.uSize);
-    uProcessMemoryUsageAfterAllocation = fuGetProcessMemoryUsage(oNotepadProcess.pid);
+        "Attempted to reserve 0x%X bytes, but got 0x%X" % (uMemoryAllocationSize, oVirtualAllocation.uSize);
+    uProcessMemoryUsageAfterReservation = fuGetProcessMemoryUsage(oTestProcess.pid);
+    print "    + Memory usage after reserving 0x%X bytes = 0x%X." % \
+        (oVirtualAllocation.uSize, uProcessMemoryUsageAfterReservation);
+    assert uProcessMemoryUsageAfterReservation >= uProcessMemoryUsage, \
+        "Process memory usage was expected to be at least 0x%X after reservation, but is 0x%X" % \
+        (uProcessMemoryUsage, uProcessMemoryUsageAfterReservation);
+    oVirtualAllocation.fAllocate();
+    oVirtualAllocation.fDump();
+    uProcessMemoryUsageAfterAllocation = fuGetProcessMemoryUsage(oTestProcess.pid);
     print "    + Memory usage after allocating 0x%X bytes = 0x%X." % \
         (oVirtualAllocation.uSize, uProcessMemoryUsageAfterAllocation);
-    assert uProcessMemoryUsageAfterAllocation >= uProcessMemoryUsage + uMemoryAllocationSize, \
-        "Process memory usage was expected to be at least 0x%X after allocation, but is 0x%X" % \
+    assert uProcessMemoryUsageAfterAllocation >= uProcessMemoryUsageAfterReservation + uMemoryAllocationSize, \
+        "Process memory usage was expected to be 0x%X after allocation, but is 0x%X" % \
         (uProcessMemoryUsage + uMemoryAllocationSize, uProcessMemoryUsageAfterAllocation);
     oVirtualAllocation.fFree();
-    uProcessMemoryUsageAfterFree = fuGetProcessMemoryUsage(oNotepadProcess.pid);
+    oVirtualAllocation.fDump();
+    uProcessMemoryUsageAfterFree = fuGetProcessMemoryUsage(oTestProcess.pid);
     print "    + Memory usage after freeing memory = 0x%X." % uProcessMemoryUsageAfterFree;
     assert uProcessMemoryUsageAfterFree >= uProcessMemoryUsage, \
         "Process memory usage was expected to be at least 0x%X after free, but is 0x%X" % \
@@ -101,22 +119,22 @@ if __name__ == "__main__":
 
     # cJobObject
     print "  * Testing cJobObject...";
-    oJobObject = cJobObject(oNotepadProcess.pid);
+    oJobObject = cJobObject(oTestProcess.pid);
     oJobObject.fSetMaxTotalMemoryUse(uProcessMemoryUsageAfterFree + uMemoryAllocationSize / 2);
-    oVirtualAllocation = cVirtualAllocation.foCreateInProcessForId(oNotepadProcess.pid, uMemoryAllocationSize);
+    oVirtualAllocation = cVirtualAllocation.foCreateInProcessForId(oTestProcess.pid, uMemoryAllocationSize);
     assert oVirtualAllocation is None, \
         "Attempt to allocate 0x%X bytes succeeded despite JobObject memory allocation limits" % uMemoryAllocationSize;
     print "    + JobObject memory limits applied correctly.";
     
     # fbTerminateProcessForId
     print "  * Testing fbTerminateProcessForId...";
-    fbTerminateProcessForId(oNotepadProcess.pid);
-    assert oNotepadProcess.poll() != None, \
-        "Notepad.exe was not terminated!";
-    # fdsProcessesExecutableName_by_uId (make sure notepad.exe is removed)
-    assert oNotepadProcess.pid not in fdsProcessesExecutableName_by_uId(), \
-        "Notepad.exe is still reported to exist after being terminated!?";
-    print "  + Notepad was terminated.";
+    fbTerminateProcessForId(oTestProcess.pid);
+    assert oTestProcess.poll() != None, \
+        "Test process was not terminated!";
+    # fdsProcessesExecutableName_by_uId (make sure test process is removed)
+    assert oTestProcess.pid not in fdsProcessesExecutableName_by_uId(), \
+        "Test process is still reported to exist after being terminated!?";
+    print "  + Test process was terminated.";
     
     # TODO: add test for fbTerminateThreadForId, fDebugBreakProcessForId, fSuspendProcessForId, \
     # fuCreateThreadInProcessForIdAndAddress and fSendCtrlCToProcessForId.
@@ -196,6 +214,6 @@ if __name__ == "__main__":
     assert sReadBytes == "", \
         "Read %s from a completely closed pipe" % repr(sReadBytes);
   except:
-    oNotepadProcess.terminate();
-    oNotepadProcess.wait();
+    oTestProcess.terminate();
+    oTestProcess.wait();
     raise;
