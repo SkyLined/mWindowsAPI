@@ -52,6 +52,8 @@ KERNEL32.fDefineFunction(BOOL,    "ReadProcessMemory", HANDLE, LPCVOID, LPVOID, 
 KERNEL32.fDefineFunction(BOOL,    "SetHandleInformation", HANDLE, DWORD, DWORD);
 KERNEL32.fDefineFunction(BOOL,    "SetInformationJobObject", HANDLE, JOBOBJECTINFOCLASS, LPVOID, DWORD);
 KERNEL32.fDefineFunction(BOOL,    "SetConsoleTextAttribute", HANDLE, WORD);
+KERNEL32.fDefineFunction(BOOL,    "SetConsoleTitleA", LPCSTR);
+KERNEL32.fDefineFunction(BOOL,    "SetConsoleTitleW", LPCWSTR);
 KERNEL32.fDefineFunction(BOOL,    "TerminateProcess", HANDLE, UINT);
 KERNEL32.fDefineFunction(BOOL,    "TerminateThread", HANDLE, DWORD);
 KERNEL32.fDefineFunction(LPVOID,  "VirtualAlloc", LPVOID, SIZE_T, DWORD, DWORD);
