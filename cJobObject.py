@@ -6,7 +6,7 @@ from fsGetErrorMessage import fsGetErrorMessage;
 
 class cJobObject(object):
   def __init__(oSelf, *auProcessIds):
-    oSelf.__hJob = KERNEL32.CreateJobObjectA(NULL, NULL);
+    oSelf.__hJob = KERNEL32.CreateJobObjectW(NULL, NULL);
     assert oSelf.__hJob, \
         fsGetErrorMessage("CreateJobObject(NULL, NULL)");
     for uProcessId in auProcessIds:
