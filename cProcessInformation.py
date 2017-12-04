@@ -63,7 +63,7 @@ class cProcessInformation(object):
       cStructure = {"x86": PEB_32, "x64": PEB_64}[sPythonISA],
       uOffset = uPEBAddress - oVirtualAllocation.uStartAddress,
     );
-#      oPEB.fDump();
+#    oPEB.fDump();
     uImageBaseAddress = oPEB.ImageBaseAddress;
     # Read Process Parameters
     uProcessParametersAddress = oPEB.ProcessParameters;
