@@ -21,10 +21,10 @@ def fuCreateThreadInProcessForIdAndAddress(uProcessId, uAddress, bSuspended = Fa
       POINTER(uThreadId), # lpThreadId
     );
     assert hThread, \
-        fsGetErrorMessage("CreateRemoteThread(0x%08X, NULL, 0, 0x%08X, 0, 0, ...)" % (hProcess.value, uAddress));
+        fsGetErrorMessage("CreateRemoteThread(0x%08X, NULL, 0, 0x%08X, 0, 0, ...)" % (hProcess, uAddress));
     assert KERNEL32.CloseHandle(hThread), \
-        fsGetErrorMessage("CloseHandle(0x%X)" % (hThread.value,));
+        fsGetErrorMessage("CloseHandle(0x%X)" % (hThread,));
     return uThreadId.value;
   finally:
     assert KERNEL32.CloseHandle(hProcess), \
-        fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess.value,));
+        fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
