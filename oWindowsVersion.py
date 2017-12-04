@@ -1,5 +1,5 @@
 from foGetRegistryValue import foGetRegistryValue;
-from fsGetOSISA import fsGetOSISA;
+from oSystemInfo import oSystemInfo;
 
 def fsReadRegistryValue(sValueName):
   oRegistryValue = foGetRegistryValue("HKLM", r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", sValueName);
@@ -42,9 +42,7 @@ class cWindowsVersion(object):
   
   @property
   def sISA(oSelf):
-    if oSelf.__sISA == None:
-      oSelf.__sISA = fsGetOSISA();
-    return oSelf.__sISA;
+    return oSystemInfo.sOSISA;
       
   def __str__(oSelf):
     return "%s release %s, build %s %s" % (oSelf.sProductName, oSelf.sReleaseId, oSelf.sCurrentBuild, oSelf.sISA);
