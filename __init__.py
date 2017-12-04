@@ -15,7 +15,6 @@ from fDebugBreakProcessForId import fDebugBreakProcessForId;
 from fdsProcessesExecutableName_by_uId import fdsProcessesExecutableName_by_uId;
 from foGetRegistryValue import foGetRegistryValue;
 from fSendCtrlCToProcessForId import fSendCtrlCToProcessForId;
-from fsGetOSISA import fsGetOSISA;
 from fsGetProcessISAFor_ import fsGetProcessISAForId, fsGetProcessISAForHandle;
 from fsGetPythonISA import fsGetPythonISA;
 from fSuspendProcessForId import fSuspendProcessForId;
@@ -23,6 +22,7 @@ from fuCreateProcessForBinaryPathAndArguments import fuCreateProcessForBinaryPat
 from fuCreateThreadInProcessForIdAndAddress import fuCreateThreadInProcessForIdAndAddress;
 from fuGetProcessIntegrityLevelForId import fuGetProcessIntegrityLevelForId;
 from fuGetProcessMemoryUsage import fuGetProcessMemoryUsage;
+from oSystemInfo import oSystemInfo;
 from oWindowsVersion import oWindowsVersion;
 
 from oVersionInformation import oVersionInformation;
