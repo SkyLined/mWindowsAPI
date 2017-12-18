@@ -98,5 +98,5 @@ class cProcessInformation(object):
     oSelf.sISA = sISA;
     oSelf.uBinaryStartAddress = uBinaryStartAddress;
     oSelf.sBinaryPath = sBinaryPath;
-    oSelf.sBinaryName = os.path.basename(sBinaryPath);
+    oSelf.sBinaryName = sBinaryPath and os.path.basename(sBinaryPath) or None;
     oSelf.sCommandLine = sCommandLine;
