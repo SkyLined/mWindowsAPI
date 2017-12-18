@@ -2,7 +2,7 @@ from mDefines import *;
 from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
-from fsGetErrorMessage import fsGetErrorMessage;
+from fThrowError import fThrowError;
 
 guBufferSize = 1;
 
@@ -14,17 +14,17 @@ class cPipe(object):
     oSecurityAttributes.nLength = SIZEOF(oSecurityAttributes);
     oSecurityAttributes.lpSecurityDescriptor = NULL;
     oSecurityAttributes.bInheritHandle = True;
-    assert KERNEL32.CreatePipe(
+    KERNEL32.CreatePipe(
       POINTER(oSelf.hOutput), # hReadPipe
       POINTER(oSelf.hInput), # hWritePipe
       POINTER(oSecurityAttributes), # lpPipeAttributes
       0, # nSize
-    ), fsGetErrorMessage("CreatePipe(..., ..., ..., 0)");
+    ) or fThrowError("CreatePipe(..., ..., ..., 0)");
     if not bInheritableInput:
       uFlags = HANDLE_FLAG_INHERIT;
       try:
-        assert KERNEL32.SetHandleInformation(oSelf.hInput, uFlags, FALSE), \
-            fsGetErrorMessage("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % \
+        KERNEL32.SetHandleInformation(oSelf.hInput, uFlags, FALSE) \
+            or fThrowError("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % \
             (oSelf.hInput.value, uFlags,));
       except:
         oSelf.fClose();
@@ -32,8 +32,8 @@ class cPipe(object):
     if not bInheritableOutput:
       uFlags = HANDLE_FLAG_INHERIT;
       try:
-        assert KERNEL32.SetHandleInformation(oSelf.hOutput, uFlags, FALSE), \
-            fsGetErrorMessage("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % \
+        KERNEL32.SetHandleInformation(oSelf.hOutput, uFlags, FALSE) \
+            or fThrowError("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % \
             (oSelf.hOutput.value, uFlags,));
       except:
         oSelf.fClose();
@@ -49,14 +49,14 @@ class cPipe(object):
         if not KERNEL32.CloseHandle(oSelf.hInput):
           # It is OK if we cannot close this HANDLE because it is already closed, otherwise we throw an exception.
           uCloseHandleError = KERNEL32.GetLastError();
-          assert HRESULT_FROM_WIN32(uCloseHandleError) in [ERROR_INVALID_HANDLE], \
-              fsGetErrorMessage("CloseHandle(0x%08X)" % (oSelf.hInput.value,), uCloseHandleError);
+          (HRESULT_FROM_WIN32(uCloseHandleError) in [ERROR_INVALID_HANDLE]) \
+              or fThrowError("CloseHandle(0x%08X)" % (oSelf.hInput.value,), uCloseHandleError);
     finally:
       if bOutput:
         if not KERNEL32.CloseHandle(oSelf.hOutput):
           uCloseHandleError = KERNEL32.GetLastError();
-          assert HRESULT_FROM_WIN32(uCloseHandleError) in [ERROR_INVALID_HANDLE], \
-              fsGetErrorMessage("CloseHandle(0x%08X)" % (oSelf.hOutput.value,), uCloseHandleError);
+          (HRESULT_FROM_WIN32(uCloseHandleError) in [ERROR_INVALID_HANDLE]) \
+              or fThrowError("CloseHandle(0x%08X)" % (oSelf.hOutput.value,), uCloseHandleError);
 
   def fuReadByte(oSelf):
     oByte = BYTE();
@@ -70,8 +70,8 @@ class cPipe(object):
       NULL, # lpOverlapped
     ):
       uReadFileError = KERNEL32.GetLastError();
-      assert HRESULT_FROM_WIN32(uReadFileError) in [ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE], \
-          fsGetErrorMessage("ReadFile(0x%08X, ..., 0x%X, ..., NULL)" % (oSelf.hOutput.value, SIZEOF(oByte),), \
+      (HRESULT_FROM_WIN32(uReadFileError) in [ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE]) \
+          or fThrowError("ReadFile(0x%08X, ..., 0x%X, ..., NULL)" % (oSelf.hOutput.value, SIZEOF(oByte),), \
           uReadFileError);
       raise IOError("Pipe closed");
     assert dwBytesRead.value == 1, \
@@ -117,8 +117,8 @@ class cPipe(object):
       NULL, # lpOverlapped
     ):
       uWriteFileError = KERNEL32.GetLastError();
-      assert HRESULT_FROM_WIN32(uWriteFileError) in [ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE], \
-          fsGetErrorMessage("WriteFile(0x%08X, ..., 0x%X, ..., NULL)" % \
+      (HRESULT_FROM_WIN32(uWriteFileError) in [ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE]) \
+          or fThrowError("WriteFile(0x%08X, ..., 0x%X, ..., NULL)" % \
           (oSelf.hInput.value, SIZEOF(oBuffer)), uWriteFileError);
       # The pipe had been closed; throw an IOError.
       raise IOError("Pipe closed");

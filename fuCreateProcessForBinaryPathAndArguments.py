@@ -2,7 +2,7 @@ from mDefines import *;
 from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
-from fsGetErrorMessage import fsGetErrorMessage;
+from fThrowError import fThrowError;
 
 def fuCreateProcessForBinaryPathAndArguments(sBinaryPath, asArguments, sWorkingDirectory = None, bSuspended = False):
   sCommandLine = " ".join([
@@ -29,14 +29,14 @@ def fuCreateProcessForBinaryPathAndArguments(sBinaryPath, asArguments, sWorkingD
     POINTER(oProcessInformation), # lpProcessInformation
   ):
     uCreateProcessError = KERNEL32.GetLastError();
-    assert HRESULT_FROM_WIN32(uCreateProcessError) in [ERROR_FILE_NOT_FOUND, ERROR_INVALID_NAME], \
-        fsGetErrorMessage("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
+    (HRESULT_FROM_WIN32(uCreateProcessError) in [ERROR_FILE_NOT_FOUND, ERROR_INVALID_NAME]) \
+        or fThrowError("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
         (repr(sBinaryPath), repr(sCommandLine), uFlags, repr(sWorkingDirectory)), uCreateProcessError);
     return None;
   try:
     return oProcessInformation.dwProcessId;
   finally:
-    assert KERNEL32.CloseHandle(oProcessInformation.hProcess), \
-        fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
-    assert KERNEL32.CloseHandle(oProcessInformation.hThread), \
-        fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
+    KERNEL32.CloseHandle(oProcessInformation.hProcess) \
+        or fThrowError("CloseHandle(0x%X)" % (hProcess,));
+    KERNEL32.CloseHandle(oProcessInformation.hThread) \
+        or fThrowError("CloseHandle(0x%X)" % (hProcess,));

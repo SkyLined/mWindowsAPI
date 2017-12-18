@@ -2,7 +2,7 @@ from mDefines import *;
 from mFunctions import *;
 from mTypes import *;
 from mDLLs import ADVAPI32, KERNEL32;
-from fsGetErrorMessage import fsGetErrorMessage;
+from fThrowError import fThrowError;
 
 def fuGetProcessIntegrityLevelForId(uProcessId):
   hProcess = KERNEL32.OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, uProcessId);
@@ -19,9 +19,9 @@ def fuGetProcessIntegrityLevelForId(uProcessId):
       assert not ADVAPI32.GetTokenInformation(hToken, uFlags, NULL, 0, PDWORD(dwTokenMandatoryLabelSize)), \
           "GetTokenInformation(0x%08X, 0x%08X, NULL, 0, ...) => No error" % (hToken.value, uFlags,);
       uGetTokenInformationError = KERNEL32.GetLastError();
-      assert HRESULT_FROM_WIN32(uGetTokenInformationError) == ERROR_INSUFFICIENT_BUFFER, \
-          fsGetErrorMessage("GetTokenInformation(0x%08X, 0x%08X, NULL, 0, ...)" % (hToken.value, uFlags,), \
-          uGetTokenInformationError);
+      (HRESULT_FROM_WIN32(uGetTokenInformationError) == ERROR_INSUFFICIENT_BUFFER) \
+          or fThrowError("GetTokenInformation(0x%08X, 0x%08X, NULL, 0, ...)" % (hToken.value, uFlags,), \
+          uError = uGetTokenInformationError);
       # Allocate memory to store a TOKEN_MANDATORY_LABEL struct:
       poTokenMandatoryLabel = CAST(POINTER(TOKEN_MANDATORY_LABEL), BUFFER(dwTokenMandatoryLabelSize.value));
       # Get the TOKEN_MANDATORY_LABEL struct:

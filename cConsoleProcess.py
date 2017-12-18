@@ -4,7 +4,7 @@ from mTypes import *;
 from mDLLs import KERNEL32;
 from cPipe import cPipe;
 from cProcessInformation import cProcessInformation;
-from fsGetErrorMessage import fsGetErrorMessage;
+from fThrowError import fThrowError;
 
 class cConsoleProcess(object):
   @staticmethod
@@ -58,19 +58,19 @@ class cConsoleProcess(object):
                 oStdOutPipe and oStdOutPipe.fClose();
               finally:
                 oStdInPipe and oStdInPipe.fClose();
-            assert HRESULT_FROM_WIN32(uCreateProcessError) in [ERROR_FILE_NOT_FOUND, ERROR_INVALID_NAME], \
-                fsGetErrorMessage("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
+            (HRESULT_FROM_WIN32(uCreateProcessError) in [ERROR_FILE_NOT_FOUND, ERROR_INVALID_NAME]) \
+                or fThrowError("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
                 (repr(sBinaryPath), repr(sCommandLine), uFlags, sWorkingDirectory), uCreateProcessError);
             return None;
           try:
             return cConsoleProcess(oProcessInformation.dwProcessId, oStdInPipe, oStdOutPipe, oStdErrPipe);
           finally:
             try:
-              assert KERNEL32.CloseHandle(oProcessInformation.hProcess), \
-                  fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
+              KERNEL32.CloseHandle(oProcessInformation.hProcess) \
+                  or fThrowError("CloseHandle(0x%X)" % (hProcess,));
             finally:
-              assert KERNEL32.CloseHandle(oProcessInformation.hThread), \
-                  fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
+              KERNEL32.CloseHandle(oProcessInformation.hThread) \
+                  or fThrowError("CloseHandle(0x%X)" % (hProcess,));
         except:
           oStdErrPipe and oStdErrPipe.fClose();
           raise;

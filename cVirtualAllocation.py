@@ -2,7 +2,7 @@ from mDefines import *;
 from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
-from fsGetErrorMessage import fsGetErrorMessage;
+from fThrowError import fThrowError;
 from oSystemInfo import oSystemInfo;
 from fsGetPythonISA import fsGetPythonISA;
 gsPythonISA = fsGetPythonISA();
@@ -36,8 +36,8 @@ class cVirtualAllocation(object):
     # Try to open the process...
     uFlags = PROCESS_VM_OPERATION;
     hProcess = KERNEL32.OpenProcess(uFlags, FALSE, uProcessId);
-    assert hProcess, \
-        fsGetErrorMessage("OpenProcess(0x%08X, FALSE, 0x%08X)" % (uFlags, uProcessId,));
+    hProcess \
+        or fThrowError("OpenProcess(0x%08X, FALSE, 0x%08X)" % (uFlags, uProcessId,));
     try:
       uBaseAddress = KERNEL32.VirtualAllocEx(
           hProcess,
@@ -47,19 +47,14 @@ class cVirtualAllocation(object):
           uProtection, # flProtect
       );
       if not uBaseAddress:
-        uVirtualAllocExError = KERNEL32.GetLastError();
-        # If this failed because there is not enough memory available, return None. Otherwise throw an exception.
-        assert HRESULT_FROM_WIN32(uVirtualAllocExError) in [ERROR_NOT_ENOUGH_MEMORY, ERROR_COMMITMENT_LIMIT], \
-            fsGetErrorMessage("VirtualAllocEx(0x%08X, 0x%08X, 0x%X, MEM_COMMIT, %s)" % \
-            (hProcess, uAddress or 0, uSize, fsProtection(uProtection)), uVirtualAllocExError);
-        return None;
+        fThrowError("VirtualAllocEx(0x%08X, 0x%08X, 0x%X, MEM_COMMIT, %s)" % \
+            (hProcess, uAddress or 0, uSize, fsProtection(uProtection)));
       # Return a cVirtualAllocation object that represents the newly allocated memory.
       return cVirtualAllocation(uProcessId, uBaseAddress);
     finally:
-      assert KERNEL32.CloseHandle(hProcess), \
-          fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
+      KERNEL32.CloseHandle(hProcess) \
+          or fThrowError("CloseHandle(0x%X)" % (hProcess,));
   
-
   def __init__(oSelf, uProcessId, uAddress):
     oSelf.__uProcessId = uProcessId;
     oSelf.__bISAChecked = False;
@@ -71,8 +66,8 @@ class cVirtualAllocation(object):
       uAddress = oSelf.__uStartAddress;
     uFlags = PROCESS_QUERY_INFORMATION;
     hProcess = KERNEL32.OpenProcess(uFlags, FALSE, oSelf.__uProcessId);
-    assert hProcess, \
-        fsGetErrorMessage("OpenProcess(0x%08X, FALSE, %d/0x%X)" % (uFlags, oSelf.__uProcessId, oSelf.__uProcessId,));
+    hProcess \
+        or fThrowError("OpenProcess(0x%08X, FALSE, %d/0x%X)" % (uFlags, oSelf.__uProcessId, oSelf.__uProcessId,));
     try:
       # Accessing a virtual allocation in a 64-bit processes from 32-bit Python is theoretically possible with a few
       # hacks, but very complex and not worth the effort IMHO.
@@ -84,8 +79,8 @@ class cVirtualAllocation(object):
         if gsPythonISA == "x86":
           # Finally we find out if the remote process is 64-bit:
           bIsWow64Process = BOOL();
-          assert KERNEL32.IsWow64Process(hProcess, POINTER(bIsWow64Process)), \
-                fsGetErrorMessage("IsWow64Process(0x%08X, ...)" % (hProcess,));
+          KERNEL32.IsWow64Process(hProcess, POINTER(bIsWow64Process)) \
+                or fThrowError("IsWow64Process(0x%08X, ...)" % (hProcess,));
           sProcessISA = bIsWow64Process and "x86" or "x64";
           # Throw an error if this is the case:
           assert sProcessISA != "x64", \
@@ -101,8 +96,8 @@ class cVirtualAllocation(object):
       if uStoredBytes != SIZEOF(MEMORY_BASIC_INFORMATION):
         # This can fail if the address is not valid, which is acceptable.
         uVirtualQueryExError = KERNEL32.GetLastError();
-        assert HRESULT_FROM_WIN32(uVirtualQueryExError) == ERROR_INVALID_PARAMETER, \
-            fsGetErrorMessage("VirtualQueryEx(0x%08X, 0x%08X, ..., 0x%X) = 0x%X" % \
+        (HRESULT_FROM_WIN32(uVirtualQueryExError) == ERROR_INVALID_PARAMETER) \
+            or fThrowError("VirtualQueryEx(0x%08X, 0x%08X, ..., 0x%X) = 0x%X" % \
             (hProcess, uAddress, SIZEOF(MEMORY_BASIC_INFORMATION), uStoredBytes), uVirtualQueryExError);
         oSelf.__uAllocationBaseAddress = None;
         oSelf.__uAllocationProtection = None;
@@ -124,8 +119,8 @@ class cVirtualAllocation(object):
         oSelf.__uType = bValid and oMemoryBasicInformation.Type or None;
         oSelf.__sData = None;
     finally:
-      assert KERNEL32.CloseHandle(hProcess), \
-          fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
+      KERNEL32.CloseHandle(hProcess) \
+          or fThrowError("CloseHandle(0x%X)" % (hProcess,));
   
   # Process id
   @property
@@ -203,23 +198,23 @@ class cVirtualAllocation(object):
         "Cannot modify protection on a virtual allocation that is not allocated";
     uFlags = PROCESS_VM_OPERATION;
     hProcess = KERNEL32.OpenProcess(uFlags, FALSE, oSelf.__uProcessId);
-    assert hProcess, \
-        fsGetErrorMessage("OpenProcess(0x%08X, FALSE, %d/0x%X)" % \
+    hProcess \
+        or fThrowError("OpenProcess(0x%08X, FALSE, %d/0x%X)" % \
         (uFlags, oSelf.__uProcessId, oSelf.__uProcessId,));
     try:
       flOldProtection = DWORD();
-      assert KERNEL32.VirtualProtectEx(
+      KERNEL32.VirtualProtectEx(
         hProcess,
         LPVOID(oSelf.__uStartAddress), # lpAddress,
         SIZE_T(oSelf.__uSize), # nSize
         DWORD(uNewProtection), # flNewProtection
         PDWORD(flOldProtection), # lpflOldProtection
-      ), fsGetErrorMessage("VirtualProtectEx(0x%08X, 0x%08X, 0x%X, 0x%08X, ...)" % \
+      ) or fThrowError("VirtualProtectEx(0x%08X, 0x%08X, 0x%X, 0x%08X, ...)" % \
           (hProcess, oSelf.__uStartAddress, oSelf.__uSize, uNewProtection,));
       oSelf.__uProtection = uNewProtection;
     finally:
-      assert KERNEL32.CloseHandle(hProcess), \
-          fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
+      KERNEL32.CloseHandle(hProcess) \
+          or fThrowError("CloseHandle(0x%X)" % (hProcess,));
 
   @sProtection.setter
   def sProtection(oSelf, sNewProtection):
@@ -293,18 +288,18 @@ class cVirtualAllocation(object):
       oSelf.uProtection = PAGE_EXECUTE_READ;
     # Open process to read memory
     hProcess = KERNEL32.OpenProcess(PROCESS_VM_READ, FALSE, oSelf.__uProcessId);
-    assert hProcess, \
-        fsGetErrorMessage("OpenProcess(0x%08X, FALSE, %d/0x%X)" % (PROCESS_VM_READ, oSelf.__uProcessId,));
+    hProcess \
+        or fThrowError("OpenProcess(0x%08X, FALSE, %d/0x%X)" % (PROCESS_VM_READ, oSelf.__uProcessId,));
     try:
       sBuffer = bUnicode and WSTR(uSize / 2) or STR(uSize);
       uBytesRead = SIZE_T(0);
-      assert KERNEL32.ReadProcessMemory(
+      KERNEL32.ReadProcessMemory(
         hProcess,
         LPVOID(oSelf.__uStartAddress + uOffset), # lpBaseAddress
         POINTER(sBuffer), # lpBuffer
         SIZE_T(uSize), # nSize
         POINTER(uBytesRead), # lpNumberOfBytesRead
-      ), fsGetErrorMessage("ReadProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...)" % \
+      ) or fThrowError("ReadProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...)" % \
           (hProcess, oSelf.__uStartAddress + uOffset, uSize,));
       assert uBytesRead.value == uSize, \
           "ReadProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...) => 0x%X bytes read" % \
@@ -314,8 +309,8 @@ class cVirtualAllocation(object):
         return sBuffer.value;
       return sBuffer.raw;
     finally:
-      assert KERNEL32.CloseHandle(hProcess), \
-          fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
+      KERNEL32.CloseHandle(hProcess) \
+          or fThrowError("CloseHandle(0x%X)" % (hProcess,));
       # Restore original protection if needed
       if uOriginalProtection in [PAGE_NOACCESS, PAGE_EXECUTE]:
         oSelf.uProtection = uOriginalProtection;
@@ -357,25 +352,25 @@ class cVirtualAllocation(object):
     # Open process to read memory
     uFlags = PROCESS_VM_WRITE | PROCESS_VM_OPERATION;
     hProcess = KERNEL32.OpenProcess(uFlags, FALSE, oSelf.__uProcessId);
-    assert hProcess, \
-        fsGetErrorMessage("OpenProcess(0x%08X, FALSE, %d/0x%X)" % (uFlags, oSelf.__uProcessId,));
+    hProcess \
+        or fThrowError("OpenProcess(0x%08X, FALSE, %d/0x%X)" % (uFlags, oSelf.__uProcessId,));
     try:
       sBuffer = bUnicode and WSTR(sData) or STR(sData);
       uBytesWritten = SIZE_T(0);
-      assert KERNEL32.WriteProcessMemory(
+      KERNEL32.WriteProcessMemory(
         hProcess,
         LPVOID(oSelf.__uStartAddress + uOffset), # lpBaseAddress
         POINTER(sBuffer), # lpBuffer
         SIZE_T(uSize), # nSize
         POINTER(uBytesWritten), # lpNumberOfBytesRead
-      ), fsGetErrorMessage("WriteProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...)" % \
+      ) or fThrowError("WriteProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...)" % \
           (hProcess, oSelf.__uStartAddress + uOffset, uSize,));
       assert uBytesWritten.value == uSize, \
           "WriteProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...) => 0x%X bytes written" % \
           (hProcess, oSelf.__uStartAddress + uOffset, uSize, uBytesWritten.value);
     finally:
-      assert KERNEL32.CloseHandle(hProcess), \
-          fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
+      KERNEL32.CloseHandle(hProcess) \
+          or fThrowError("CloseHandle(0x%X)" % (hProcess,));
       # Restore original protection if needed
       if uOriginalProtection in [PAGE_NOACCESS, PAGE_READONLY, PAGE_EXECUTE, PAGE_EXECUTE_READ]:
         oSelf.uProtection = uOriginalProtection;
@@ -405,23 +400,26 @@ class cVirtualAllocation(object):
       assert fsProtection(uProtection), \
           "Unknown uProtection values 0x%08X" % uProtection;
     hProcess = KERNEL32.OpenProcess(PROCESS_VM_OPERATION, FALSE, oSelf.__uProcessId);
-    assert hProcess, \
-        fsGetErrorMessage("OpenProcess(0x%08X, FALSE, 0x%08X)" % (PROCESS_VM_OPERATION, oSelf.__uProcessId,));
+    hProcess \
+        or fThrowError("OpenProcess(0x%08X, FALSE, 0x%08X)" % (PROCESS_VM_OPERATION, oSelf.__uProcessId,));
     try:
       uBaseAddress = KERNEL32.VirtualAllocEx(
-          hProcess,
-          CAST(LPVOID, oSelf.__uStartAddress), # lpAddress
-          oSelf.__uSize, # dwSize
-          MEM_COMMIT, # flAllocationType
-          uProtection, # flProtect
+        hProcess,
+        CAST(LPVOID, oSelf.__uStartAddress), # lpAddress
+        oSelf.__uSize, # dwSize
+        MEM_COMMIT, # flAllocationType
+        uProtection, # flProtect
       );
+      if not uBaseAddress:
+        fThrowError("VirtualAllocEx(0x%X, 0x%08X, 0x%X, 0x%08X, 0x%08X)" % \
+            (hProcess,oSelf.__uStartAddress, oSelf.__uSize, MEM_COMMIT, uProtection));
       assert uBaseAddress == oSelf.__uStartAddress, \
           "Allocating reserved virtual allocation at 0x%08X allocated memory at %08X" % \
           (oSelf.__uStartAddress, uBaseAddress);
     finally:
       try:
-        assert KERNEL32.CloseHandle(hProcess), \
-            fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
+        KERNEL32.CloseHandle(hProcess) \
+            or fThrowError("CloseHandle(0x%X)" % (hProcess,));
       finally:
         oSelf.__fUpdate();
   
@@ -430,39 +428,39 @@ class cVirtualAllocation(object):
     assert oSelf.bAllocated, \
         "You can only reserve an allocated virtual allocation";
     hProcess = KERNEL32.OpenProcess(PROCESS_VM_OPERATION, FALSE, oSelf.__uProcessId);
-    assert hProcess, \
-        fsGetErrorMessage("OpenProcess(0x%08X, FALSE, 0x%08X)" % (PROCESS_VM_OPERATION, oSelf.__uProcessId,));
+    hProcess \
+        or fThrowError("OpenProcess(0x%08X, FALSE, 0x%08X)" % (PROCESS_VM_OPERATION, oSelf.__uProcessId,));
     try:
-      assert KERNEL32.VirtualFreeEx(
-          hProcess,
-          CAST(LPVOID, oSelf.__uStartAddress), # lpAddress
-          oSelf.__uSize, # dwSize
-          MEM_DECOMMIT, # dwFreeType
-      ), fsGetErrorMessage("VirtualFreeEx(0x%08X, 0x%08X, 0, 0x%08X)" % \
+      KERNEL32.VirtualFreeEx(
+        hProcess,
+        CAST(LPVOID, oSelf.__uStartAddress), # lpAddress
+        oSelf.__uSize, # dwSize
+        MEM_DECOMMIT, # dwFreeType
+      ) or fThrowError("VirtualFreeEx(0x%08X, 0x%08X, 0, 0x%08X)" % \
           (hProcess, oSelf.__uStartAddress, MEM_DECOMMIT,));
     finally:
       try:
-        assert KERNEL32.CloseHandle(hProcess), \
-            fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
+        KERNEL32.CloseHandle(hProcess) \
+            or fThrowError("CloseHandle(0x%X)" % (hProcess,));
       finally:
         oSelf.__fUpdate();
-    
+  
   def fFree(oSelf):
     # Free this virtual allocation if it is reserved or committed
     hProcess = KERNEL32.OpenProcess(PROCESS_VM_OPERATION, FALSE, oSelf.__uProcessId);
-    assert hProcess, \
-        fsGetErrorMessage("OpenProcess(0x%08X, FALSE, 0x%08X)" % (PROCESS_VM_OPERATION, oSelf.__uProcessId,));
+    hProcess \
+        or fThrowError("OpenProcess(0x%08X, FALSE, 0x%08X)" % (PROCESS_VM_OPERATION, oSelf.__uProcessId,));
     try:
-      assert KERNEL32.VirtualFreeEx(
-          hProcess,
-          CAST(LPVOID, oSelf.__uStartAddress), # lpAddress
-          0, # dwSize
-          MEM_RELEASE, # dwFreeType
-      ), fsGetErrorMessage("VirtualFreeEx(0x%08X, 0x%08X, 0, 0x%08X)" % \
+      KERNEL32.VirtualFreeEx(
+        hProcess,
+        CAST(LPVOID, oSelf.__uStartAddress), # lpAddress
+        0, # dwSize
+        MEM_RELEASE, # dwFreeType
+      ) or fThrowError("VirtualFreeEx(0x%08X, 0x%08X, 0, 0x%08X)" % \
           (hProcess, oSelf.__uStartAddress, MEM_RELEASE,));
     finally:
       try:
-        assert KERNEL32.CloseHandle(hProcess), \
-            fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess,));
+        KERNEL32.CloseHandle(hProcess) \
+            or fThrowError("CloseHandle(0x%X)" % (hProcess,));
       finally:
         oSelf.__fUpdate();

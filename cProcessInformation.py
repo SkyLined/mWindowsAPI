@@ -6,7 +6,7 @@ from mDLLs import KERNEL32, NTDLL;
 from cVirtualAllocation import cVirtualAllocation;
 from fsGetPythonISA import fsGetPythonISA;
 from fsGetProcessISAFor_ import fsGetProcessISAForHandle;
-from fsGetErrorMessage import fsGetErrorMessage;
+from fThrowError import fThrowError;
 
 def foGetVirtualAllocationHelper(uProcessId, uAddress, sNameInError):
   oVirtualAllocation = cVirtualAllocation(uProcessId, uAddress);
@@ -20,13 +20,13 @@ class cProcessInformation(object):
     # Try to open the process...
     uFlags = PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ;
     hProcess = KERNEL32.OpenProcess(uFlags, FALSE, uProcessId);
-    assert hProcess, \
-        fsGetErrorMessage("OpenProcess(0x%08X, FALSE, 0x%08X)" % (uFlags, uProcessId,));
+    hProcess \
+        or fThrowError("OpenProcess(0x%08X, FALSE, 0x%08X)" % (uFlags, uProcessId,));
     try:
       return cProcessInformation.foGetForProcessIdAndHandle(uProcessId, hProcess);
     finally:
-      assert KERNEL32.CloseHandle(hProcess), \
-          fsGetErrorMessage("CloseHandle(0x%X)" % (hProcess.value,));
+      KERNEL32.CloseHandle(hProcess) \
+          or fThrowError("CloseHandle(0x%X)" % (hProcess.value,));
   
   @staticmethod
   def foGetForProcessIdAndHandle(uProcessId, hProcess):
