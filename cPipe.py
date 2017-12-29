@@ -7,7 +7,8 @@ from fThrowError import fThrowError;
 guBufferSize = 1;
 
 class cPipe(object):
-  def __init__(oSelf, bInheritableInput = True, bInheritableOutput = True):
+  def __init__(oSelf, sDescription = None, bInheritableInput = True, bInheritableOutput = True):
+    oSelf.sDescription = sDescription; # Just something you can use to remind you of what this pipe does.
     oSelf.hInput = HANDLE();
     oSelf.hOutput = HANDLE();
     oSecurityAttributes = SECURITY_ATTRIBUTES();

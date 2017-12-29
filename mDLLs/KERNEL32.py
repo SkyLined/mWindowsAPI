@@ -12,6 +12,8 @@ KERNEL32.fDefineFunction(BOOL,    "CreatePipe", PHANDLE, PHANDLE, LPSECURITY_ATT
 KERNEL32.fDefineFunction(BOOL,    "CreateProcessA", LPCSTR, LPSTR, LPSECURITY_ATTRIBUTES, LPSECURITY_ATTRIBUTES, BOOL, DWORD, LPVOID, LPCSTR , LPSTARTUPINFOA, LPPROCESS_INFORMATION);
 KERNEL32.fDefineFunction(BOOL,    "CreateProcessW", LPCWSTR, LPWSTR, LPSECURITY_ATTRIBUTES, LPSECURITY_ATTRIBUTES, BOOL, DWORD, LPVOID, LPCWSTR , LPSTARTUPINFOW, LPPROCESS_INFORMATION);
 KERNEL32.fDefineFunction(HANDLE,  "CreateRemoteThread", HANDLE, LPSECURITY_ATTRIBUTES, SIZE_T, LPTHREAD_START_ROUTINE, LPVOID, DWORD, LPDWORD);
+KERNEL32.fDefineFunction(BOOL,    "DebugActiveProcess", DWORD);
+KERNEL32.fDefineFunction(BOOL,    "DebugActiveProcessStop", DWORD);
 KERNEL32.fDefineFunction(BOOL,    "DebugBreakProcess", HANDLE);
 KERNEL32.fDefineFunction(BOOL,    "DuplicateHandle", HANDLE, HANDLE, HANDLE, LPHANDLE, DWORD, BOOL, DWORD);
 KERNEL32.fDefineFunction(BOOL,    "GenerateConsoleCtrlEvent", DWORD, DWORD);
@@ -27,6 +29,8 @@ KERNEL32.fDefineFunction(DWORD,   "GetShortPathNameA", LPCSTR, LPSTR, DWORD);
 KERNEL32.fDefineFunction(DWORD,   "GetShortPathNameW", LPCWSTR, LPWSTR, DWORD);
 KERNEL32.fDefineFunction(HANDLE,  "GetStdHandle", DWORD);
 KERNEL32.fDefineFunction(VOID,    "GetSystemInfo", LPSYSTEM_INFO);
+KERNEL32.fDefineFunction(UINT,    "GetWindowsDirectoryA", LPSTR, UINT);
+KERNEL32.fDefineFunction(UINT,    "GetWindowsDirectoryW", LPWSTR, UINT);
 KERNEL32.fDefineFunction(LPVOID,  "HeapAlloc", HANDLE, DWORD, SIZE_T);
 KERNEL32.fDefineFunction(HANDLE,  "HeapCreate", DWORD, SIZE_T, SIZE_T);
 KERNEL32.fDefineFunction(BOOL,    "HeapFree", HANDLE, DWORD, LPVOID);

@@ -3,14 +3,14 @@ from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
 from fbIsProcessRunningForId import fbIsProcessRunningForId;
-from fbTerminateProcessForHandle import fbTerminateProcessForHandle;
+from fbWaitForProcessTerminationForHandle import fbWaitForProcessTerminationForHandle;
 from fThrowError import fThrowError;
 
-def fbTerminateProcessForId(uProcessId, nTimeout = None):
+def fbWaitForProcessTerminationForId(uProcessId, nTimeout = None):
   if not fbIsProcessRunningForId(uProcessId):
     return True; # Probably already terminated.
-  # Try to open the process so we can terminate it...
-  uFlags = PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE;
+  # Try to open the process so we can wait for it...
+  uFlags = SYNCHRONIZE;
   hProcess = KERNEL32.OpenProcess(uFlags, FALSE, uProcessId);
   if not hProcess:
     uOpenProcessError = KERNEL32.GetLastError();
@@ -20,8 +20,7 @@ def fbTerminateProcessForId(uProcessId, nTimeout = None):
     # The process is running and we cannot open it to terminate it: throw an error.
     fThrowError("OpenProcess(0x%08X, FALSE, %d/0x%X)" % (uFlags, uProcessId, uProcessId), uOpenProcessError);
   try:
-    # We can open the process: try to terminate it.
-    return fbTerminateProcessForHandle(hProcess, nTimeout);
+    return fbWaitForProcessTerminationForHandle(hProcess, nTimeout);
   finally:
     KERNEL32.CloseHandle(hProcess) \
         or fThrowError("CloseHandle(0x%X)" % (hProcess,));
