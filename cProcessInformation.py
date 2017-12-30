@@ -89,9 +89,10 @@ class cProcessInformation(object):
       uSize = oProcessParameters.CommandLine.Length,
       bUnicode = True,
     );
-    return cProcessInformation(sProcessISA, uImageBaseAddress, sImagePathName, sCommandLine);
+    return cProcessInformation(uProcessId, sProcessISA, uImageBaseAddress, sImagePathName, sCommandLine);
   
-  def __init__(oSelf, sISA, uBinaryStartAddress, sBinaryPath, sCommandLine):
+  def __init__(oSelf, uId, sISA, uBinaryStartAddress, sBinaryPath, sCommandLine):
+    oSelf.uId = uId;
     oSelf.sISA = sISA;
     oSelf.uBinaryStartAddress = uBinaryStartAddress;
     oSelf.sBinaryPath = sBinaryPath;
