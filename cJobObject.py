@@ -4,6 +4,14 @@ from mTypes import *;
 from mDLLs import KERNEL32;
 from fThrowError import fThrowError;
 
+from fsGetPythonISA import fsGetPythonISA;
+from oSystemInfo import oSystemInfo;
+
+JOBOBJECT_EXTENDED_LIMIT_INFORMATION = {
+  "x86": JOBOBJECT_EXTENDED_LIMIT_INFORMATION_32,
+  "x64": JOBOBJECT_EXTENDED_LIMIT_INFORMATION_64,
+}[fsGetPythonISA()];
+
 class cJobObject(object):
   def __init__(oSelf, *auProcessIds):
     oSelf.__hJob = KERNEL32.CreateJobObjectW(NULL, NULL);
@@ -52,8 +60,8 @@ class cJobObject(object):
       CAST(LPVOID, POINTER(oExtendedLimitInformation)), # lpJobObjectInfo
       SIZEOF(oExtendedLimitInformation), # cbJobObjectInfoLength,
       POINTER(dwReturnLength), # lpReturnLength
-    ) or fThrowError("QueryInformationJobObject(..., 0x%08X, ..., 0x%X, ...)" % \
-        (JobObjectExtendedLimitInformation, SIZEOF(oExtendedLimitInformation),));
+    ) or fThrowError("QueryInformationJobObject(..., 0x%08X, ..., 0x%X, *dwReturnLength=0x%X)" % \
+        (JobObjectExtendedLimitInformation, SIZEOF(oExtendedLimitInformation), dwReturnLength.value));
     assert dwReturnLength.value == SIZEOF(oExtendedLimitInformation), \
         "QueryInformationJobObject(..., 0x%08X, ..., 0x%X, ...) => wrote 0x%X bytes" % \
         (JobObjectExtendedLimitInformation, SIZEOF(oExtendedLimitInformation), dwReturnLength.value);
@@ -70,13 +78,21 @@ class cJobObject(object):
   
   def fSetMaxProcessMemoryUse(oSelf, uMemoryUseInBytes):
     oExtendedLimitInformation = oSelf.__foQueryExtendedLimitInformation();
-    oExtendedLimitInformation.ProcessMemoryLimit = int(uMemoryUseInBytes);
+    oExtendedLimitInformation.ProcessMemoryLimit = long(uMemoryUseInBytes);
     oExtendedLimitInformation.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_PROCESS_MEMORY;
     oSelf.__fSetExtendedLimitInformation(oExtendedLimitInformation);
 
   def fSetMaxTotalMemoryUse(oSelf, uMemoryUseInBytes):
     oExtendedLimitInformation = oSelf.__foQueryExtendedLimitInformation();
-    oExtendedLimitInformation.JobMemoryLimit = int(uMemoryUseInBytes);
+    oExtendedLimitInformation.JobMemoryLimit = long(uMemoryUseInBytes);
     oExtendedLimitInformation.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_JOB_MEMORY;
     oSelf.__fSetExtendedLimitInformation(oExtendedLimitInformation);
+  
+  def fuGetMaxProcessMemoryUse(oSelf):
+    oExtendedLimitInformation = oSelf.__foQueryExtendedLimitInformation();
+    return long(oExtendedLimitInformation.PeakProcessMemoryUsed);
+  
+  def fuGetMaxTotalMemoryUse(oSelf):
+    oExtendedLimitInformation = oSelf.__foQueryExtendedLimitInformation();
+    return long(oExtendedLimitInformation.PeakJobMemoryUsed);
 

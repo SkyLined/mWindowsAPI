@@ -3,18 +3,14 @@ from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
 from cPipe import cPipe;
-from cProcessInformation import cProcessInformation;
-from fbIsProcessRunningForHandle import fbIsProcessRunningForHandle;
-from fbIsProcessRunningForId import fbIsProcessRunningForId;
-from fbTerminateProcessForHandle import fbTerminateProcessForHandle;
-from fbTerminateProcessForId import fbTerminateProcessForId;
-from fbWaitForProcessTerminationForHandle import fbWaitForProcessTerminationForHandle;
-from fbWaitForProcessTerminationForId import fbWaitForProcessTerminationForId;
+from cProcess import cProcess;
 from fThrowError import fThrowError;
-from fuGetProcessExitCodeForHandle import fuGetProcessExitCodeForHandle;
-from fuGetProcessExitCodeForId import fuGetProcessExitCodeForId;
 
-class cConsoleProcess(object):
+class cConsoleProcess(cProcess):
+  @staticmethod
+  def foGetForId(uProcessId):
+    # Overwrite cProcess.foGetForId, as we cannot get the stdi/o streams for an existing process.
+    raise NotImplementedError("This is not possible for console processes");
   @staticmethod
   def foCreateForBinaryPathAndArguments(
     sBinaryPath,
@@ -88,22 +84,17 @@ class cConsoleProcess(object):
       raise;
   
   def __init__(oSelf, uId, oStdInPipe, oStdOutPipe, oStdErrPipe, hProcess = None):
-    oSelf.uId = uId;
+    cProcess.__init__(oSelf, uId, hProcess = hProcess);
     oSelf.oStdInPipe = oStdInPipe;
     oSelf.oStdOutPipe = oStdOutPipe;
     oSelf.oStdErrPipe = oStdErrPipe;
-    oSelf.__oInformation = None;
-    oSelf.__hProcess = hProcess;
   
   def __del__(oSelf):
-    KERNEL32.CloseHandle(oSelf.__hProcess) \
-        or fThrowError("CloseHandle(0x%X)" % (oSelf.__hProcess,));
-  
-  @property
-  def bIsRunning(oSelf):
-    if oSelf.__hProcess:
-      return fbIsProcessRunningForHandle(oSelf.__hProcess);
-    return fbIsProcessRunningForId(oSelf.uId);
+    # Make sure all pipes are closed, so as not to cause a handle leak
+    try:
+      oSelf.fClose();
+    except:
+      pass;
   
   def fClose(oSelf):
     # This will attemp to close all pipes, even if an exception is thrown when closing one of them. If multiple pipes
@@ -116,44 +107,3 @@ class cConsoleProcess(object):
       finally:
         oSelf.oStdErrPipe and oSelf.oStdErrPipe.fClose();
   
-  def fbTerminate(oSelf, uTimeout = None):
-    if oSelf.__hProcess:
-      return fbTerminateProcessForHandle(oSelf.__hProcess, uTimeout);
-    return fbTerminateProcessForId(oSelf.uId, uTimeout);
-  
-  def fbWait(oSelf, uTimeout = None):
-    if oSelf.__hProcess:
-      return fbWaitForProcessTerminationForHandle(oSelf.__hProcess, uTimeout);
-    return fbWaitForProcessTerminationForId(oSelf.uId, uTimeout);
-  
-  @property
-  def uExitCode(oSelf):
-    if oSelf.__hProcess:
-      return fuGetProcessExitCodeForHandle(oSelf.__hProcess);
-    return fuGetProcessExitCodeForId(oSelf.uId);
-  
-  @property
-  def oInformation(oSelf):
-    if oSelf.__oInformation is None:
-      oSelf.__oInformation = cProcessInformation.foGetForId(oSelf.uId);
-    return oSelf.__oInformation;
-  
-  @property
-  def sISA(oSelf):
-    return oSelf.oInformation.sISA;
-  
-  @property
-  def uBinaryStartAddress(oSelf):
-    return oSelf.oInformation.uBinaryStartAddress;
-  
-  @property
-  def sBinaryPath(oSelf):
-    return oSelf.oInformation.sBinaryPath;
-  
-  @property
-  def sBinaryName(oSelf):
-    return oSelf.oInformation.sBinaryName;
-  
-  @property
-  def sCommandLine(oSelf):
-    return oSelf.oInformation.sCommandLine;

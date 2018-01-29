@@ -1,14 +1,31 @@
 import os, sys, subprocess, threading, time;
 
-sModuleFolderPath = os.path.dirname(os.path.abspath(__file__));
-sBaseFolderPath = os.path.dirname(sModuleFolderPath);
-sys.path.extend([
-  sBaseFolderPath,
-  sModuleFolderPath,
-  os.path.join(sModuleFolderPath, "modules"),
-]);
+sMainFolderPath = os.path.dirname(os.path.abspath(__file__));
+sParentFolderPath = os.path.dirname(sMainFolderPath);
+sModulesFolderPath = os.path.join(sMainFolderPath, "modules");
+asOriginalSysPath = sys.path[:];
+sys.path = [sMainFolderPath, sParentFolderPath, sModulesFolderPath] + sys.path;
+# Save the list of names of loaded modules:
+asOriginalModuleNames = sys.modules.keys();
 
 from mWindowsAPI import *;
+
+# Sub-packages should load all modules relative, or they will end up in the global namespace, which means they may get
+# loaded by the script importing it if it tries to load a differnt module with the same name. Obviously, that script
+# will probably not function when the wrong module is loaded, so we need to check that we did this correctly.
+for sModuleName in sys.modules.keys():
+  assert (
+    sModuleName in asOriginalModuleNames # This was loaded before cBugId was loaded
+    or sModuleName.lstrip("_").split(".", 1)[0] in [
+      "mWindowsAPI", # This was loaded as part of the mWindowsAPI package
+      # These built-in modules are loaded by mWindowsAPI:
+      "base64", "binascii", "contextlib", "cStringIO", "ctypes", "encodings", "json", "nturl2path", "platform",
+      "socket", "ssl", "string", "strop", "struct", "textwrap", "urllib", "urlparse", "winreg",
+    ]
+  ), \
+      "Module %s was unexpectedly loaded outside of the mWindowsAPI package!" % sModuleName;
+# Restore the search path
+sys.path = asOriginalSysPath;
 
 if __name__ == "__main__":
   # Test registry access
@@ -50,20 +67,20 @@ if __name__ == "__main__":
   try:
     print "  * Testing fSuspendProcessForId...";
     fSuspendProcessForId(oTestProcess.pid);
-    # cProcessInformation
-    print "  * Testing cProcessInformation...";
-    oProcessInformation = cProcessInformation.foGetForId(oTestProcess.pid);
-    print "    + ISA = %s" % repr(oProcessInformation.sISA);
-    print "    + Binary start address = 0x%08X" % oProcessInformation.uBinaryStartAddress;
-    print "    + Binary Path = %s" % repr(oProcessInformation.sBinaryPath);
-    print "    + Command line = %s" % repr(oProcessInformation.sCommandLine);
+    # cProcess
+    print "  * Testing cProcess...";
+    oProcess = cProcess(oTestProcess.pid);
+    print "    + ISA = %s" % repr(oProcess.sISA);
+    print "    + Binary start address = 0x%08X" % oProcess.uBinaryStartAddress;
+    print "    + Binary Path = %s" % repr(oProcess.sBinaryPath);
+    print "    + Command line = %s" % repr(oProcess.sCommandLine);
     # cVirtualAllocation
-    oBinaryVirtualAllocation = cVirtualAllocation(oTestProcess.pid, oProcessInformation.uBinaryStartAddress);
+    oBinaryVirtualAllocation = cVirtualAllocation(oTestProcess.pid, oProcess.uBinaryStartAddress);
     assert oBinaryVirtualAllocation.bAllocated, \
-        "Expected memory to be allocated at address 0x%08X" % oProcessInformation.uBinaryStartAddress;
-    assert oBinaryVirtualAllocation.uStartAddress == oProcessInformation.uBinaryStartAddress, \
+        "Expected memory to be allocated at address 0x%08X" % oProcess.uBinaryStartAddress;
+    assert oBinaryVirtualAllocation.uStartAddress == oProcess.uBinaryStartAddress, \
         "Expected binary virtual allocation to start at address 0x%08X, not 0x%08X" % \
-          (oProcessInformation.uBinaryStartAddress, oBinaryVirtualAllocation.uStartAddress);
+          (oProcess.uBinaryStartAddress, oBinaryVirtualAllocation.uStartAddress);
     print "    + There are 0x%X bytes of memory allocated at address 0x%08X." % \
         (oBinaryVirtualAllocation.uSize, oBinaryVirtualAllocation.uStartAddress);
     
