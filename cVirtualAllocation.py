@@ -149,6 +149,13 @@ class cVirtualAllocation(object):
       KERNEL32.CloseHandle(hProcess) \
           or fThrowError("CloseHandle(0x%X)" % (hProcess,));
   
+  def fbContainsAddress(oSelf, uAddress, uSize = 1):
+    return (
+      oSelf.uStartAddress is not None
+      and oSelf.uStartAddress <= uAddress
+      and oSelf.uEndAddress >= uAddress + uSize
+    );
+  
   # Process id
   @property
   def uProcessId(oSelf):
