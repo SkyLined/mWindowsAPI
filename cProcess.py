@@ -42,10 +42,11 @@ class cProcess(object):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
     # Make sure it is allocated
     assert oVirtualAllocation.bAllocated, \
-        "Allocation for %s (0x%X bytes) at address 0x%08X not found%s" % (sNameInError, uSize, uAddress, oVirtualAllocation.fDump() or "");
+        "Allocation for %s (0x%X bytes) at address 0x%08X not found:\r\n%s" % \
+        (sNameInError, uSize, uAddress, "\r\n".join(oVirtualAllocation.fasDump()));
     assert uAddress + uSize < oVirtualAllocation.uEndAddress, \
-        "Allocation for %s (0x%X bytes) at address 0x%08X is too small to contain expected value%s" % \
-        (sNameInError, uSize, uAddress, oVirtualAllocation.fDump() or "");
+        "Allocation for %s (0x%X bytes) at address 0x%08X is too small to contain expected value:\r\n%s" % \
+        (sNameInError, uSize, uAddress, "\r\n".join(oVirtualAllocation.fasDump()));
     
     return oVirtualAllocation;
   
