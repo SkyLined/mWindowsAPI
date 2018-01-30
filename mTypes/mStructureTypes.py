@@ -29,35 +29,37 @@ cArrayType = type(ctypes.Array);
 cStructureType = type(ctypes.Structure);
 cUnionType = type(ctypes.Union);
 tcStructureAndUnionType = (cStructureType, cUnionType);
-def fDumpStructure(oStructureOrUnion, sName = None):
+def fasDumpStructure(oStructureOrUnion, sName = None):
   sName = sName or oStructureOrUnion.__class__.__name__;
   auBytes = oStructureOrUnion.fauToBytes();
-  print (",--- %s " % sName).ljust(120, "-");
-  print "| Alignment: %d bytes" % oStructureOrUnion.__class__.uAlignmentBytes;
-  if len(auBytes) < 10:
-    print "| Size: %d bytes" % len(auBytes);
-  else:
-    print "| Size: %d/0x%X bytes" % (len(auBytes), len(auBytes));
-  print "| Offs Size Data ------------------- Name ------------------------- Value".ljust(120, "-");
-  fDumpStructureOrUnionHelper(0, 0, oStructureOrUnion, auBytes);
-  print "'".ljust(80, "-");
+  return [
+    "Name: " % sName,
+    "Alignment: %d bytes" % oStructureOrUnion.__class__.uAlignmentBytes,
+    len(auBytes) < 10 \
+        and "Size: %d bytes" % len(auBytes) \
+        or "Size: %d/0x%X bytes" % (len(auBytes), len(auBytes)),
+    "Offset Size  Data                     Name                           Value",
+  ] + fasDumpStructureOrUnionHelper(0, 0, oStructureOrUnion, auBytes);
 
-def fDumpStructureOrUnionHelper(uOffset, uDepth, oStructureOrUnion, auBytes):
+def fasDumpStructureOrUnionHelper(uOffset, uDepth, oStructureOrUnion, auBytes):
   cStructureOrUnionType = type(oStructureOrUnion.__class__);
+  asDumpData = [];
   for (sFieldName, cFieldType) in oStructureOrUnion._fields_:
     oField = getattr(oStructureOrUnion, sFieldName);
     cField = getattr(oStructureOrUnion.__class__, sFieldName);
     cFieldType = type(cFieldType);
     uFieldOffset = uOffset + cField.offset;
-    sHeaderFormat = "| %04X %04X %%-24s %s%%-30s %%s" % (uFieldOffset, cField.size, "  " * uDepth);
-    sFooterFormat = "| %4s %4s %24s %s%30s %%s" % ("", "", "", "  " * uDepth, "");
+    sHeaderFormat = "  %04X %04X %%-24s %s%%-30s %%s" % (uFieldOffset, cField.size, "  " * uDepth);
+    sFooterFormat = "  %4s %4s %24s %s%30s %%s" % ("", "", "", "  " * uDepth, "");
     if cFieldType in tcStructureAndUnionType:
       sFieldType = cFieldType == cStructureType and "struct" or "union";
-      print sHeaderFormat % ("", sFieldName, "%s {" % sFieldType);
-      fDumpStructureOrUnionHelper(uOffset + cField.offset, uDepth + 1, oField, auBytes);
-      print sFooterFormat % "}";
+      asDumpData.extend([
+        sHeaderFormat % ("", sFieldName, sFieldType + " {"),
+      ] + fasDumpStructureOrUnionHelper(uOffset + cField.offset, uDepth + 1, oField, auBytes) + [
+        sFooterFormat % "}",
+      ]);
     elif cFieldType == cArrayType:
-      print sHeaderFormat % ("", sFieldName, "[");
+      asDumpData.append(sHeaderFormat % ("", sFieldName, "["));
       assert type(oField._type_) in [int, long], \
           "Unhandled array element type %s for field %s" % (repr(oField._type_), sFieldName);
       uElementSize = SIZEOF(oField._type_);
@@ -66,9 +68,9 @@ def fDumpStructureOrUnionHelper(uOffset, uDepth, oStructureOrUnion, auBytes):
         uElementOffset = uOffset + cField.offset + uElementIndex * uElementSize
         sElementBytes = " ".join(["%02X" % auBytes[uByteOffset] for uByteOffset in xrange(uElementOffset, uElementOffset + uElementSize)]);
         sElementValue = "%s0x%%0%dX" % (oField[uElementIndex] < 0 and "-" or "", uElementSize * 2) % abs(oField[uElementIndex]);
-        print "| %04X %04X %-24s %s  %-30s %s" % \
-            (uElementOffset, uElementSize, sElementBytes, "  " * uDepth, sElementIndex, sElementValue);
-      print sFooterFormat % "]";
+        asDumpData.append("  %04X %04X %-24s %s  %-30s %s" % \
+            (uElementOffset, uElementSize, sElementBytes, "  " * uDepth, sElementIndex, sElementValue));
+      asDumpData.append(sFooterFormat % "]");
     else:
       sFieldBytes = " ".join(["%02X" % auBytes[uByteOffset] for uByteOffset in xrange(uFieldOffset, uFieldOffset + cField.size)]);
       assert cFieldType == cSimpleType, \
@@ -82,7 +84,8 @@ def fDumpStructureOrUnionHelper(uOffset, uDepth, oStructureOrUnion, auBytes):
         assert cFieldType in [int, long], \
             "Unhandled simple field type %s for field %s" % (repr(cFieldType), sFieldName);
         sValue = "%s0x%%0%dX" % (oField < 0 and "-" or "", cField.size * 2) % abs(oField);
-      print sHeaderFormat % (sFieldBytes, sFieldName, sValue);
+      asDumpData.append(sHeaderFormat % (sFieldBytes, sFieldName, sValue));
+  return asDumpData;
 
 def fcStructureOrUnion(cBaseType, sName, axFields, uAlignmentBytes = None):
   if uAlignmentBytes == None:
@@ -131,7 +134,7 @@ def fcStructureOrUnion(cBaseType, sName, axFields, uAlignmentBytes = None):
         lambda oStructureOrUnion, sFieldName:
           getattr(oStructureOrUnion.__class__, sFieldName).offset
       ),
-      "fDump": fDumpStructure,
+      "fasDump": fasDumpStructure,
     },
   );
   cStructureOrUnion.uAlignmentBytes = uAlignmentBytes;
