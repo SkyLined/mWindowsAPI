@@ -9,6 +9,9 @@ sys.path = [sMainFolderPath, sParentFolderPath, sModulesFolderPath] + sys.path;
 asOriginalModuleNames = sys.modules.keys();
 
 from mWindowsAPI import *;
+from mWindowsAPI.mDLLs import *;
+from mWindowsAPI.mDefines import *;
+from mWindowsAPI.mTypes import *;
 
 # Sub-packages should load all modules relative, or they will end up in the global namespace, which means they may get
 # loaded by the script importing it if it tries to load a differnt module with the same name. Obviously, that script
@@ -107,7 +110,10 @@ if __name__ == "__main__":
     print "    + Memory usage = 0x%X." % uProcessMemoryUsage;
     uMemoryAllocationSize = 0x1230000;
     oVirtualAllocation = cVirtualAllocation.foCreateInProcessForId(oTestProcess.pid, uMemoryAllocationSize, bReserved = True);
-    oVirtualAllocation.fDump();
+    print ",".ljust(80, "-");
+    for sLine in oVirtualAllocation.fasDump():
+      print "| %s" % sLine;
+    print "`".ljust(80, "-");
     assert oVirtualAllocation is not None, \
         "Attempt to reserve 0x%X bytes failed" % uMemoryAllocationSize;
     assert oVirtualAllocation.uSize == uMemoryAllocationSize, \
@@ -120,7 +126,10 @@ if __name__ == "__main__":
 #        "Process memory usage was expected to be at least 0x%X after reservation, but is 0x%X" % \
 #        (uProcessMemoryUsage, uProcessMemoryUsageAfterReservation);
     oVirtualAllocation.fAllocate();
-    oVirtualAllocation.fDump();
+    print ",".ljust(80, "-");
+    for sLine in oVirtualAllocation.fasDump():
+      print "| %s" % sLine;
+    print "`".ljust(80, "-");
     uProcessMemoryUsageAfterAllocation = fuGetProcessMemoryUsage(oTestProcess.pid);
     print "    + Memory usage after allocating 0x%X bytes = 0x%X." % \
         (oVirtualAllocation.uSize, uProcessMemoryUsageAfterAllocation);
@@ -128,7 +137,10 @@ if __name__ == "__main__":
         "Process memory usage was expected to be 0x%X after allocation, but is 0x%X" % \
         (uProcessMemoryUsage + uMemoryAllocationSize, uProcessMemoryUsageAfterAllocation);
     oVirtualAllocation.fFree();
-    oVirtualAllocation.fDump();
+    print ",".ljust(80, "-");
+    for sLine in oVirtualAllocation.fasDump():
+      print "| %s" % sLine;
+    print "`".ljust(80, "-");
     uProcessMemoryUsageAfterFree = fuGetProcessMemoryUsage(oTestProcess.pid);
     print "    + Memory usage after freeing memory = 0x%X." % uProcessMemoryUsageAfterFree;
     assert uProcessMemoryUsageAfterFree >= uProcessMemoryUsage, \
@@ -145,7 +157,10 @@ if __name__ == "__main__":
     except MemoryError, oMemoryError:
       pass;
     else:
-      oVirtualAllocation.fDump();
+      print ",".ljust(80, "-");
+      for sLine in oVirtualAllocation.fasDump():
+        print "| %s" % sLine;
+      print "`".ljust(80, "-");
       raise AssertionError("Attempt to allocate 0x%X bytes succeeded despite JobObject memory allocation limits" % \
           uMemoryAllocationSize);
     print "    + JobObject memory limits applied correctly.";

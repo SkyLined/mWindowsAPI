@@ -1,9 +1,3 @@
-from mDefines import *;
-from mTypes import *;
-from mFunctions import *;
-
-from mDLLs import *;
-
 from cConsoleProcess import cConsoleProcess;
 from cJobObject import cJobObject;
 from cPipe import cPipe;
