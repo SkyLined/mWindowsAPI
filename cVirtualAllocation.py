@@ -456,20 +456,19 @@ class cVirtualAllocation(object):
       if uOriginalProtection in [PAGE_NOACCESS, PAGE_READONLY, PAGE_EXECUTE, PAGE_EXECUTE_READ]:
         oSelf.uProtection = uOriginalProtection;
   
-  def fDump(oSelf, sName = None):
+  def fasDump(oSelf):
     def fsNumberOrNone(uValue, sValue = None):
       return (uValue is not None and "0x%X" % uValue or "None") + (sValue and " (%s)" % sValue or "");
-    sName = sName or oSelf.__class__.__name__;
-    print (",--- %s " % sName).ljust(80, "-");
-    print "| uAllocationBaseAddress = %s" % fsNumberOrNone(oSelf.uAllocationBaseAddress);
-    print "| uAllocationProtection  = %s" % fsNumberOrNone(oSelf.uAllocationProtection, oSelf.sAllocationProtection);
-    print "| uStartAddress          = %s" % fsNumberOrNone(oSelf.uStartAddress);
-    print "| uSize                  = %s" % fsNumberOrNone(oSelf.uSize);
-    print "| uEndAddress            = %s" % fsNumberOrNone(oSelf.uEndAddress);
-    print "| uState                 = %s" % fsNumberOrNone(oSelf.uState, oSelf.sState);
-    print "| uProtection            = %s" % fsNumberOrNone(oSelf.uProtection, oSelf.sProtection);
-    print "| uType                  = %s" % fsNumberOrNone(oSelf.uType, oSelf.sType);
-    print "'".ljust(80, "-");
+    return [
+      "uAllocationBaseAddress = %s" % fsNumberOrNone(oSelf.uAllocationBaseAddress),
+      "uAllocationProtection  = %s" % fsNumberOrNone(oSelf.uAllocationProtection, oSelf.sAllocationProtection),
+      "uStartAddress          = %s" % fsNumberOrNone(oSelf.uStartAddress),
+      "uSize                  = %s" % fsNumberOrNone(oSelf.uSize),
+      "uEndAddress            = %s" % fsNumberOrNone(oSelf.uEndAddress),
+      "uState                 = %s" % fsNumberOrNone(oSelf.uState, oSelf.sState),
+      "uProtection            = %s" % fsNumberOrNone(oSelf.uProtection, oSelf.sProtection),
+      "uType                  = %s" % fsNumberOrNone(oSelf.uType, oSelf.sType),
+    ];
   
   def fAllocate(oSelf, uProtection = None):
     # Commit this virtual allocation if it is reserved
