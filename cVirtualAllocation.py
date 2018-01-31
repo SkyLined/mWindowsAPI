@@ -24,6 +24,18 @@ def fsProtection(uProtection):
     PAGE_EXECUTE_WRITECOPY: "PAGE_EXECUTE_WRITECOPY",
   }.get(uProtection);
 
+def fsProtectionFlags(uProtection):
+  return {
+    PAGE_NOACCESS: "",
+    PAGE_READONLY: "R",
+    PAGE_READWRITE: "RW",
+    PAGE_WRITECOPY: "RW",
+    PAGE_EXECUTE: "RE",
+    PAGE_EXECUTE_READ: "RE",
+    PAGE_EXECUTE_READWRITE: "RWE",
+    PAGE_EXECUTE_WRITECOPY: "RWE",
+  }.get(uProtection, "");
+
 class cVirtualAllocation(object):
   @staticmethod
   def foCreateInProcessForIdAndString(
@@ -214,32 +226,17 @@ class cVirtualAllocation(object):
     return oSelf.__uProtection;
   @property
   def sProtection(oSelf):
-    return {
-      PAGE_NOACCESS: "PAGE_NOACCESS",
-      PAGE_READONLY: "PAGE_READONLY",
-      PAGE_READWRITE: "PAGE_READWRITE",
-      PAGE_WRITECOPY: "PAGE_WRITECOPY",
-      PAGE_EXECUTE: "PAGE_EXECUTE",
-      PAGE_EXECUTE_READ: "PAGE_EXECUTE_READ",
-      PAGE_EXECUTE_READWRITE: "PAGE_EXECUTE_READWRITE",
-      PAGE_EXECUTE_WRITECOPY: "PAGE_EXECUTE_WRITECOPY",
-      None: None,
-    }[oSelf.__uProtection];
+    return fsProtection(oSelf.__uProtection);
+  
   @property
   def bReadable(oSelf):
-    return oSelf.bAllocated and oSelf.uProtection in [
-      PAGE_READONLY, PAGE_READWRITE, PAGE_WRITECOPY, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY,
-    ];
+    return oSelf.bAllocated and "R" in fsProtectionFlags(oSelf.uProtection);
   @property
   def bWritable(oSelf):
-    return oSelf.bAllocated and oSelf.uProtection in [
-      PAGE_READWRITE, PAGE_WRITECOPY, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY,
-    ];
+    return oSelf.bAllocated and "W" in fsProtectionFlags(oSelf.uProtection);
   @property
   def bExecutable(oSelf):
-    return oSelf.bAllocated and oSelf.uProtection in [
-      PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY,
-    ];
+    return oSelf.bAllocated and "E" in fsProtectionFlags(oSelf.uProtection);
   
   @uProtection.setter
   def uProtection(oSelf, uNewProtection):
@@ -332,12 +329,10 @@ class cVirtualAllocation(object):
         "Cannot read a Unicode string that has an odd number of bytes (%d)" % uSize;
     if oSelf.__sBytes:
       return oSelf.__sBytes[uOffset: uOffset + uSize];
-    # Modify protection to make sure the pages can be read.
+    # If needed, modify the protection to make sure the pages can be read.
     uOriginalProtection = oSelf.uProtection;
-    if oSelf.uProtection == PAGE_NOACCESS:
+    if "R" not in fsProtectionFlags(oSelf.uProtection):
       oSelf.uProtection = PAGE_READONLY;
-    elif oSelf.uProtection == PAGE_EXECUTE:
-      oSelf.uProtection = PAGE_EXECUTE_READ;
     # Open process to read memory
     hProcess = KERNEL32.OpenProcess(PROCESS_VM_READ, FALSE, oSelf.__uProcessId);
     hProcess \
