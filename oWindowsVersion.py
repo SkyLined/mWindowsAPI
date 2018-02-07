@@ -1,15 +1,19 @@
-from foGetRegistryValue import foGetRegistryValue;
 from mDefines import *;
 from mFunctions import *;
 from mTypes import *;
 from mDLLs import KERNEL32;
 from oSystemInfo import oSystemInfo;
+from mRegistry import cRegistryValue;
 
 def fsReadRegistryValue(sValueName):
-  oRegistryValue = foGetRegistryValue("HKLM", r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", sValueName);
+  oRegistryValue = cRegistryValue.foGet(
+    sHiveName = "HKLM",
+    sKeyName = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion",
+    sValueName = sValueName,
+  );
   assert oRegistryValue, \
       "Cannot read HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\%s" % sValueName;
-  assert oRegistryValue.sType == "REG_SZ", \
+  assert oRegistryValue.sTypeName == "REG_SZ", \
       r"Expected HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\%s to be REG_SZ, got %s" % (sValueName, oRegistryValue.sType);
   return oRegistryValue.xValue;
 

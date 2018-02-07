@@ -12,7 +12,6 @@ from fbWaitForProcessTerminationForHandle import fbWaitForProcessTerminationForH
 from fbWaitForProcessTerminationForId import fbWaitForProcessTerminationForId;
 from fDebugBreakProcessForId import fDebugBreakProcessForId;
 from fdsProcessesExecutableName_by_uId import fdsProcessesExecutableName_by_uId;
-from foGetRegistryValue import foGetRegistryValue;
 from fResumeProcessForId import fResumeProcessForId;
 from fSendCtrlCToProcessForId import fSendCtrlCToProcessForId;
 from fsGetProcessISAFor_ import fsGetProcessISAForId, fsGetProcessISAForHandle;

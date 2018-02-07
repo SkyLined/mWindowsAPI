@@ -12,6 +12,7 @@ from mWindowsAPI import *;
 from mWindowsAPI.mDLLs import *;
 from mWindowsAPI.mDefines import *;
 from mWindowsAPI.mTypes import *;
+from mWindowsAPI.mRegistry import *;
 
 # Sub-packages should load all modules relative, or they will end up in the global namespace, which means they may get
 # loaded by the script importing it if it tries to load a differnt module with the same name. Obviously, that script
@@ -33,7 +34,25 @@ sys.path = asOriginalSysPath;
 if __name__ == "__main__":
   # Test registry access
   print "* Testing Registry access...";
-  # cWindowsVersion uses foGetRegistryValue
+  oTestRegistryValue = cRegistryValue(
+    sTypeName = "SZ",
+    xValue = "Test value",
+  );
+  oRegistryHiveKeyNamedValue = cRegistryHiveKeyNamedValue(
+    sHiveName = "HKCU",
+    sKeyName = r"Software\SkyLined\mWindowsAPI",
+    sValueName = "Test value name",
+  );
+  assert oRegistryHiveKeyNamedValue.foSet(oTestRegistryValue), \
+      "Could not set named registry value!";
+  assert oRegistryHiveKeyNamedValue.foGet() == oTestRegistryValue, \
+      "Could not get named registry value!";
+  assert oRegistryHiveKeyNamedValue.fbDelete(), \
+      "Could not delete named registry value";
+  assert oRegistryHiveKeyNamedValue.foGet() is None, \
+      "Deleting named registry value failed!";
+  
+  # Test cWindowsVersion
   print "  Windows version: %s" %  oWindowsVersion;
   print "* Testing oSystemInfo...";
   # Test oSystemInfo
