@@ -12,29 +12,31 @@ from fsGetPythonISA import fsGetPythonISA;
 # buffering). The code below does this and uses the following value for the size of these blocks:
 guStringReadAheadBlockSize = 0x400;
 
+uBasicProtectionFlagsMask = 0xFF;
+
 def fsProtection(uProtection):
   return {
-    PAGE_NOACCESS: "PAGE_NOACCESS",
-    PAGE_READONLY: "PAGE_READONLY",
-    PAGE_READWRITE: "PAGE_READWRITE",
-    PAGE_WRITECOPY: "PAGE_WRITECOPY",
-    PAGE_EXECUTE: "PAGE_EXECUTE",
-    PAGE_EXECUTE_READ: "PAGE_EXECUTE_READ",
-    PAGE_EXECUTE_READWRITE: "PAGE_EXECUTE_READWRITE",
-    PAGE_EXECUTE_WRITECOPY: "PAGE_EXECUTE_WRITECOPY",
-  }.get(uProtection);
+      PAGE_NOACCESS: "PAGE_NOACCESS",
+      PAGE_READONLY: "PAGE_READONLY",
+      PAGE_READWRITE: "PAGE_READWRITE",
+      PAGE_WRITECOPY: "PAGE_WRITECOPY",
+      PAGE_EXECUTE: "PAGE_EXECUTE",
+      PAGE_EXECUTE_READ: "PAGE_EXECUTE_READ",
+      PAGE_EXECUTE_READWRITE: "PAGE_EXECUTE_READWRITE",
+      PAGE_EXECUTE_WRITECOPY: "PAGE_EXECUTE_WRITECOPY",
+    }[uProtection & uBasicProtectionFlagsMask];
 
-def fsProtectionFlags(uProtection):
+def fasAllowedAccessTypesForProtection(uProtection):
   return {
-    PAGE_NOACCESS: "",
-    PAGE_READONLY: "R",
-    PAGE_READWRITE: "RW",
-    PAGE_WRITECOPY: "RW",
-    PAGE_EXECUTE: "RE",
-    PAGE_EXECUTE_READ: "RE",
-    PAGE_EXECUTE_READWRITE: "RWE",
-    PAGE_EXECUTE_WRITECOPY: "RWE",
-  }.get(uProtection, "");
+    PAGE_NOACCESS: [],
+    PAGE_READONLY: ["read"],
+    PAGE_READWRITE: ["read", "write"],
+    PAGE_WRITECOPY: ["read", "write"],
+    PAGE_EXECUTE: ["read", "execute"],
+    PAGE_EXECUTE_READ: ["read", "execute"],
+    PAGE_EXECUTE_READWRITE: ["read", "write", "execute"],
+    PAGE_EXECUTE_WRITECOPY: ["read", "write", "execute"],
+  }[uProtection & uBasicProtectionFlagsMask];
 
 class cVirtualAllocation(object):
   @staticmethod
@@ -226,17 +228,20 @@ class cVirtualAllocation(object):
     return oSelf.__uProtection;
   @property
   def sProtection(oSelf):
-    return fsProtection(oSelf.__uProtection);
+    return fsProtection(oSelf.__uProtection); # Only mentions "basic" access protection flags! (not PAGE_GUARD, etc.)
   
   @property
   def bReadable(oSelf):
-    return oSelf.bAllocated and "R" in fsProtectionFlags(oSelf.uProtection);
+    return oSelf.bAllocated and "read" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
   @property
   def bWritable(oSelf):
-    return oSelf.bAllocated and "W" in fsProtectionFlags(oSelf.uProtection);
+    return oSelf.bAllocated and "write" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
   @property
   def bExecutable(oSelf):
-    return oSelf.bAllocated and "E" in fsProtectionFlags(oSelf.uProtection);
+    return oSelf.bAllocated and "execute" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
+  @property
+  def bGuard(oSelf):
+    return oSelf.bAllocated and (oSelf.uProtection & PAGE_GUARD);
   
   @uProtection.setter
   def uProtection(oSelf, uNewProtection):
@@ -264,7 +269,7 @@ class cVirtualAllocation(object):
 
   @sProtection.setter
   def sProtection(oSelf, sNewProtection):
-    # uNewProtection can also be one of the following strings:
+    # sNewProtection can only contain "basic" access protection flags, like these:
     uNewProtection = {
       "PAGE_NOACCESS": PAGE_NOACCESS,
       "PAGE_READONLY": PAGE_READONLY,
@@ -331,7 +336,8 @@ class cVirtualAllocation(object):
       return oSelf.__sBytes[uOffset: uOffset + uSize];
     # If needed, modify the protection to make sure the pages can be read.
     uOriginalProtection = oSelf.uProtection;
-    if "R" not in fsProtectionFlags(oSelf.uProtection):
+    if "read" not in fasAllowedAccessTypesForProtection(oSelf.uProtection):
+      # Temporarily allow reading from this page.
       oSelf.uProtection = PAGE_READONLY;
     # Open process to read memory
     hProcess = KERNEL32.OpenProcess(PROCESS_VM_READ, FALSE, oSelf.__uProcessId);
