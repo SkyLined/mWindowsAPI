@@ -52,11 +52,9 @@ if __name__ == "__main__":
   assert oRegistryHiveKeyNamedValue.foGet() is None, \
       "Deleting named registry value failed!";
   
-  # Test cWindowsVersion
-  print "  Windows version: %s" %  oWindowsVersion;
-  print "* Testing oSystemInfo...";
   # Test oSystemInfo
-  print "  Windows ISA:     %s" % oSystemInfo.sOSISA;
+  print "* Testing oSystemInfo...";
+  print "  OS version: %s" %  oSystemInfo.sOSVersion;
   print "  Processors:      %d" % oSystemInfo.uNumberOfProcessors;
   print "  Address range:   0x%08X - 0x%08X" % (oSystemInfo.uMinimumApplicationAddress, oSystemInfo.uMaximumApplicationAddress);
   print "  Page size:       0x%X" % oSystemInfo.uPageSize;
