@@ -1,8 +1,8 @@
-from mDefines import MAX_PATH, PROCESSOR_ARCHITECTURE_AMD64, PROCESSOR_ARCHITECTURE_INTEL;
-from mDLLs import KERNEL32;
-from mFunctions import POINTER;
-from mRegistry import cRegistryValue;
-from mTypes import SYSTEM_INFO;
+from .mDefines import MAX_PATH, PROCESSOR_ARCHITECTURE_AMD64, PROCESSOR_ARCHITECTURE_INTEL;
+from .mDLLs import KERNEL32;
+from .mFunctions import POINTER, WSTR;
+from .mRegistry import cRegistryValue;
+from .mTypes import SYSTEM_INFO;
 
 def fsHKLMValue(sKeyName, sValueName):
   oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyName = sKeyName, sValueName = sValueName);
@@ -42,13 +42,13 @@ class cSystemInfo(object):
     return oSelf.__sOSName;
 
   @property
-  def sReleaseId(oSelf):
-    if not oSelf.__sReleaseId:
-      oSelf.__sReleaseId = fsHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ReleaseId");
-    return oSelf.__sReleaseId;
+  def sOSReleaseId(oSelf):
+    if not oSelf.__sOSReleaseId:
+      oSelf.__sOSReleaseId = fsHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ReleaseId");
+    return oSelf.__sOSReleaseId;
   @property
   def uReleaseId(oSelf):
-    return long(oSelf.sReleaseId);
+    return long(oSelf.sOSReleaseId);
 
   @property
   def sOSBuild(oSelf):
@@ -77,6 +77,6 @@ class cSystemInfo(object):
   @property
   def sOSVersion(oSelf):
     return "%s release %s, build %s %s in %s" % \
-        (oSelf.sOSName, oSelf.sReleaseId, oSelf.sCurrentBuild, oSelf.sISA, oSelf.sPath);
+        (oSelf.sOSName, oSelf.sOSReleaseId, oSelf.sOSBuild, oSelf.sOSISA, oSelf.sOSPath);
 
 oSystemInfo = cSystemInfo();
