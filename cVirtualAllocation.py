@@ -15,6 +15,7 @@ guStringReadAheadBlockSize = 0x400;
 uBasicProtectionFlagsMask = 0xFF;
 
 def fsProtection(uProtection):
+  if uProtection is None: return None;
   return {
       PAGE_NOACCESS: "PAGE_NOACCESS",
       PAGE_READONLY: "PAGE_READONLY",
@@ -228,7 +229,8 @@ class cVirtualAllocation(object):
     return oSelf.__uProtection;
   @property
   def sProtection(oSelf):
-    return fsProtection(oSelf.__uProtection); # Only mentions "basic" access protection flags! (not PAGE_GUARD, etc.)
+   # Only mentions "basic" access protection flags! (not PAGE_GUARD, etc.)
+    return fsProtection(oSelf.__uProtection);
   
   @property
   def bReadable(oSelf):
