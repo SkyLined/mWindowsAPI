@@ -79,8 +79,12 @@ LPWSTR = ctypes.c_wchar_p;
 #OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 OLESTR = ctypes.c_wchar_p;
 #PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PCSTR = ctypes.c_char_p;
+PCWSTR = ctypes.c_wchar_p;
 PROCESSINFOCLASS = ctypes.c_size_t; # defined as an enum, so I'm guessing its size depends on the architecture.
+PSTR = ctypes.c_char_p;
 PVOID = ctypes.c_void_p;
+PWSTR = ctypes.c_wchar_p;
 #SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
 SHORT = ctypes.c_short;
 SIZE_T = ctypes.c_size_t;
