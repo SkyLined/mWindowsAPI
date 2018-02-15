@@ -126,20 +126,15 @@ def fcStructureOrUnion(cBaseType, sName, axFields, uAlignmentBytes = None):
         lambda oStructureOrUnion:
           [ord(sByte) for sByte in oStructureOrUnion.fsToBytesString()]
       ),
-      "fuSizeOf": (
-        lambda oStructureOrUnion, sFieldName:
-          getattr(oStructureOrUnion.__class__, sFieldName).size
-      ),
-      "fuOffsetOf": (
-        lambda oStructureOrUnion, sFieldName:
-          getattr(oStructureOrUnion.__class__, sFieldName).offset
-      ),
       "fasDump": fasDumpStructure,
     },
   );
   cStructureOrUnion.uAlignmentBytes = uAlignmentBytes;
   cStructureOrUnion._pack_ = uAlignmentBytes;
   cStructureOrUnion._fields_ = atxFields;
+  cStructureOrUnion.fuSizeOf = lambda xClassOrObject, sFieldName: getattr(cStructureOrUnion, sFieldName).size;
+  cStructureOrUnion.fuOffsetOf = lambda xClassOrObject, sFieldName: getattr(cStructureOrUnion, sFieldName).offset;
+
   return cStructureOrUnion;
 def fcStructure(sName, *axFields, **dxOption_by_sName):
   return fcStructureOrUnion(ctypes.Structure, sName, axFields, **dxOption_by_sName);
