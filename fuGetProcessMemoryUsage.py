@@ -1,6 +1,6 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
+from mDefines import FALSE, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ;
+from mFunctions import CAST, HRESULT_FROM_WIN32, POINTER, SIZEOF;
+from mTypes import PROCESS_MEMORY_COUNTERS, PROCESS_MEMORY_COUNTERS_EX;
 from mDLLs import KERNEL32;
 
 def fuGetProcessMemoryUsage(uProcessId):

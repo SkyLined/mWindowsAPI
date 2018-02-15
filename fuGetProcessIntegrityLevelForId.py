@@ -1,6 +1,6 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
+from mDefines import ERROR_INSUFFICIENT_BUFFER, FALSE, NULL, PROCESS_QUERY_INFORMATION, TokenIntegrityLevel, TOKEN_QUERY;
+from mFunctions import BUFFER, CAST, HRESULT_FROM_WIN32, POINTER;
+from mTypes import DWORD, HANDLE, PDWORD, TOKEN_MANDATORY_LABEL;
 from mDLLs import ADVAPI32, KERNEL32;
 from fThrowError import fThrowError;
 

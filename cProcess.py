@@ -1,18 +1,18 @@
 import os;
 
-from mDefines import *;
-from mTypes import *;
-from mDLLs import KERNEL32, NTDLL;
-from cVirtualAllocation import cVirtualAllocation;
-from fbIsProcessRunningForHandle import fbIsProcessRunningForHandle;
-from fbTerminateProcessForHandle import fbTerminateProcessForHandle;
-from fbWaitForProcessTerminationForHandle import fbWaitForProcessTerminationForHandle;
-from fsGetPythonISA import fsGetPythonISA;
-from fsGetProcessISAFor_ import fsGetProcessISAForHandle;
-from fThrowError import fThrowError;
-from fuGetProcessExitCodeForHandle import fuGetProcessExitCodeForHandle;
-from fuGetProcessIntegrityLevelForId import fuGetProcessIntegrityLevelForId;
-from oSystemInfo import oSystemInfo;
+from .mDefines import *;
+from .mTypes import *;
+from .mDLLs import KERNEL32, NTDLL;
+from .cVirtualAllocation import cVirtualAllocation;
+from .fbIsProcessRunningForHandle import fbIsProcessRunningForHandle;
+from .fbTerminateProcessForHandle import fbTerminateProcessForHandle;
+from .fbWaitForProcessTerminationForHandle import fbWaitForProcessTerminationForHandle;
+from .fsGetPythonISA import fsGetPythonISA;
+from .fsGetProcessISAFor_ import fsGetProcessISAForHandle;
+from .fThrowError import fThrowError;
+from .fuGetProcessExitCodeForHandle import fuGetProcessExitCodeForHandle;
+from .fuGetProcessIntegrityLevelForId import fuGetProcessIntegrityLevelForId;
+from .oSystemInfo import oSystemInfo;
 
 class cProcess(object):
   def __init__(oSelf, uId, hProcess = None):

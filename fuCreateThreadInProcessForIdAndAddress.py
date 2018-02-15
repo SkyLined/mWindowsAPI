@@ -1,6 +1,7 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
+from mDefines import FALSE, CREATE_SUSPENDED, NULL, PROCESS_CREATE_THREAD, PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, \
+    PROCESS_VM_READ, PROCESS_VM_WRITE;
+from mFunctions import CAST, POINTER;
+from mTypes import DWORD, LPTHREAD_START_ROUTINE;
 from mDLLs import KERNEL32;
 from cVirtualAllocation import cVirtualAllocation;
 from fThrowError import fThrowError;

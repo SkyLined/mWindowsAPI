@@ -1,6 +1,5 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
+from mDefines import FALSE, THREAD_SUSPEND_RESUME;
+from mFunctions import SUCCEEDED;
 from mDLLs import KERNEL32, NTDLL;
 from fThrowError import fThrowError;
 

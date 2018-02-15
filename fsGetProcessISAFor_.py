@@ -1,9 +1,9 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
-from mDLLs import KERNEL32;
-from oSystemInfo import oSystemInfo;
-from fThrowError import fThrowError;
+from .mDefines import *;
+from .mFunctions import *;
+from .mTypes import *;
+from .mDLLs import KERNEL32;
+from .oSystemInfo import oSystemInfo;
+from .fThrowError import fThrowError;
 
 def fsGetProcessISAForId(uProcessId):
   uFlags = PROCESS_QUERY_LIMITED_INFORMATION;

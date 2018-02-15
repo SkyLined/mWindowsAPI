@@ -1,10 +1,10 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
-from mDLLs import KERNEL32;
-from cPipe import cPipe;
-from cProcess import cProcess;
-from fThrowError import fThrowError;
+from .mDefines import *;
+from .mFunctions import *;
+from .mTypes import *;
+from .mDLLs import KERNEL32;
+from .cPipe import cPipe;
+from .cProcess import cProcess;
+from .fThrowError import fThrowError;
 
 class cConsoleProcess(cProcess):
   @staticmethod

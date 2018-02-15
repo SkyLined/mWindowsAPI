@@ -1,11 +1,11 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
-from mDLLs import KERNEL32;
-from fThrowError import fThrowError;
+from .mDefines import *;
+from .mFunctions import *;
+from .mTypes import *;
+from .mDLLs import KERNEL32;
+from .fThrowError import fThrowError;
 
-from fsGetPythonISA import fsGetPythonISA;
-from oSystemInfo import oSystemInfo;
+from .fsGetPythonISA import fsGetPythonISA;
+from .oSystemInfo import oSystemInfo;
 
 JOBOBJECT_EXTENDED_LIMIT_INFORMATION = {
   "x86": JOBOBJECT_EXTENDED_LIMIT_INFORMATION_32,

@@ -1,8 +1,8 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
-from mDLLs import KERNEL32;
-from fThrowError import fThrowError;
+from .mDefines import *;
+from .mFunctions import *;
+from .mTypes import *;
+from .mDLLs import KERNEL32;
+from .fThrowError import fThrowError;
 
 def fbTerminateProcessForHandle(hProcess, nTimeout = None):
   # We can open the process: try to terminate it.

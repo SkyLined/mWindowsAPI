@@ -1,10 +1,10 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
-from mDLLs import KERNEL32;
-from fbIsProcessRunningForId import fbIsProcessRunningForId;
-from fbTerminateProcessForHandle import fbTerminateProcessForHandle;
-from fThrowError import fThrowError;
+from .mDefines import *;
+from .mFunctions import *;
+from .mTypes import *;
+from .mDLLs import KERNEL32;
+from .fbIsProcessRunningForId import fbIsProcessRunningForId;
+from .fbTerminateProcessForHandle import fbTerminateProcessForHandle;
+from .fThrowError import fThrowError;
 
 def fbTerminateProcessForId(uProcessId, nTimeout = None):
   if not fbIsProcessRunningForId(uProcessId):

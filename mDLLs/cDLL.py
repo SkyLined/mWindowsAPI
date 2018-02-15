@@ -5,7 +5,7 @@ class cDLL(object):
     oSelf.__sDLLFilePath = sDLLFilePath;
     oSelf.__oWinDLL = None;
   
-  def fLoad(oSelf);
+  def fLoad(oSelf):
     if oSelf.__oWinDLL is None:
       oSelf.__oWinDLL = ctypes.WinDLL(oSelf.__sDLLFilePath);
   
