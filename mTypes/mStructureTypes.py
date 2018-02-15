@@ -33,7 +33,7 @@ def fasDumpStructure(oStructureOrUnion, sName = None):
   sName = sName or oStructureOrUnion.__class__.__name__;
   auBytes = oStructureOrUnion.fauToBytes();
   return [
-    "Name: " % sName,
+    "Name: %s" % sName,
     "Alignment: %d bytes" % oStructureOrUnion.__class__.uAlignmentBytes,
     len(auBytes) < 10 \
         and "Size: %d bytes" % len(auBytes) \
