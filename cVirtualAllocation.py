@@ -1,10 +1,10 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
-from mDLLs import KERNEL32;
-from fThrowError import fThrowError;
-from oSystemInfo import oSystemInfo;
-from fsGetPythonISA import fsGetPythonISA;
+from .mDefines import *;
+from .mFunctions import *;
+from .mTypes import *;
+from .mDLLs import KERNEL32;
+from .fThrowError import fThrowError;
+from .oSystemInfo import oSystemInfo;
+from .fsGetPythonISA import fsGetPythonISA;
 
 # When reading a NULL terminated string from a process, we do not know the length up front. So we will need to read
 # bytes until we find a NULL. We could read one byte at a time from the process, but reading bytes from another process
