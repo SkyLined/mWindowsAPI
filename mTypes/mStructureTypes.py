@@ -60,8 +60,8 @@ def fasDumpStructureOrUnionHelper(uOffset, uDepth, oStructureOrUnion, auBytes):
       ]);
     elif cFieldType == cArrayType:
       asDumpData.append(sHeaderFormat % ("", sFieldName, "["));
-      assert type(oField._type_) in [int, long], \
-          "Unhandled array element type %s for field %s" % (repr(oField._type_), sFieldName);
+      assert oField._type_ in [BYTE] or type(oField._type_) in [int, long], \
+          "Unhandled array element type %s/%s for field %s" % (repr(oField._type_), repr(type(oField._type_)), sFieldName);
       uElementSize = SIZEOF(oField._type_);
       for uElementIndex in xrange(oField._length_):
         sElementIndex = uElementIndex < 10 and ("[%d]" % uElementIndex) or ("[%d/0x%X]" % (uElementIndex, uElementIndex));
