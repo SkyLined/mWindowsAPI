@@ -13,6 +13,7 @@ from mWindowsAPI.mDLLs import *;
 from mWindowsAPI.mDefines import *;
 from mWindowsAPI.mTypes import *;
 from mWindowsAPI.mRegistry import *;
+from mWindowsAPI import mDbgHelp;
 
 # Sub-packages should load all modules relative, or they will end up in the global namespace, which means they may get
 # loaded by the script importing it if it tries to load a differnt module with the same name. Obviously, that script
@@ -269,6 +270,26 @@ if __name__ == "__main__":
     sReadBytes = oConsoleProcess.oStdOutPipe.fsReadBytes(1);
     assert sReadBytes == "", \
         "Read %s from a completely closed pipe" % repr(sReadBytes);
+    # mDbgHelp.fsUndecorateSymbolName
+    print "* Testing mDbgHelp...";
+    print "  * fsUndecorateSymbolName...";
+    for (sDecoratedSymbolName, tsExpectedResults) in {
+      "?function@@YAHD@Z":                    ["int __cdecl function(char)", "function"],
+      "?function@namespace@@AAGXM@Z":         ["private: void __stdcall namespace::function(float)", "namespace::function"],
+      "?method@class@namespace@@AAEXH@Z":     ["private: void __thiscall namespace::class::method(int)", "namespace::class::method"],
+      ".?AVSafeIntException@utilities@msl@@": [" ?? msl::utilities::SafeIntException", "msl::utilities::SafeIntException"],
+      "Not a decorated name":                 [None, None],
+    }.items():
+      sExpectedFullSymbolName, sExpectedSymbolName = tsExpectedResults;
+      sUndecoratedFullSymbolName = mDbgHelp.fsUndecorateSymbolName(sDecoratedSymbolName);
+      assert sUndecoratedFullSymbolName == sExpectedFullSymbolName, \
+          "mDbgHelp.fsUndecorateSymbolName(%s) => %s instead of %s" % \
+          (repr(sDecoratedSymbolName), repr(sUndecoratedFullSymbolName), repr(sExpectedFullSymbolName));
+      sUndecoratedSymbolName = mDbgHelp.fsUndecorateSymbolName(sDecoratedSymbolName, bNameOnly = True);
+      assert sUndecoratedSymbolName == sExpectedSymbolName, \
+          "mDbgHelp.fsUndecorateSymbolName(%s) => %s instead of %s" % \
+          (repr(sDecoratedSymbolName), repr(sUndecoratedSymbolName), repr(sExpectedSymbolName));
+      print "    + %s => %s / %s" % (sDecoratedSymbolName, sUndecoratedSymbolName, sUndecoratedFullSymbolName);
   except:
     oTestProcess.terminate();
     oTestProcess.wait();
