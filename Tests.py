@@ -60,6 +60,8 @@ if __name__ == "__main__":
   print "  Address range:   0x%08X - 0x%08X" % (oSystemInfo.uMinimumApplicationAddress, oSystemInfo.uMaximumApplicationAddress);
   print "  Page size:       0x%X" % oSystemInfo.uPageSize;
   print "  Allocation granularity: 0x%X" % oSystemInfo.uAllocationAddressGranularity;
+  print "  System name: %s" % oSystemInfo.sSystemName;
+  print "  System id: %s" % oSystemInfo.sUniqueSystemId;
   
   # Test console functions
   print "* Testing KERNEL32 console functions...";

@@ -33,7 +33,8 @@ class cSystemInfo(object):
     oSelf.__sOSReleaseId = None;
     oSelf.__sOSBuild = None;
     oSelf.__sOSPath = None;
-    oSelf.__sUniqueMachineId = None;
+    oSelf.__sSystemName = None;
+    oSelf.__sUniqueSystemId = None;
   
   @property
   def sOSName(oSelf):
@@ -69,10 +70,17 @@ class cSystemInfo(object):
       oSelf.__sPath = sBuffer.value;
     return oSelf.__sPath;
   
-  def sUniqueMachineId(oSelf):
-    if not oSelf.__sUniqueMachineId:
-      oSelf.__sUniqueMachineId = fsHKLMValue(r"SOFTWARE\Microsoft\Cryptography", "MachineGuid");
-    return oSelf.__sUniqueMachineId;
+  @property
+  def sSystemName(oSelf):
+    if not oSelf.__sSystemName:
+      oSelf.__sSystemName = fsHKLMValue(r"SYSTEM\CurrentControlSet\Control\ComputerName\ActiveComputerName", "ComputerName");
+    return oSelf.__sSystemName;
+  
+  @property
+  def sUniqueSystemId(oSelf):
+    if not oSelf.__sUniqueSystemId:
+      oSelf.__sUniqueSystemId = fsHKLMValue(r"SOFTWARE\Microsoft\Cryptography", "MachineGuid");
+    return oSelf.__sUniqueSystemId;
   
   @property
   def sOSVersion(oSelf):
