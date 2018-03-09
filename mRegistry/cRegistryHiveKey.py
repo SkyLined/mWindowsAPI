@@ -68,6 +68,15 @@ class cRegistryHiveKey(object):
     oSelf.__oWinRegKey = oSelf.oRegistryHive.foCreateWinRegKey(oSelf.sKeyName, bForWriting = bForWriting);
     return oSelf.__oWinRegKey is not None;
   
+  def fbDelete(oSelf):
+    for sName in oSelf.doSubKey_by_sName.keys():
+      if not oSelf.fbDeleteSubKey(sSubKeyName):
+        return False;
+    return oSelf.oParentHiveKey.fbDeleteSubKey(oSelf.sKeyName);
+  
+  def fbDeleteSubKey(oSelf, sSubKeyName):
+    return oSelf.__oRegistryHive.fbDeleteHiveKeySubKey(oSelf, sSubKeyName);
+  
   @property
   def oParentHiveKey(oSelf):
     try:

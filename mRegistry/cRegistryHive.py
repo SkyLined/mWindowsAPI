@@ -103,6 +103,19 @@ class cRegistryHive(object):
       bWinRegKeyForWriting = bForWriting,
     );
   
+  def fbDeleteHiveKeySubKey(oSelf, oHiveKey, sSubKeyName):
+    oWinRegKey = oSelf.foOpenWinRegKey(oHiveKey.sKeyName, bForWriting);
+    if not oWinRegKey:
+      return False;
+    try:
+      _winreg.DeleteKey(oWinRegKey, sSubKeyName);
+    except WindowsError, oWindowsError:
+      if oWindowsError.errno == WIN32_FROM_HRESULT(ERROR_FILE_NOT_FOUND):
+        # The key does not exist.
+        return True;
+      return False;
+    return True;
+  
   @property
   def sFullPath(oSelf):
     return oSelf.sHiveName;
