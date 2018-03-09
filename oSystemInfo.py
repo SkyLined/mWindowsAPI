@@ -12,7 +12,6 @@ def fsHKLMValue(sKeyName, sValueName):
       r"Expected HKLM\%s\%s to be REG_SZ, got %s" % (sKeyName, sValueName, oRegistryValue.sType);
   return oRegistryValue.xValue;
 
-
 class cSystemInfo(object):
   def __init__(oSelf):
     oSystemInfo = SYSTEM_INFO();
