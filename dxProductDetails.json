@@ -2,7 +2,7 @@
   "asDependentOnProductNames": [
     "mProductDetails"
   ], 
-  "oProductVersion": "2018-03-09 21:57", 
+  "oProductVersion": "2018-03-09 22:35", 
   "oRepository": {
     "sBranch": "dev", 
     "sRepositoryName": "mWindowsAPI", 
@@ -10,8 +10,8 @@
     "sUserName": "SkyLined"
   }, 
   "sLicenseServerURL": "https://license.skylined.nl/fdxGetLicenseCheckResult.php", 
-  "sProductName": "mWindowsAPI", 
   "sProductAuthor": "SkyLined", 
+  "sProductName": "mWindowsAPI", 
   "sProductURL": "https://github.com/SkyLined/mWindowsAPI", 
   "sTrialPeriodDuration": "1m"
 }
