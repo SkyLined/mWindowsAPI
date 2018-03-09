@@ -11,5 +11,7 @@
   }, 
   "sLicenseServerURL": "https://license.skylined.nl/fdxGetLicenseCheckResult.php", 
   "sProductName": "mWindowsAPI", 
+  "sProductAuthor": "SkyLined", 
+  "sProductURL": "https://github.com/SkyLined/mWindowsAPI", 
   "sTrialPeriodDuration": "1m"
 }
