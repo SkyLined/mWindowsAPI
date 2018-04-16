@@ -1,4 +1,4 @@
-import ctypes;
+import ctypes, struct;
 
 ################################################################################
 # Non-numeric defines
@@ -26,8 +26,8 @@ CREATE_UNICODE_ENVIRONMENT              = 0x00000400;
 CTRL_BREAK_EVENT                        =          1; # https://docs.microsoft.com/en-us/windows/console/generateconsolectrlevent
 CTRL_C_EVENT                            =          0; # https://docs.microsoft.com/en-us/windows/console/generateconsolectrlevent
 #DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
-DEBUG_ONLY_THIS_PROCESS                 = 0x00000002
-DEBUG_PROCESS                           = 0x00000001
+DEBUG_ONLY_THIS_PROCESS                 = 0x00000002;
+DEBUG_PROCESS                           = 0x00000001;
 DELETE                                  = 0x00010000;
 DETACHED_PROCESS                        = 0x00000008;
 DUPLICATE_CLOSE_SOURCE                  = 0x00000001;
@@ -40,6 +40,30 @@ HANDLE_FLAG_INHERIT                     = 0x00000001;
 HANDLE_FLAG_PROTECT_FROM_CLOSE          = 0x00000002;
 HEAP_ZERO_MEMORY                        = 0x00000008;
 #IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE   =     0x0040;
+IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY =    0x0080;
+IMAGE_DLLCHARACTERISTICS_NO_BIND        =     0x0800;
+IMAGE_DLLCHARACTERISTICS_NO_ISOLATION   =     0x0200;
+IMAGE_DLLCHARACTERISTICS_NO_SEH         =     0x0400;
+IMAGE_DLLCHARACTERISTICS_NX_COMPAT      =     0x0100;
+IMAGE_DLLCHARACTERISTICS_TERMINAL_SERVER_AWARE = 0x8000;
+IMAGE_DLLCHARACTERISTICS_WDM_DRIVER     =     0x2000;
+IMAGE_NT_OPTIONAL_HDR32_MAGIC           =      0x10b;
+IMAGE_NT_OPTIONAL_HDR64_MAGIC           =      0x20b;
+IMAGE_ROM_OPTIONAL_HDR_MAGIC            =      0x107;
+IMAGE_SUBSYSTEM_EFI_APPLICATION         =         10;
+IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER =         11;
+IMAGE_SUBSYSTEM_EFI_ROM                 =         13;
+IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER      =         12;
+IMAGE_SUBSYSTEM_NATIVE                  =          1;
+IMAGE_SUBSYSTEM_OS2_CUI                 =          5;
+IMAGE_SUBSYSTEM_POSIX_CUI               =          7;
+IMAGE_SUBSYSTEM_UNKNOWN                 =          0;
+IMAGE_SUBSYSTEM_WINDOWS_BOOT_APPLICATION =        16;
+IMAGE_SUBSYSTEM_WINDOWS_CE_GUI          =          9;
+IMAGE_SUBSYSTEM_WINDOWS_CUI             =          3;
+IMAGE_SUBSYSTEM_WINDOWS_GUI             =          2;
+IMAGE_SUBSYSTEM_XBOX                    =         14;
 INFINITE                                = 0xFFFFFFFF;
 INHERIT_PARENT_AFFINITY                 = 0x00010000
 INVALID_FILE_SIZE                       = 0xFFFFFFFF;
@@ -143,6 +167,20 @@ STILL_ACTIVE                            =      0x103;
 STD_ERROR_HANDLE                        =        -12;
 STD_INPUT_HANDLE                        =        -10;
 STD_OUTPUT_HANDLE                       =        -11;
+def STOWED_EXCEPTION_INFORMATION_SIGNATURE(sSignature):
+  # This is not actually defined by Windows, but I needed to name this function so I named it similar to
+  # STOWED_EXCEPTION_NESTED_TYPE
+ return struct.unpack(">L", sSignature)[0]; 
+STOWED_EXCEPTION_INFORMATION_V1_SIGNATURE = STOWED_EXCEPTION_INFORMATION_SIGNATURE("SE01");
+STOWED_EXCEPTION_INFORMATION_V2_SIGNATURE = STOWED_EXCEPTION_INFORMATION_SIGNATURE("SE02");
+def STOWED_EXCEPTION_NESTED_TYPE(sType):
+ return struct.unpack("<L", sType)[0]; 
+STOWED_EXCEPTION_NESTED_TYPE_NONE       = 0x00000000;
+STOWED_EXCEPTION_NESTED_TYPE_WIN32      = STOWED_EXCEPTION_NESTED_TYPE("W32E");
+STOWED_EXCEPTION_NESTED_TYPE_STOWED     = STOWED_EXCEPTION_NESTED_TYPE("STOW");
+STOWED_EXCEPTION_NESTED_TYPE_CLR        = STOWED_EXCEPTION_NESTED_TYPE("CLR1");
+STOWED_EXCEPTION_NESTED_TYPE_LEO        = STOWED_EXCEPTION_NESTED_TYPE("LEO1");
+STOWED_EXCEPTION_NESTED_TYPE_LMAX       = STOWED_EXCEPTION_NESTED_TYPE("LMAX"); # Undocumented, reversed from detected exceptions.
 SYNCHRONIZE                             = 0x00100000;
 #TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
 TH32CS_INHERIT                          = 0x80000000;
@@ -166,6 +204,25 @@ THREAD_SUSPEND_RESUME                   =     0x0002;
 THREAD_TERMINATE                        =     0x0001;
 TOKEN_QUERY                             =     0x0008;
 TokenIntegrityLevel                     =         25;
+#UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
+UNDNAME_32_BIT_DECODE                   =     0x0800;
+UNDNAME_COMPLETE                        =     0x0000;
+UNDNAME_NAME_ONLY                       =     0x1000;
+UNDNAME_NO_ACCESS_SPECIFIERS            =     0x0080;
+UNDNAME_NO_ALLOCATION_LANGUAGE          =     0x0010;
+UNDNAME_NO_ALLOCATION_MODEL             =     0x0008;
+UNDNAME_NO_ARGUMENTS                    =     0x2000;
+UNDNAME_NO_CV_THISTYPE                  =     0x0040;
+UNDNAME_NO_FUNCTION_RETURNS             =     0x0004;
+UNDNAME_NO_LEADING_UNDERSCORES          =     0x0001;
+UNDNAME_NO_MEMBER_TYPE                  =     0x0200;
+UNDNAME_NO_MS_KEYWORDS                  =     0x0002;
+UNDNAME_NO_MS_THISTYPE                  =     0x0020;
+UNDNAME_NO_RETURN_UDT_MODEL             =     0x0400;
+UNDNAME_NO_SPECIAL_SYMS                 =     0x4000;
+UNDNAME_NO_THISTYPE                     =     0x0060;
+UNDNAME_NO_THROW_SIGNATURES             =     0x0100;
+#VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 #WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 WAIT_ABANDONED                          =        128;
 WAIT_FAILED                             = 0xFFFFFFFF;

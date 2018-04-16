@@ -1,6 +1,4 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
+from mDefines import FALSE, PROCESS_QUERY_LIMITED_INFORMATION;
 from mDLLs import KERNEL32;
 from fbIsProcessRunningForId import fbIsProcessRunningForId;
 from fThrowError import fThrowError;

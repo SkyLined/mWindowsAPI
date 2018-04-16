@@ -29,10 +29,9 @@ IF DEFINED PYTHON (
   )
 )
 
-%PYTHON% "%~dp0\%~n0.py" %*
+CALL %PYTHON% "%~dp0\%~n0.py" %*
 IF ERRORLEVEL 1 GOTO :ERROR
-ENDLOCAL
-EXIT /B 0
+ENDLOCAL & EXIT /B 0
 
 :TEST_BOTH_ISAS
   ECHO * Running tests in x86 build of Python...
@@ -41,12 +40,11 @@ EXIT /B 0
   ECHO * Running tests in x64 build of Python...
   CALL PYTHON_X64 "%~dp0\%~n0.py" %*
   IF ERRORLEVEL 1 GOTO :ERROR
-  ENDLOCAL
-  EXIT /B 0
+  ENDLOCAL & EXIT /B 0
 
 :ERROR
   ECHO    - Error %ERRORLEVEL%
-  EXIT /B %ERRORLEVEL%
+  ENDLOCAL & EXIT /B %ERRORLEVEL%
 
 :CHECK_PYTHON
   REM Make sure path is quoted and check if it exists.

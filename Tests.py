@@ -1,27 +1,67 @@
 import os, sys, subprocess, threading, time;
 
-sModuleFolderPath = os.path.dirname(os.path.abspath(__file__));
-sBaseFolderPath = os.path.dirname(sModuleFolderPath);
-sys.path.extend([
-  sBaseFolderPath,
-  sModuleFolderPath,
-  os.path.join(sModuleFolderPath, "modules"),
-]);
+sMainFolderPath = os.path.dirname(os.path.abspath(__file__));
+sParentFolderPath = os.path.dirname(sMainFolderPath);
+sModulesFolderPath = os.path.join(sMainFolderPath, "modules");
+asOriginalSysPath = sys.path[:];
+sys.path = [sMainFolderPath, sParentFolderPath, sModulesFolderPath] + sys.path;
+# Save the list of names of loaded modules:
+asOriginalModuleNames = sys.modules.keys();
 
 from mWindowsAPI import *;
+from mWindowsAPI.mDLLs import *;
+from mWindowsAPI.mDefines import *;
+from mWindowsAPI.mTypes import *;
+from mWindowsAPI.mRegistry import *;
+from mWindowsAPI import mDbgHelp;
+
+# Sub-packages should load all modules relative, or they will end up in the global namespace, which means they may get
+# loaded by the script importing it if it tries to load a differnt module with the same name. Obviously, that script
+# will probably not function when the wrong module is loaded, so we need to check that we did this correctly.
+for sModuleName in sys.modules.keys():
+  assert (
+    sModuleName in asOriginalModuleNames # This was loaded before cBugId was loaded
+    or sModuleName.lstrip("_").split(".", 1)[0] in [
+      "mWindowsAPI", # This was loaded as part of the mWindowsAPI package
+      # These built-in modules are loaded by mWindowsAPI:
+      "base64", "binascii", "contextlib", "cStringIO", "ctypes", "encodings", "json", "nturl2path", "platform",
+      "socket", "ssl", "string", "strop", "struct", "textwrap", "urllib", "urlparse", "winreg",
+    ]
+  ), \
+      "Module %s was unexpectedly loaded outside of the mWindowsAPI package!" % sModuleName;
+# Restore the search path
+sys.path = asOriginalSysPath;
 
 if __name__ == "__main__":
   # Test registry access
   print "* Testing Registry access...";
-  # cWindowsVersion uses foGetRegistryValue
-  print "  Windows version: %s" %  oWindowsVersion;
-  print "* Testing oSystemInfo...";
+  oTestRegistryValue = cRegistryValue(
+    sTypeName = "SZ",
+    xValue = "Test value",
+  );
+  oRegistryHiveKeyNamedValue = cRegistryHiveKeyNamedValue(
+    sHiveName = "HKCU",
+    sKeyName = r"Software\SkyLined\mWindowsAPI",
+    sValueName = "Test value name",
+  );
+  assert oRegistryHiveKeyNamedValue.foSet(oTestRegistryValue), \
+      "Could not set named registry value!";
+  assert oRegistryHiveKeyNamedValue.foGet() == oTestRegistryValue, \
+      "Could not get named registry value!";
+  assert oRegistryHiveKeyNamedValue.fbDelete(), \
+      "Could not delete named registry value";
+  assert oRegistryHiveKeyNamedValue.foGet() is None, \
+      "Deleting named registry value failed!";
+  
   # Test oSystemInfo
-  print "  Windows ISA:     %s" % oSystemInfo.sOSISA;
+  print "* Testing oSystemInfo...";
+  print "  OS version: %s" %  oSystemInfo.sOSVersion;
   print "  Processors:      %d" % oSystemInfo.uNumberOfProcessors;
   print "  Address range:   0x%08X - 0x%08X" % (oSystemInfo.uMinimumApplicationAddress, oSystemInfo.uMaximumApplicationAddress);
   print "  Page size:       0x%X" % oSystemInfo.uPageSize;
   print "  Allocation granularity: 0x%X" % oSystemInfo.uAllocationAddressGranularity;
+  print "  System name: %s" % oSystemInfo.sSystemName;
+  print "  System id: %s" % oSystemInfo.sUniqueSystemId;
   
   # Test console functions
   print "* Testing KERNEL32 console functions...";
@@ -50,20 +90,20 @@ if __name__ == "__main__":
   try:
     print "  * Testing fSuspendProcessForId...";
     fSuspendProcessForId(oTestProcess.pid);
-    # cProcessInformation
-    print "  * Testing cProcessInformation...";
-    oProcessInformation = cProcessInformation.foGetForId(oTestProcess.pid);
-    print "    + ISA = %s" % repr(oProcessInformation.sISA);
-    print "    + Binary start address = 0x%08X" % oProcessInformation.uBinaryStartAddress;
-    print "    + Binary Path = %s" % repr(oProcessInformation.sBinaryPath);
-    print "    + Command line = %s" % repr(oProcessInformation.sCommandLine);
+    # cProcess
+    print "  * Testing cProcess...";
+    oProcess = cProcess(oTestProcess.pid);
+    print "    + ISA = %s" % repr(oProcess.sISA);
+    print "    + Binary start address = 0x%08X" % oProcess.uBinaryStartAddress;
+    print "    + Binary Path = %s" % repr(oProcess.sBinaryPath);
+    print "    + Command line = %s" % repr(oProcess.sCommandLine);
     # cVirtualAllocation
-    oBinaryVirtualAllocation = cVirtualAllocation(oTestProcess.pid, oProcessInformation.uBinaryStartAddress);
+    oBinaryVirtualAllocation = cVirtualAllocation(oTestProcess.pid, oProcess.uBinaryStartAddress);
     assert oBinaryVirtualAllocation.bAllocated, \
-        "Expected memory to be allocated at address 0x%08X" % oProcessInformation.uBinaryStartAddress;
-    assert oBinaryVirtualAllocation.uStartAddress == oProcessInformation.uBinaryStartAddress, \
+        "Expected memory to be allocated at address 0x%08X" % oProcess.uBinaryStartAddress;
+    assert oBinaryVirtualAllocation.uStartAddress == oProcess.uBinaryStartAddress, \
         "Expected binary virtual allocation to start at address 0x%08X, not 0x%08X" % \
-          (oProcessInformation.uBinaryStartAddress, oBinaryVirtualAllocation.uStartAddress);
+          (oProcess.uBinaryStartAddress, oBinaryVirtualAllocation.uStartAddress);
     print "    + There are 0x%X bytes of memory allocated at address 0x%08X." % \
         (oBinaryVirtualAllocation.uSize, oBinaryVirtualAllocation.uStartAddress);
     
@@ -90,7 +130,10 @@ if __name__ == "__main__":
     print "    + Memory usage = 0x%X." % uProcessMemoryUsage;
     uMemoryAllocationSize = 0x1230000;
     oVirtualAllocation = cVirtualAllocation.foCreateInProcessForId(oTestProcess.pid, uMemoryAllocationSize, bReserved = True);
-    oVirtualAllocation.fDump();
+    print ",".ljust(80, "-");
+    for sLine in oVirtualAllocation.fasDump():
+      print "| %s" % sLine;
+    print "`".ljust(80, "-");
     assert oVirtualAllocation is not None, \
         "Attempt to reserve 0x%X bytes failed" % uMemoryAllocationSize;
     assert oVirtualAllocation.uSize == uMemoryAllocationSize, \
@@ -103,7 +146,10 @@ if __name__ == "__main__":
 #        "Process memory usage was expected to be at least 0x%X after reservation, but is 0x%X" % \
 #        (uProcessMemoryUsage, uProcessMemoryUsageAfterReservation);
     oVirtualAllocation.fAllocate();
-    oVirtualAllocation.fDump();
+    print ",".ljust(80, "-");
+    for sLine in oVirtualAllocation.fasDump():
+      print "| %s" % sLine;
+    print "`".ljust(80, "-");
     uProcessMemoryUsageAfterAllocation = fuGetProcessMemoryUsage(oTestProcess.pid);
     print "    + Memory usage after allocating 0x%X bytes = 0x%X." % \
         (oVirtualAllocation.uSize, uProcessMemoryUsageAfterAllocation);
@@ -111,7 +157,10 @@ if __name__ == "__main__":
         "Process memory usage was expected to be 0x%X after allocation, but is 0x%X" % \
         (uProcessMemoryUsage + uMemoryAllocationSize, uProcessMemoryUsageAfterAllocation);
     oVirtualAllocation.fFree();
-    oVirtualAllocation.fDump();
+    print ",".ljust(80, "-");
+    for sLine in oVirtualAllocation.fasDump():
+      print "| %s" % sLine;
+    print "`".ljust(80, "-");
     uProcessMemoryUsageAfterFree = fuGetProcessMemoryUsage(oTestProcess.pid);
     print "    + Memory usage after freeing memory = 0x%X." % uProcessMemoryUsageAfterFree;
     assert uProcessMemoryUsageAfterFree >= uProcessMemoryUsage, \
@@ -128,7 +177,10 @@ if __name__ == "__main__":
     except MemoryError, oMemoryError:
       pass;
     else:
-      oVirtualAllocation.fDump();
+      print ",".ljust(80, "-");
+      for sLine in oVirtualAllocation.fasDump():
+        print "| %s" % sLine;
+      print "`".ljust(80, "-");
       raise AssertionError("Attempt to allocate 0x%X bytes succeeded despite JobObject memory allocation limits" % \
           uMemoryAllocationSize);
     print "    + JobObject memory limits applied correctly.";
@@ -220,6 +272,26 @@ if __name__ == "__main__":
     sReadBytes = oConsoleProcess.oStdOutPipe.fsReadBytes(1);
     assert sReadBytes == "", \
         "Read %s from a completely closed pipe" % repr(sReadBytes);
+    # mDbgHelp.fsUndecorateSymbolName
+    print "* Testing mDbgHelp...";
+    print "  * fsUndecorateSymbolName...";
+    for (sDecoratedSymbolName, tsExpectedResults) in {
+      "?function@@YAHD@Z":                    ["int __cdecl function(char)", "function"],
+      "?function@namespace@@AAGXM@Z":         ["private: void __stdcall namespace::function(float)", "namespace::function"],
+      "?method@class@namespace@@AAEXH@Z":     ["private: void __thiscall namespace::class::method(int)", "namespace::class::method"],
+      ".?AVSafeIntException@utilities@msl@@": [" ?? msl::utilities::SafeIntException", "msl::utilities::SafeIntException"],
+      "Not a decorated name":                 [None, None],
+    }.items():
+      sExpectedFullSymbolName, sExpectedSymbolName = tsExpectedResults;
+      sUndecoratedFullSymbolName = mDbgHelp.fsUndecorateSymbolName(sDecoratedSymbolName);
+      assert sUndecoratedFullSymbolName == sExpectedFullSymbolName, \
+          "mDbgHelp.fsUndecorateSymbolName(%s) => %s instead of %s" % \
+          (repr(sDecoratedSymbolName), repr(sUndecoratedFullSymbolName), repr(sExpectedFullSymbolName));
+      sUndecoratedSymbolName = mDbgHelp.fsUndecorateSymbolName(sDecoratedSymbolName, bNameOnly = True);
+      assert sUndecoratedSymbolName == sExpectedSymbolName, \
+          "mDbgHelp.fsUndecorateSymbolName(%s) => %s instead of %s" % \
+          (repr(sDecoratedSymbolName), repr(sUndecoratedSymbolName), repr(sExpectedSymbolName));
+      print "    + %s => %s / %s" % (sDecoratedSymbolName, sUndecoratedSymbolName, sUndecoratedFullSymbolName);
   except:
     oTestProcess.terminate();
     oTestProcess.wait();

@@ -2,8 +2,18 @@ import ctypes;
 from ..mDefines import *;
 from ..mFunctions import *;
 from mPrimitiveTypes import *;
+from ..fsGetPythonISA import fsGetPythonISA;
 
 uNamelessStructureOrUnionsCounter = 0;
+
+__all__ = asExportedNames = [
+  "fcStructure",
+  "fcStructure_32",
+  "fcStructure_64",
+  "fcUnion",
+  "STRUCT",
+  "UNION",
+];
 
 class STRUCT_or_UNION(object):
   def __init__(oSelf, cBaseType, axFields):
@@ -19,66 +29,70 @@ cArrayType = type(ctypes.Array);
 cStructureType = type(ctypes.Structure);
 cUnionType = type(ctypes.Union);
 tcStructureAndUnionType = (cStructureType, cUnionType);
-def fDumpStructure(oStructureOrUnion, sName = None):
+def fasDumpStructure(oStructureOrUnion, sName = None):
   sName = sName or oStructureOrUnion.__class__.__name__;
-  print (",--- %s " % sName).ljust(80, "-");
-  uIndex = 0;
-  sLine = "| 0000 ";
-  for sChar in oStructureOrUnion.fsToString():
-    if uIndex % (oStructureOrUnion._pack_ / 8) == 0:
-      sLine += " ";
-    sLine += " %02X" % ord(sChar);
-    uIndex += 1;
-    if uIndex % 0x10 == 0:
-      print sLine;
-      sLine = "| %04X " % uIndex;
-  if uIndex % 0x10 != 0:
-    print sLine;
-  print "|".ljust(80, "-");
-  fDumpStructureOrUnionHelper(0, 0, oStructureOrUnion);
-  print "'".ljust(80, "-");
+  auBytes = oStructureOrUnion.fauToBytes();
+  return [
+    "Name: %s" % sName,
+    "Alignment: %d bytes" % oStructureOrUnion.__class__.uAlignmentBytes,
+    len(auBytes) < 10 \
+        and "Size: %d bytes" % len(auBytes) \
+        or "Size: %d/0x%X bytes" % (len(auBytes), len(auBytes)),
+    "Offset Size  Data                     Name                           Value",
+  ] + fasDumpStructureOrUnionHelper(0, 0, oStructureOrUnion, auBytes);
 
-def fDumpStructureOrUnionHelper(uOffset, uDepth, oStructureOrUnion):
+def fasDumpStructureOrUnionHelper(uOffset, uDepth, oStructureOrUnion, auBytes):
   cStructureOrUnionType = type(oStructureOrUnion.__class__);
+  asDumpData = [];
   for (sFieldName, cFieldType) in oStructureOrUnion._fields_:
     oField = getattr(oStructureOrUnion, sFieldName);
     cField = getattr(oStructureOrUnion.__class__, sFieldName);
     cFieldType = type(cFieldType);
+    uFieldOffset = uOffset + cField.offset;
+    sHeaderFormat = "  %04X %04X %%-24s %s%%-30s %%s" % (uFieldOffset, cField.size, "  " * uDepth);
+    sFooterFormat = "  %4s %4s %24s %s%30s %%s" % ("", "", "", "  " * uDepth, "");
     if cFieldType in tcStructureAndUnionType:
       sFieldType = cFieldType == cStructureType and "struct" or "union";
-      print "| %s%04X %02X %-30s %s {" % ("  " * uDepth, uOffset + cField.offset, cField.size, sFieldName, sFieldType);
-      fDumpStructureOrUnionHelper(uOffset + cField.offset, uDepth + 1, oField);
-      print "| %s%4s %2s %30s }" % ("  " * uDepth, "", "", "");
+      asDumpData.extend([
+        sHeaderFormat % ("", sFieldName, sFieldType + " {"),
+      ] + fasDumpStructureOrUnionHelper(uOffset + cField.offset, uDepth + 1, oField, auBytes) + [
+        sFooterFormat % "}",
+      ]);
     elif cFieldType == cArrayType:
-      print "| %s%04X %02X %-30s [" % ("  " * uDepth, uOffset + cField.offset, cField.size, sFieldName);
-      assert type(oField._type_) == cSimpleType, \
-          "Unhandled array element type %s" % repr(oField._type_);
+      asDumpData.append(sHeaderFormat % ("", sFieldName, "["));
+      assert oField._type_ in [BYTE] or type(oField._type_) in [int, long], \
+          "Unhandled array element type %s/%s for field %s" % (repr(oField._type_), repr(type(oField._type_)), sFieldName);
       uElementSize = SIZEOF(oField._type_);
-      for uIndex in xrange(oField._length_):
-        sIndex = uIndex < 10 and ("%d" % uIndex) or ("%d/0x%X" % (uIndex, uIndex));
-        print "| %s  %04X %02X %-30s 0x%X" % \
-            ("  " * uDepth, uOffset + cField.offset + uIndex * uElementSize, uElementSize, sIndex, oField[uIndex]);
-      print "| %s%4s %2s %30s ]" % ("  " * uDepth, "", "", "");
+      for uElementIndex in xrange(oField._length_):
+        sElementIndex = uElementIndex < 10 and ("[%d]" % uElementIndex) or ("[%d/0x%X]" % (uElementIndex, uElementIndex));
+        uElementOffset = uOffset + cField.offset + uElementIndex * uElementSize
+        sElementBytes = " ".join(["%02X" % auBytes[uByteOffset] for uByteOffset in xrange(uElementOffset, uElementOffset + uElementSize)]);
+        sElementValue = "%s0x%%0%dX" % (oField[uElementIndex] < 0 and "-" or "", uElementSize * 2) % abs(oField[uElementIndex]);
+        asDumpData.append("  %04X %04X %-24s %s  %-30s %s" % \
+            (uElementOffset, uElementSize, sElementBytes, "  " * uDepth, sElementIndex, sElementValue));
+      asDumpData.append(sFooterFormat % "]");
     else:
+      sFieldBytes = " ".join(["%02X" % auBytes[uByteOffset] for uByteOffset in xrange(uFieldOffset, uFieldOffset + cField.size)]);
       assert cFieldType == cSimpleType, \
-          "Unhandled field type %s" % repr(cFieldType);
+          "Unhandled field type %s for field %s" % (repr(cFieldType), sFieldName);
       cFieldType = type(oField);
       if cFieldType in [str, unicode]:
-        uChar = ord(oField);
-        sChar = uChar in xrange(0x20, 0x7e) and oField or ".";
-        print "| %s%04X %02X %-30s '%s' (0x%X)" % ("  " * uDepth, uOffset + cField.offset, cField.size, sFieldName, sChar, uChar);
+        uByte = ord(oField);
+        sByte = uByte in xrange(0x20, 0x7e) and oField or ".";
+        sValue = "'%s' (0x%X)" % (sByte, uByte);
       else:
         assert cFieldType in [int, long], \
-            "Unhandled simple field type %s" % repr(cFieldType);
-        print "| %s%04X %02X %-30s 0x%X" % ("  " * uDepth, uOffset + cField.offset, cField.size, sFieldName, oField);
+            "Unhandled simple field type %s for field %s" % (repr(cFieldType), sFieldName);
+        sValue = "%s0x%%0%dX" % (oField < 0 and "-" or "", cField.size * 2) % abs(oField);
+      asDumpData.append(sHeaderFormat % (sFieldBytes, sFieldName, sValue));
+  return asDumpData;
 
-def fcStructureOrUnion(cBaseType, sName, axFields, uBits = None):
-  if uBits == None:
-    import platform;
-    uBits = {"32bit": 32, "64bit": 64}[platform.architecture()[0]];
+def fcStructureOrUnion(cBaseType, sName, axFields, uAlignmentBytes = None):
+  if uAlignmentBytes == None:
+    uAlignmentBytes = {"x86": 4, "x64": 8}[fsGetPythonISA()];
   else:
-    assert uBits in [32, 64], \
-        "Invalid uBits value %s" % repr(uBits);
+    assert uAlignmentBytes in [1, 2, 4, 8], \
+        "Invalid uAlignmentBytes value %s" % repr(uAlignmentBytes);
   global uNamelessStructureOrUnionsCounter;
   if sName is None:
     uNamelessStructureOrUnionsCounter += 1;
@@ -93,60 +107,61 @@ def fcStructureOrUnion(cBaseType, sName, axFields, uBits = None):
       sFieldName = "_anonymous_field_%d_" % len(asAnonymousFieldNames);
       asAnonymousFieldNames.append(sFieldName);
     if cFieldType.__class__ is STRUCT_or_UNION:
-      cFieldType = fcStructureOrUnion(cFieldType.cBaseType, None, cFieldType.axFields, uBits);
+      cFieldType = fcStructureOrUnion(cFieldType.cBaseType, None, cFieldType.axFields, uAlignmentBytes);
     atxFields.append((sFieldName, cFieldType));
   cStructureOrUnion = type(
     sName,
     (cBaseType,),
     {
       "_anonymous_": asAnonymousFieldNames,
-      "foFromString": classmethod(
+      "foFromBytesString": classmethod(
         lambda cStructureOrUnion, sData, uOffset = 0:
           cStructureOrUnion.from_buffer_copy(sData[uOffset : uOffset + ctypes.sizeof(cStructureOrUnion)])
       ),
-      "fsToString": (
+      "fsToBytesString": (
         lambda oStructureOrUnion:
           ctypes.string_at(ctypes.addressof(oStructureOrUnion),ctypes.sizeof(oStructureOrUnion))
       ),
-      "fuSizeOf": (
-        lambda oStructureOrUnion, sFieldName:
-          getattr(oStructureOrUnion.__class__, sFieldName).size
+      "fauToBytes": (
+        lambda oStructureOrUnion:
+          [ord(sByte) for sByte in oStructureOrUnion.fsToBytesString()]
       ),
-      "fuOffsetOf": (
-        lambda oStructureOrUnion, sFieldName:
-          getattr(oStructureOrUnion.__class__, sFieldName).offset
-      ),
-      "fDump": fDumpStructure,
+      "fasDump": fasDumpStructure,
     },
   );
-  cStructureOrUnion._pack_ = uBits;
+  cStructureOrUnion.uAlignmentBytes = uAlignmentBytes;
+  cStructureOrUnion._pack_ = uAlignmentBytes;
   cStructureOrUnion._fields_ = atxFields;
+  cStructureOrUnion.fuSizeOf = lambda xClassOrObject, sFieldName: getattr(cStructureOrUnion, sFieldName).size;
+  cStructureOrUnion.fuOffsetOf = lambda xClassOrObject, sFieldName: getattr(cStructureOrUnion, sFieldName).offset;
+
   return cStructureOrUnion;
-def fcStructure(sName, *axFields):
-  return fcStructureOrUnion(ctypes.Structure, sName, axFields);
+def fcStructure(sName, *axFields, **dxOption_by_sName):
+  return fcStructureOrUnion(ctypes.Structure, sName, axFields, **dxOption_by_sName);
 def fcStructure_32(sName, *axFields):
-  return fcStructureOrUnion(ctypes.Structure, sName, axFields, 32);
+  return fcStructureOrUnion(ctypes.Structure, sName, axFields, uAlignmentBytes = 4);
 def fcStructure_64(sName, *axFields):
-  return fcStructureOrUnion(ctypes.Structure, sName, axFields, 64);
-def fcUnion(sName, *axFields):
-  return fcStructureOrUnion(ctypes.Union, sName, axFields);
+  return fcStructureOrUnion(ctypes.Structure, sName, axFields, uAlignmentBytes = 8);
+def fcUnion(sName, *axFields, **dxOption_by_sName):
+  return fcStructureOrUnion(ctypes.Union, sName, axFields, **dxOption_by_sName);
 
 # Defining a structure also defines "P<struct_name>" and "PP<struct_name>" as a
 # pointer-to-structure and a pointer-to-pointer-to-structure respectively.
-def fDefineHelper(fcDefineType, fPointer, sName, *atxFields):
+def fExportStructureOrUnion(fcDefineType, fPointer, sName, *atxFields):
   cType = fcDefineType(sName, *atxFields);
   globals()[sName] = cType;
   globals()["LP" + sName] = fPointer(cType);
   globals()["P" + sName] = fPointer(cType);
   globals()["PP" + sName] = fPointer(fPointer(cType));
-def fDefineStructure(sName, *atxFields):
-  fDefineHelper(fcStructure, POINTER, sName, *atxFields);
-def fDefineStructure32(sName, *atxFields):
-  fDefineHelper(fcStructure_32, POINTER_32, sName, *atxFields);
-def fDefineStructure64(sName, *atxFields):
-  fDefineHelper(fcStructure_64, POINTER_64, sName, *atxFields);
+  asExportedNames.extend([sName, "LP" + sName, "P" + sName, "PP" + sName]);
+def fExportStructure(sName, *atxFields):
+  fExportStructureOrUnion(fcStructure, POINTER, sName, *atxFields);
+def fExportStructure32(sName, *atxFields):
+  fExportStructureOrUnion(fcStructure_32, POINTER_32, sName, *atxFields);
+def fExportStructure64(sName, *atxFields):
+  fExportStructureOrUnion(fcStructure_64, POINTER_64, sName, *atxFields);
 def fDefineUnion(sName, *atxFields):
-  fDefineHelper(fcUnion, POINTER, sName, *atxFields);
+  fExportStructureOrUnion(fcUnion, POINTER, sName, *atxFields);
 
 ################################################################################
 # Simple structures that contain only primitives and no other structures are   #
@@ -155,37 +170,160 @@ def fDefineUnion(sName, *atxFields):
 ################################################################################
 
 #UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
-fDefineStructure32("UNICODE_STRING_32",
+fExportStructure32("UNICODE_STRING_32",
   (USHORT,      "Length"),
   (USHORT,      "MaximumLength"),
   (PWSTR_32,    "Buffer"),
 );
-fDefineStructure64("UNICODE_STRING_64",
+fExportStructure64("UNICODE_STRING_64",
   (USHORT,      "Length"),
   (USHORT,      "MaximumLength"),
   (PWSTR_64,    "Buffer"),
 );
 
 #CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-fDefineStructure("COORD", 
+fExportStructure("COORD", 
   (SHORT,       "X"),
   (SHORT,       "Y"),
 );
-fDefineStructure32("CURDIR_32",
+fExportStructure32("CURDIR_32",
   (UNICODE_STRING_32, "DosPath"),
   (HANDLE_32,   "Handle"),
 );
-fDefineStructure64("CURDIR_64",
+fExportStructure64("CURDIR_64",
   (UNICODE_STRING_64, "DosPath"),
   (HANDLE_64,   "Handle"),
 );
 #FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-fDefineStructure("FILETIME",
+fExportStructure("FILETIME",
   (DWORD,       "dwLowDateTime"),
   (DWORD,       "dwHighDateTime"),
 );
 #IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
-fDefineStructure("IO_COUNTERS",
+fExportStructure("IMAGE_DATA_DIRECTORY",
+  (DWORD,       "VirtualAddress"),
+  (DWORD,       "Size"),
+);
+fExportStructure("IMAGE_DOS_HEADER",
+  (BYTE * 2,    "e_magic_byte"),  # Magic number
+  (UINT16,      "e_cblp"),        # Bytes on last page of file
+  (UINT16,      "e_cp"),          # Pages in file
+  (UINT16,      "e_crlc"),        # Relocations
+  (UINT16,      "e_cparhdr"),     # Size of header in paragraphs
+  (UINT16,      "e_minalloc"),    # Minimum extra paragraphs needed
+  (UINT16,      "e_maxalloc"),    # Maximum extra paragraphs needed
+  (UINT16,      "e_ss"),          # Initial (relative) SS value
+  (UINT16,      "e_sp"),          # Initial SP value
+  (UINT16,      "e_csum"),        # Checksum
+  (UINT16,      "e_ip"),          # Initial IP value
+  (UINT16,      "e_cs"),          # Initial (relative) CS value
+  (UINT16,      "e_lfarlc"),      # File address of relocation table
+  (UINT16,      "e_ovno"),        # Overlay number
+  (UINT16 * 4,  "e_res1"),        # Reserved words
+  (UINT16,      "e_oemid"),       # OEM identifier (for e_oeminfo)
+  (UINT16,      "e_oeminfo"),     # OEM information; e_oemid specific
+  (UINT16 * 10, "e_res2"),        # Reserved words
+  (INT32,       "e_lfanew"),      # File address of new exe header
+);
+fExportStructure("IMAGE_FILE_HEADER",
+  (WORD,        "Machine"),
+  (WORD,        "NumberOfSections"),
+  (DWORD,       "TimeDateStamp"),
+  (DWORD,       "PointerToSymbolTable"),
+  (DWORD,       "NumberOfSymbols"),
+  (WORD,        "SizeOfOptionalHeader"),
+  (WORD,        "Characteristics"),
+);
+fExportStructure("IMAGE_OPTIONAL_HEADER32",
+  (WORD,        "Magic"),
+  (BYTE,        "MajorLinkerVersion"),
+  (BYTE,        "MinorLinkerVersion"),
+  (DWORD,       "SizeOfCode"),
+  (DWORD,       "SizeOfInitializedData"),
+  (DWORD,       "SizeOfUninitializedData"),
+  (DWORD,       "AddressOfEntryPoint"),
+  (DWORD,       "BaseOfCode"),
+  (DWORD,       "BaseOfData"),
+  (DWORD,       "ImageBase"),
+  (DWORD,       "SectionAlignment"),
+  (DWORD,       "FileAlignment"),
+  (WORD,        "MajorOperatingSystemVersion"),
+  (WORD,        "MinorOperatingSystemVersion"),
+  (WORD,        "MajorImageVersion"),
+  (WORD,        "MinorImageVersion"),
+  (WORD,        "MajorSubsystemVersion"),
+  (WORD,        "MinorSubsystemVersion"),
+  (DWORD,       "Win32VersionValue"),
+  (DWORD,       "SizeOfImage"),
+  (DWORD,       "SizeOfHeaders"),
+  (DWORD,       "CheckSum"),
+  (WORD,        "Subsystem"),
+  (WORD,        "DllCharacteristics"),
+  (DWORD,       "SizeOfStackReserve"),
+  (DWORD,       "SizeOfStackCommit"),
+  (DWORD,       "SizeOfHeapReserve"),
+  (DWORD,       "SizeOfHeapCommit"),
+  (DWORD,       "LoaderFlags"),
+  (DWORD,       "NumberOfRvaAndSizes"),
+  (IMAGE_DATA_DIRECTORY, "ExportTable"),
+  (IMAGE_DATA_DIRECTORY, "ImportTable"),
+  (IMAGE_DATA_DIRECTORY, "ResourceTable"),
+  (IMAGE_DATA_DIRECTORY, "ExceptionTable"),
+  (IMAGE_DATA_DIRECTORY, "CertificateTable"),
+  (IMAGE_DATA_DIRECTORY, "BaseRelocationTable"),
+  (IMAGE_DATA_DIRECTORY, "DebugInformation"),
+  (IMAGE_DATA_DIRECTORY, "ArchitectureSpecificData"),
+  (IMAGE_DATA_DIRECTORY, "GlobalPointerRegister"),
+  (IMAGE_DATA_DIRECTORY, "TLSTable"),
+  (IMAGE_DATA_DIRECTORY, "LoadConfigurationTable"),
+  (IMAGE_DATA_DIRECTORY, "BoundImportTable"),
+  (IMAGE_DATA_DIRECTORY, "ImportAddressTable"),
+  (IMAGE_DATA_DIRECTORY, "DelayImportDescriptor"),
+  (IMAGE_DATA_DIRECTORY, "CLRHeader"),
+  (IMAGE_DATA_DIRECTORY, "ReservedDataDirectory"),
+);
+fExportStructure("IMAGE_OPTIONAL_HEADER64",
+  (WORD,        "Magic"),
+  (BYTE,        "MajorLinkerVersion"),
+  (BYTE,        "MinorLinkerVersion"),
+  (DWORD,       "SizeOfCode"),
+  (DWORD,       "SizeOfInitializedData"),
+  (DWORD,       "SizeOfUninitializedData"),
+  (DWORD,       "AddressOfEntryPoint"),
+  (DWORD,       "BaseOfCode"),
+  (DWORD,       "BaseOfData"),
+  (ULONGLONG,   "ImageBase"),
+  (DWORD,       "SectionAlignment"),
+  (DWORD,       "FileAlignment"),
+  (WORD,        "MajorOperatingSystemVersion"),
+  (WORD,        "MinorOperatingSystemVersion"),
+  (WORD,        "MajorImageVersion"),
+  (WORD,        "MinorImageVersion"),
+  (WORD,        "MajorSubsystemVersion"),
+  (WORD,        "MinorSubsystemVersion"),
+  (DWORD,       "Win32VersionValue"),
+  (DWORD,       "SizeOfImage"),
+  (DWORD,       "SizeOfHeaders"),
+  (DWORD,       "CheckSum"),
+  (WORD,        "Subsystem"),
+  (WORD,        "DllCharacteristics"),
+  (ULONGLONG,   "SizeOfStackReserve"),
+  (ULONGLONG,   "SizeOfStackCommit"),
+  (ULONGLONG,   "SizeOfHeapReserve"),
+  (ULONGLONG,   "SizeOfHeapCommit"),
+  (DWORD,       "LoaderFlags"),
+  (DWORD,       "NumberOfRvaAndSizes"),
+  (IMAGE_DATA_DIRECTORY, "DataDirectory"),
+);
+fExportStructure32("IO_COUNTERS_32",
+  (ULONGLONG,   "ReadOperationCount"),
+  (ULONGLONG,   "WriteOperationCount"),
+  (ULONGLONG,   "OtherOperationCount"),
+  (ULONGLONG,   "ReadTransferCount"),
+  (ULONGLONG,   "WriteTransferCount"),
+  (ULONGLONG,   "OtherTransferCount"),
+);
+fExportStructure64("IO_COUNTERS_64",
   (ULONGLONG,   "ReadOperationCount"),
   (ULONGLONG,   "WriteOperationCount"),
   (ULONGLONG,   "OtherOperationCount"),
@@ -200,25 +338,25 @@ fDefineUnion("LARGE_INTEGER",
     (LONG,      "HighPart"),
   ),
   (STRUCT(
-    (DWORD,       "LowPart"),
-    (LONG,        "HighPart"),
+    (DWORD,     "LowPart"),
+    (LONG,      "HighPart"),
   ),            "u"),
   (LONGLONG,    "QuadPart"),
 );
-fDefineStructure("LIST_ENTRY",
+fExportStructure("LIST_ENTRY",
   (PVOID,       "Flink"), # Should be PLIST_ENTRY but circular references are not implemented.
   (PVOID,       "Blink"), # Should be PLIST_ENTRY but circular references are not implemented.
 );
-fDefineStructure32("LIST_ENTRY_32",
+fExportStructure32("LIST_ENTRY_32",
   (PVOID_32,    "Flink"), # Should be PLIST_ENTRY_32 but circular references are not implemented.
   (PVOID_32,    "Blink"), # Should be PLIST_ENTRY_32 but circular references are not implemented.
 );
-fDefineStructure64("LIST_ENTRY_64",
+fExportStructure64("LIST_ENTRY_64",
   (PVOID_64,    "Flink"), # Should be PLIST_ENTRY_64 but circular references are not implemented.
   (PVOID_64,    "Blink"), # Should be PLIST_ENTRY_64 but circular references are not implemented.
 );
 #MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-fDefineStructure("MEMORY_BASIC_INFORMATION", 
+fExportStructure("MEMORY_BASIC_INFORMATION", 
   (PVOID,       "BaseAddress"),
   (PVOID,       "AllocationBase"),
   (DWORD,       "AllocationProtect"),
@@ -227,7 +365,7 @@ fDefineStructure("MEMORY_BASIC_INFORMATION",
   (DWORD,       "Protect"),
   (DWORD,       "Type"),
 );
-fDefineStructure("MEMORY_BASIC_INFORMATION32", 
+fExportStructure("MEMORY_BASIC_INFORMATION32", 
   (DWORD,       "BaseAddress"),
   (DWORD,       "AllocationBase"),
   (DWORD,       "AllocationProtect"),
@@ -236,7 +374,7 @@ fDefineStructure("MEMORY_BASIC_INFORMATION32",
   (DWORD,       "Protect"),
   (DWORD,       "Type"),
 );
-fDefineStructure("MEMORY_BASIC_INFORMATION64", 
+fExportStructure("MEMORY_BASIC_INFORMATION64", 
   (ULONGLONG,   "BaseAddress"),
   (ULONGLONG,   "AllocationBase"),
   (DWORD,       "AllocationProtect"),
@@ -248,7 +386,7 @@ fDefineStructure("MEMORY_BASIC_INFORMATION64",
   (DWORD,       "__alignment2"),
 );
 
-fDefineStructure("MODULEENTRY32A",
+fExportStructure("MODULEENTRY32A",
   (DWORD,       "dwSize"),
   (DWORD,       "th32ModuleID"),
   (DWORD,       "th32ProcessID"),
@@ -260,7 +398,7 @@ fDefineStructure("MODULEENTRY32A",
   (CHAR * (MAX_MODULE_NAME32 + 1), "szModule"),
   (CHAR * MAX_PATH, "szExePath"),
 );
-fDefineStructure("MODULEENTRY32W",
+fExportStructure("MODULEENTRY32W",
   (DWORD,       "dwSize"),
   (DWORD,       "th32ModuleID"),
   (DWORD,       "th32ProcessID"),
@@ -273,7 +411,7 @@ fDefineStructure("MODULEENTRY32W",
   (WCHAR * MAX_PATH, "szExePath"),
 );
 #OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-fDefineStructure("OVERLAPPED",
+fExportStructure("OVERLAPPED",
   (PULONG,      "Internal"),
   (PULONG,      "InternalHigh"),
   UNION(
@@ -286,34 +424,27 @@ fDefineStructure("OVERLAPPED",
   (HANDLE,      "hEvent"),
 );
 #PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
-fDefineStructure("POINT",
+fExportStructure("POINT",
   (LONG,        "x"),
   (LONG,        "y"),
 );
-fDefineStructure32("PEB_LDR_DATA_32", 
+fExportStructure32("PEB_LDR_DATA_32", 
   (BYTE * 8,    "Reserved1"),
   (PVOID_32 * 3, "Reserved2"),
   (LIST_ENTRY_32, "InMemoryOrderModuleList"),
 );
-fDefineStructure64("PEB_LDR_DATA_64", 
+fExportStructure64("PEB_LDR_DATA_64", 
   (BYTE * 8,    "Reserved1"),
   (PVOID_64 * 3, "Reserved2"),
   (LIST_ENTRY_64, "InMemoryOrderModuleList"),
 );
-fDefineStructure("PROCESS_BASIC_INFORMATION",
-  (PVOID,       "Reserved1"),
-  (PVOID,       "PebBaseAddress"), # Should be PPEB, but PEB is defined differently on x86 than on x64, so not sure which this points to.
-  (PVOID * 2,   "Reserved2"),
-  (ULONG_PTR,   "UniqueProcessId"),
-  (PVOID,       "Reserved3"),
-);
-fDefineStructure("PROCESS_INFORMATION",
+fExportStructure("PROCESS_INFORMATION",
   (HANDLE,      "hProcess"),
   (HANDLE,      "hThread"),
   (DWORD,       "dwProcessId"),
   (DWORD,       "dwThreadId"),
 );
-fDefineStructure("PROCESS_MEMORY_COUNTERS",
+fExportStructure("PROCESS_MEMORY_COUNTERS",
   (DWORD,       "cb"),
   (DWORD,       "PageFaultCount"),
   (SIZE_T,      "PeakWorkingSetSize"),
@@ -325,7 +456,7 @@ fDefineStructure("PROCESS_MEMORY_COUNTERS",
   (SIZE_T,      "PagefileUsage"),
   (SIZE_T,      "PeakPagefileUsage"),
 );
-fDefineStructure("PROCESS_MEMORY_COUNTERS_EX",
+fExportStructure("PROCESS_MEMORY_COUNTERS_EX",
   (DWORD,       "cb"),
   (DWORD,       "PageFaultCount"),
   (SIZE_T,      "PeakWorkingSetSize"),
@@ -338,7 +469,7 @@ fDefineStructure("PROCESS_MEMORY_COUNTERS_EX",
   (SIZE_T,      "PeakPagefileUsage"),
   (SIZE_T,      "PrivateUsage"),
 );
-fDefineStructure("PROCESSENTRY32A",
+fExportStructure("PROCESSENTRY32A",
   (DWORD,       "dwSize"),
   (DWORD,       "cntUsage"),
   (DWORD,       "th32ProcessID"),
@@ -350,7 +481,7 @@ fDefineStructure("PROCESSENTRY32A",
   (DWORD,       "dwFlags"),
   (CHAR * MAX_PATH, "szExeFile"),
 );
-fDefineStructure("PROCESSENTRY32W",
+fExportStructure("PROCESSENTRY32W",
   (DWORD,       "dwSize"),
   (DWORD,       "cntUsage"),
   (DWORD,       "th32ProcessID"),
@@ -363,30 +494,30 @@ fDefineStructure("PROCESSENTRY32W",
   (WCHAR * MAX_PATH, "szExeFile"),
 );
 #RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
-fDefineStructure("RECT",
+fExportStructure("RECT",
   (LONG,        "left"),
   (LONG,        "top"),
   (LONG,        "right"),
   (LONG,        "bottom"),
 );
 #SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
-fDefineStructure("SECURITY_ATTRIBUTES",
+fExportStructure("SECURITY_ATTRIBUTES",
   (DWORD,       "nLength"),
   (LPVOID,      "lpSecurityDescriptor"),
   (BOOL,        "bInheritHandle"),
 );
-fDefineStructure("SID");
-fDefineStructure("SIZE",
+fExportStructure("SID");
+fExportStructure("SIZE",
   (LONG,        "cx"),
   (LONG,        "cy"),
 );
-fDefineStructure("SMALL_RECT",
+fExportStructure("SMALL_RECT",
   (SHORT,       "Left"),
   (SHORT,       "Top"),
   (SHORT,       "Right"),
   (SHORT,       "Bottom"),
 );
-fDefineStructure("STARTUPINFOA",
+fExportStructure("STARTUPINFOA",
   (DWORD,       "cb"),
   (LPSTR,       "lpReserved"),
   (LPSTR,       "lpDesktop"),
@@ -406,7 +537,7 @@ fDefineStructure("STARTUPINFOA",
   (HANDLE,      "hStdOutput"),
   (HANDLE,      "hStdError"),
 );
-fDefineStructure("STARTUPINFOW",
+fExportStructure("STARTUPINFOW",
   (DWORD,       "cb"),
   (LPWSTR,      "lpReserved"),
   (LPWSTR,      "lpDesktop"),
@@ -426,8 +557,80 @@ fDefineStructure("STARTUPINFOW",
   (HANDLE,      "hStdOutput"),
   (HANDLE,      "hStdError"),
 );
-fDefineStructure("SYSTEM_INFO",
-  UNION (
+fExportStructure("STOWED_EXCEPTION_INFORMATION_HEADER",
+  (ULONG,       "Size"),
+  (ULONG,       "Signature"),
+);
+fExportStructure32("STOWED_EXCEPTION_INFORMATION_V1_32",
+  (STOWED_EXCEPTION_INFORMATION_HEADER, "Header"),
+  (HRESULT,     "ResultCode"),
+  (DWORD,       "ExceptionForm_ThreadId"),
+  UNION(
+    STRUCT(
+      (PVOID_32, "ExceptionAddress"),
+      (ULONG,   "StackTraceWordSize"),
+      (ULONG,   "StackTraceWords"),
+      (PVOID_32, "StackTrace"),
+    ),
+    STRUCT(
+      (PWSTR_32, "ErrorText"),
+    ),
+  ),
+);
+fExportStructure64("STOWED_EXCEPTION_INFORMATION_V1_64",
+  (STOWED_EXCEPTION_INFORMATION_HEADER, "Header"),
+  (HRESULT,     "ResultCode"),
+  (DWORD,       "ExceptionForm_ThreadId"),
+  UNION(
+    STRUCT(
+      (PVOID_64, "ExceptionAddress"),
+      (ULONG,   "StackTraceWordSize"),
+      (ULONG,   "StackTraceWords"),
+      (PVOID_64, "StackTrace"),
+    ),
+    STRUCT(
+      (PWSTR_64, "ErrorText"),
+    ),
+  ),
+);
+fExportStructure32("STOWED_EXCEPTION_INFORMATION_V2_32",
+  (STOWED_EXCEPTION_INFORMATION_HEADER, "Header"),
+  (HRESULT,     "ResultCode"),
+  (DWORD,       "ExceptionForm_ThreadId"),
+  UNION(
+    STRUCT(
+      (PVOID_32, "ExceptionAddress"),
+      (ULONG,   "StackTraceWordSize"),
+      (ULONG,   "StackTraceWords"),
+      (PVOID_32, "StackTrace"),
+    ),
+    STRUCT(
+      (PWSTR_32, "ErrorText"),
+    ),
+  ),
+  (ULONG,       "NestedExceptionType"),
+  (PVOID_32,    "NestedException"),
+);
+fExportStructure64("STOWED_EXCEPTION_INFORMATION_V2_64",
+  (STOWED_EXCEPTION_INFORMATION_HEADER, "Header"),
+  (HRESULT,     "ResultCode"),
+  (DWORD,       "ExceptionForm_ThreadId"),
+  UNION(
+    STRUCT(
+      (PVOID_64, "ExceptionAddress"),
+      (ULONG,   "StackTraceWordSize"),
+      (ULONG,   "StackTraceWords"),
+      (PVOID_64, "StackTrace"),
+    ),
+    STRUCT(
+      (PWSTR_64, "ErrorText"),
+    ),
+  ),
+  (ULONG,       "NestedExceptionType"),
+  (PVOID_64,    "NestedException"),
+);
+fExportStructure("SYSTEM_INFO",
+  UNION(
     (DWORD,     "dwOemId"),
     STRUCT(
       (WORD,    "wProcessorArchitecture"),
@@ -450,7 +653,7 @@ fDefineStructure("SYSTEM_INFO",
 ################################################################################
 
 #CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-fDefineStructure("CONSOLE_SCREEN_BUFFER_INFO", 
+fExportStructure("CONSOLE_SCREEN_BUFFER_INFO", 
   (COORD,       "dwSize"),
   (COORD,       "dwCursorPosition"),
   (WORD,        "wAttributes"),
@@ -458,27 +661,58 @@ fDefineStructure("CONSOLE_SCREEN_BUFFER_INFO",
   (COORD,       "dwMaximumWindowSize"),
 );
 #JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ
-fDefineStructure("JOBOBJECT_BASIC_LIMIT_INFORMATION",
+fExportStructure32("JOBOBJECT_BASIC_LIMIT_INFORMATION_32",
   (LARGE_INTEGER, "PerProcessUserTimeLimit"),
   (LARGE_INTEGER, "PerJobUserTimeLimit"),
   (DWORD,       "LimitFlags"),
-  (SIZE_T,      "MinimumWorkingSetSize"),
-  (SIZE_T,      "MaximumWorkingSetSize"),
+  (SIZE_T_32,   "MinimumWorkingSetSize"),
+  (SIZE_T_32,    "MaximumWorkingSetSize"),
   (DWORD,       "ActiveProcessLimit"),
-  (ULONG_PTR,   "Affinity"),
+  (PULONG_32,   "Affinity"),
   (DWORD,       "PriorityClass"),
   (DWORD,       "SchedulingClass"),
 );
-fDefineStructure("JOBOBJECT_EXTENDED_LIMIT_INFORMATION",
-  (JOBOBJECT_BASIC_LIMIT_INFORMATION, "BasicLimitInformation"),
-  (IO_COUNTERS, "IoInfo"),
-  (SIZE_T,      "ProcessMemoryLimit"),
-  (SIZE_T,      "JobMemoryLimit"),
-  (SIZE_T,      "PeakProcessMemoryUsed"),
-  (SIZE_T,      "PeakJobMemoryUsed"),
+fExportStructure64("JOBOBJECT_BASIC_LIMIT_INFORMATION_64",
+  (LARGE_INTEGER, "PerProcessUserTimeLimit"),
+  (LARGE_INTEGER, "PerJobUserTimeLimit"),
+  (DWORD,       "LimitFlags"),
+  (SIZE_T_64,      "MinimumWorkingSetSize"),
+  (SIZE_T_64,      "MaximumWorkingSetSize"),
+  (DWORD,       "ActiveProcessLimit"),
+  (PULONG_64,   "Affinity"),
+  (DWORD,       "PriorityClass"),
+  (DWORD,       "SchedulingClass"),
+);
+fExportStructure32("JOBOBJECT_EXTENDED_LIMIT_INFORMATION_32",
+  (JOBOBJECT_BASIC_LIMIT_INFORMATION_32, "BasicLimitInformation"),
+  (DWORD,       "Padding0"), # Apparently... but this is not documented anywhere.
+  (IO_COUNTERS_32, "IoInfo"),
+  (SIZE_T_32,   "ProcessMemoryLimit"),
+  (SIZE_T_32,   "JobMemoryLimit"),
+  (SIZE_T_32,   "PeakProcessMemoryUsed"),
+  (SIZE_T_32,   "PeakJobMemoryUsed"),
+);
+fExportStructure64("JOBOBJECT_EXTENDED_LIMIT_INFORMATION_64",
+  (JOBOBJECT_BASIC_LIMIT_INFORMATION_64, "BasicLimitInformation"),
+  (IO_COUNTERS_64, "IoInfo"),
+  (SIZE_T_64,   "ProcessMemoryLimit"),
+  (SIZE_T_64,   "JobMemoryLimit"),
+  (SIZE_T_64,   "PeakProcessMemoryUsed"),
+  (SIZE_T_64,   "PeakJobMemoryUsed"),
+);
+#NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
+fExportStructure("IMAGE_NT_HEADERS32",
+  (DWORD,       "Signature"),
+  (IMAGE_FILE_HEADER, "FileHeader"),
+  (IMAGE_OPTIONAL_HEADER32, "OptionalHeader"),
+);
+fExportStructure("IMAGE_NT_HEADERS64",
+  (DWORD,       "Signature"),
+  (IMAGE_FILE_HEADER, "FileHeader"),
+  (IMAGE_OPTIONAL_HEADER64, "OptionalHeader"),
 );
 #RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
-fDefineStructure32("RTL_USER_PROCESS_PARAMETERS_32",
+fExportStructure32("RTL_USER_PROCESS_PARAMETERS_32",
   (UINT32,      "MaximumLength"),
   (UINT32,      "Length"),
   (UINT32,      "Flags"),
@@ -495,7 +729,7 @@ fDefineStructure32("RTL_USER_PROCESS_PARAMETERS_32",
   (PVOID_32,    "Environment"),
   # There's more, but I don't need it
 );
-fDefineStructure64("RTL_USER_PROCESS_PARAMETERS_64",
+fExportStructure64("RTL_USER_PROCESS_PARAMETERS_64",
   (UINT32,      "MaximumLength"),
   (UINT32,      "Length"),
   (UINT32,      "Flags"),
@@ -511,12 +745,12 @@ fDefineStructure64("RTL_USER_PROCESS_PARAMETERS_64",
   (UNICODE_STRING_64, "CommandLine"),
 );
 #SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
-fDefineStructure("SID_AND_ATTRIBUTES",
+fExportStructure("SID_AND_ATTRIBUTES",
   (PSID,        "Sid"),
   (DWORD,       "Attributes"),
 );
 #TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-fDefineStructure("TOKEN_MANDATORY_LABEL",
+fExportStructure("TOKEN_MANDATORY_LABEL",
   (SID_AND_ATTRIBUTES, "Label"),
 );
 
@@ -526,7 +760,7 @@ fDefineStructure("TOKEN_MANDATORY_LABEL",
 ################################################################################
 
 #PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
-fDefineStructure32("PEB_32",
+fExportStructure32("PEB_32",
   (BYTE,        "InheritedAddressSpace"),
   (BYTE,        "ReadImageFileExecOptions"),
   (BYTE,        "BeingDebugged"),
@@ -537,7 +771,7 @@ fDefineStructure32("PEB_32",
   (PRTL_USER_PROCESS_PARAMETERS_32, "ProcessParameters"),
   # There's lots more, but since I do not need it, I did not define it.
 );
-fDefineStructure64("PEB_64",
+fExportStructure64("PEB_64",
   (BYTE,        "InheritedAddressSpace"),
   (BYTE,        "ReadImageFileExecOptions"),
   (BYTE,        "BeingDebugged"),
@@ -548,4 +782,18 @@ fDefineStructure64("PEB_64",
   (PPEB_LDR_DATA_64, "Ldr"),
   (PRTL_USER_PROCESS_PARAMETERS_64, "ProcessParameters"),
   # There's lots more, but since I do not need it, I did not define it.
+);
+fExportStructure32("PROCESS_BASIC_INFORMATION_32",
+  (PVOID_32,    "Reserved1"),
+  (PPEB_32,     "PebBaseAddress"),
+  (PVOID_32 * 2, "Reserved2"),
+  (PULONG_32,   "UniqueProcessId"),
+  (PVOID_32,    "Reserved3"),
+);
+fExportStructure64("PROCESS_BASIC_INFORMATION_64",
+  (PVOID_64,    "Reserved1"),
+  (PPEB_64,     "PebBaseAddress"),
+  (PVOID_64 * 2, "Reserved2"),
+  (PULONG_64,   "UniqueProcessId"),
+  (PVOID_64,    "Reserved3"),
 );

@@ -1,10 +1,12 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
+from mDefines import FALSE, CREATE_SUSPENDED, NULL, PROCESS_CREATE_THREAD, PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, \
+    PROCESS_VM_READ, PROCESS_VM_WRITE;
+from mFunctions import CAST, POINTER;
+from mTypes import DWORD, LPTHREAD_START_ROUTINE;
 from mDLLs import KERNEL32;
+from cVirtualAllocation import cVirtualAllocation;
 from fThrowError import fThrowError;
 
-def fuCreateThreadInProcessForIdAndAddress(uProcessId, uAddress, bSuspended = False):
+def fuCreateThreadInProcessForIdAndAddress(uProcessId, uAddress, uParameterAddress = None, bSuspended = False):
   uFlags = PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ;
   hProcess = KERNEL32.OpenProcess(uFlags, FALSE, uProcessId);
   hProcess \
@@ -16,7 +18,7 @@ def fuCreateThreadInProcessForIdAndAddress(uProcessId, uAddress, bSuspended = Fa
       NULL, # lpThreadAttributes
       0,  # dwStackSize
       CAST(LPTHREAD_START_ROUTINE, uAddress), # lpStartAddress
-      0, # lpParameter
+      uParameterAddress, # lpParameter
       bSuspended and CREATE_SUSPENDED or 0, # dwCreationFlags
       POINTER(uThreadId), # lpThreadId
     );

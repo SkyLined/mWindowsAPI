@@ -1,8 +1,8 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
-from mDLLs import KERNEL32;
-from fThrowError import fThrowError;
+from .mDefines import CREATE_SUSPENDED, ERROR_FILE_NOT_FOUND, ERROR_INVALID_NAME, FALSE, NULL;
+from .mFunctions import HRESULT_FROM_WIN32, POINTER, SIZEOF;
+from .mTypes import PROCESS_INFORMATION, STARTUPINFOW;
+from .mDLLs import KERNEL32;
+from .fThrowError import fThrowError;
 
 def fuCreateProcessForBinaryPathAndArguments(sBinaryPath, asArguments, sWorkingDirectory = None, bSuspended = False):
   sCommandLine = " ".join([

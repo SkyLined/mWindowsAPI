@@ -1,6 +1,6 @@
-from mFunctions import HRESULT_FROM_WIN32;
-from mDLLs import KERNEL32;
-from mDefines import mErrorDefines, ERROR_COMMITMENT_LIMIT, ERROR_NOT_ENOUGH_MEMORY, ERROR_OUTOFMEMORY;
+from .mFunctions import HRESULT_FROM_WIN32;
+from .mDLLs import KERNEL32;
+from .mDefines import mErrorDefines, ERROR_COMMITMENT_LIMIT, ERROR_NOT_ENOUGH_MEMORY, ERROR_OUTOFMEMORY;
 
 def fThrowError(sFailedOperation, uError = None):
   if uError is None:

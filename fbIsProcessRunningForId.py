@@ -1,10 +1,10 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
-from mDLLs import KERNEL32;
-from fbIsProcessRunningForHandle import fbIsProcessRunningForHandle;
-from fdsProcessesExecutableName_by_uId import fdsProcessesExecutableName_by_uId;
-from fThrowError import fThrowError;
+from .mDefines import *;
+from .mFunctions import *;
+from .mTypes import *;
+from .mDLLs import KERNEL32;
+from .fbIsProcessRunningForHandle import fbIsProcessRunningForHandle;
+from .fdsProcessesExecutableName_by_uId import fdsProcessesExecutableName_by_uId;
+from .fThrowError import fThrowError;
 
 def fbIsProcessRunningForId(uProcessId):
   # Try to open the process so we can terminate it...

@@ -1,9 +1,9 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
-from mDLLs import KERNEL32;
-from fbIsProcessRunningForHandle import fbIsProcessRunningForHandle;
-from fThrowError import fThrowError;
+from .mDefines import STILL_ACTIVE;
+from .mFunctions import POINTER;
+from .mTypes import DWORD;
+from .mDLLs import KERNEL32;
+from .fbIsProcessRunningForHandle import fbIsProcessRunningForHandle;
+from .fThrowError import fThrowError;
 
 def fuGetProcessExitCodeForHandle(hProcess):
   # We can open the process: try to terminate it.

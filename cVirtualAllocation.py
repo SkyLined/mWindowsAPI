@@ -1,25 +1,65 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
-from mDLLs import KERNEL32;
-from fThrowError import fThrowError;
-from oSystemInfo import oSystemInfo;
-from fsGetPythonISA import fsGetPythonISA;
-gsPythonISA = fsGetPythonISA();
+from .mDefines import *;
+from .mFunctions import *;
+from .mTypes import *;
+from .mDLLs import KERNEL32;
+from .fThrowError import fThrowError;
+from .oSystemInfo import oSystemInfo;
+from .fsGetPythonISA import fsGetPythonISA;
+
+# When reading a NULL terminated string from a process, we do not know the length up front. So we will need to read
+# bytes until we find a NULL. We could read one byte at a time from the process, but reading bytes from another process
+# is the slowest part of the operation, so it is often faster to read blocks of multiple bytes (aka read-ahead
+# buffering). The code below does this and uses the following value for the size of these blocks:
+guStringReadAheadBlockSize = 0x400;
+
+uBasicProtectionFlagsMask = 0xFF;
 
 def fsProtection(uProtection):
+  if uProtection is None: return None;
   return {
-    PAGE_NOACCESS: "PAGE_NOACCESS",
-    PAGE_READONLY: "PAGE_READONLY",
-    PAGE_READWRITE: "PAGE_READWRITE",
-    PAGE_WRITECOPY: "PAGE_WRITECOPY",
-    PAGE_EXECUTE: "PAGE_EXECUTE",
-    PAGE_EXECUTE_READ: "PAGE_EXECUTE_READ",
-    PAGE_EXECUTE_READWRITE: "PAGE_EXECUTE_READWRITE",
-    PAGE_EXECUTE_WRITECOPY: "PAGE_EXECUTE_WRITECOPY",
-  }.get(uProtection);
+      PAGE_NOACCESS: "PAGE_NOACCESS",
+      PAGE_READONLY: "PAGE_READONLY",
+      PAGE_READWRITE: "PAGE_READWRITE",
+      PAGE_WRITECOPY: "PAGE_WRITECOPY",
+      PAGE_EXECUTE: "PAGE_EXECUTE",
+      PAGE_EXECUTE_READ: "PAGE_EXECUTE_READ",
+      PAGE_EXECUTE_READWRITE: "PAGE_EXECUTE_READWRITE",
+      PAGE_EXECUTE_WRITECOPY: "PAGE_EXECUTE_WRITECOPY",
+    }[uProtection & uBasicProtectionFlagsMask];
+
+def fasAllowedAccessTypesForProtection(uProtection):
+  return {
+    PAGE_NOACCESS: [],
+    PAGE_READONLY: ["read"],
+    PAGE_READWRITE: ["read", "write"],
+    PAGE_WRITECOPY: ["read", "write"],
+    PAGE_EXECUTE: ["read", "execute"],
+    PAGE_EXECUTE_READ: ["read", "execute"],
+    PAGE_EXECUTE_READWRITE: ["read", "write", "execute"],
+    PAGE_EXECUTE_WRITECOPY: ["read", "write", "execute"],
+  }[uProtection & uBasicProtectionFlagsMask];
 
 class cVirtualAllocation(object):
+  @staticmethod
+  def foCreateInProcessForIdAndString(
+    uProcessId,
+    sString,
+    bUnicode = False,
+    uAddress = None,
+    uProtection = None,
+  ):
+    oVirtualAllocation = cVirtualAllocation.foCreateInProcessForId(
+      uProcessId = uProcessId,
+      uSize = len(sString) * (bUnicode and 2 or 1),
+      uAddress = uAddress,
+      uProtection = uProtection,
+    );
+    oVirtualAllocation.fWriteStringForOffset(
+      sString = sString,
+      uOffset = 0,
+      bUnicode = bUnicode
+    );
+    return oVirtualAllocation;
   @staticmethod
   def foCreateInProcessForId(
     uProcessId,
@@ -57,7 +97,7 @@ class cVirtualAllocation(object):
   
   def __init__(oSelf, uProcessId, uAddress):
     oSelf.__uProcessId = uProcessId;
-    oSelf.__bISAChecked = False;
+    oSelf.__uPointerSize = None; # Will be set in __fUpdate
     oSelf.__fUpdate(uAddress);
   
   def __fUpdate(oSelf, uAddress = None):
@@ -74,18 +114,20 @@ class cVirtualAllocation(object):
       # https://stackoverflow.com/questions/5714297/is-it-possible-to-read-process-memory-of-a-64-bit-process-from-a-32bit-app
       # For now, we simply detect this an throw an error.
       # First we find out if the OS is 64-bit, as this problem can only occur on a 64-bit OS:
-      if not oSelf.__bISAChecked and oSystemInfo.sOSISA == "x64":
-        # Next we find out if the python process is 32-bit, as this problem can only occur in a 32-bit python process:
-        if gsPythonISA == "x86":
+      if oSelf.__uPointerSize is None:
+        if oSystemInfo.sOSISA == "x86":
+          sProcessISA = "x86";
+        else:
           # Finally we find out if the remote process is 64-bit:
           bIsWow64Process = BOOL();
           KERNEL32.IsWow64Process(hProcess, POINTER(bIsWow64Process)) \
                 or fThrowError("IsWow64Process(0x%08X, ...)" % (hProcess,));
           sProcessISA = bIsWow64Process and "x86" or "x64";
           # Throw an error if this is the case:
-          assert sProcessISA != "x64", \
+          assert fsGetPythonISA() == "x64" or sProcessISA != "x64", \
               "Accessing a virtual allocation in a 64-bit process from 32-bit Python process is not implemented";
-        oSelf.__bISAChecked = True;
+          # Next we find out if the python process is 32-bit, as this problem can only occur in a 32-bit python process:
+        oSelf.__uPointerSize = {"x86": 4, "x64": 8}[sProcessISA];
       oMemoryBasicInformation = MEMORY_BASIC_INFORMATION();
       uStoredBytes = KERNEL32.VirtualQueryEx(
         hProcess,
@@ -106,7 +148,7 @@ class cVirtualAllocation(object):
         oSelf.__uState = None;
         oSelf.__uProtection = None;
         oSelf.__uType = None;
-        oSelf.__sData = None;
+        oSelf.__sBytes = None;
       else:
         # Not all information is valid when therer is no memory allocated at the address.
         bValid = oMemoryBasicInformation.State != MEM_FREE;
@@ -117,10 +159,17 @@ class cVirtualAllocation(object):
         oSelf.__uState = oMemoryBasicInformation.State;
         oSelf.__uProtection = bValid and oMemoryBasicInformation.Protect or None;
         oSelf.__uType = bValid and oMemoryBasicInformation.Type or None;
-        oSelf.__sData = None;
+        oSelf.__sBytes = None;
     finally:
       KERNEL32.CloseHandle(hProcess) \
           or fThrowError("CloseHandle(0x%X)" % (hProcess,));
+  
+  def fbContainsAddress(oSelf, uAddress, uSize = 1):
+    return (
+      oSelf.uStartAddress is not None
+      and oSelf.uStartAddress <= uAddress
+      and oSelf.uEndAddress >= uAddress + uSize
+    );
   
   # Process id
   @property
@@ -180,17 +229,21 @@ class cVirtualAllocation(object):
     return oSelf.__uProtection;
   @property
   def sProtection(oSelf):
-    return {
-      PAGE_NOACCESS: "PAGE_NOACCESS",
-      PAGE_READONLY: "PAGE_READONLY",
-      PAGE_READWRITE: "PAGE_READWRITE",
-      PAGE_WRITECOPY: "PAGE_WRITECOPY",
-      PAGE_EXECUTE: "PAGE_EXECUTE",
-      PAGE_EXECUTE_READ: "PAGE_EXECUTE_READ",
-      PAGE_EXECUTE_READWRITE: "PAGE_EXECUTE_READWRITE",
-      PAGE_EXECUTE_WRITECOPY: "PAGE_EXECUTE_WRITECOPY",
-      None: None,
-    }[oSelf.__uProtection];
+   # Only mentions "basic" access protection flags! (not PAGE_GUARD, etc.)
+    return fsProtection(oSelf.__uProtection);
+  
+  @property
+  def bReadable(oSelf):
+    return oSelf.bAllocated and "read" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
+  @property
+  def bWritable(oSelf):
+    return oSelf.bAllocated and "write" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
+  @property
+  def bExecutable(oSelf):
+    return oSelf.bAllocated and "execute" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
+  @property
+  def bGuard(oSelf):
+    return oSelf.bAllocated and (oSelf.uProtection & PAGE_GUARD);
   
   @uProtection.setter
   def uProtection(oSelf, uNewProtection):
@@ -218,7 +271,7 @@ class cVirtualAllocation(object):
 
   @sProtection.setter
   def sProtection(oSelf, sNewProtection):
-    # uNewProtection can also be one of the following strings:
+    # sNewProtection can only contain "basic" access protection flags, like these:
     uNewProtection = {
       "PAGE_NOACCESS": PAGE_NOACCESS,
       "PAGE_READONLY": PAGE_READONLY,
@@ -257,12 +310,15 @@ class cVirtualAllocation(object):
   
   # Data
   @property
-  def sData(oSelf):
-    if not oSelf.__sData:
-      oSelf.__sData = oSelf.fsReadDataForOffsetAndSize(0, oSelf.__uSize);
-    return oSelf.__sData;
+  def sBytes(oSelf):
+    if not oSelf.__sBytes:
+      oSelf.__sBytes = oSelf.fsReadBytesForOffsetAndSize(0, oSelf.__uSize);
+    return oSelf.__sBytes;
   
-  def fsReadDataForOffsetAndSize(oSelf, uOffset, uSize, bUnicode = False):
+  def fsReadBytesForOffsetAndSize(oSelf, uOffset, uSize):
+    # Read ASCII string.
+    return oSelf.fsReadStringForOffsetAndSize(uOffset, uSize);
+  def fsReadStringForOffsetAndSize(oSelf, uOffset, uSize, bUnicode = False):
     # Sanity checks
     assert oSelf.bAllocated, \
         "Cannot read data from a virtual allocation that is not allocated";
@@ -278,25 +334,24 @@ class cVirtualAllocation(object):
         (uOffset, uSize, oSelf.__uSize, oSelf.__uStartAddress);
     assert not bUnicode or uSize % 2 == 0, \
         "Cannot read a Unicode string that has an odd number of bytes (%d)" % uSize;
-    if oSelf.__sData:
-      return oSelf.__sData[uOffset: uOffset + uSize];
-    # Modify protection to make sure the pages can be read.
+    if oSelf.__sBytes:
+      return oSelf.__sBytes[uOffset: uOffset + uSize];
+    # If needed, modify the protection to make sure the pages can be read.
     uOriginalProtection = oSelf.uProtection;
-    if oSelf.uProtection == PAGE_NOACCESS:
+    if "read" not in fasAllowedAccessTypesForProtection(oSelf.uProtection):
+      # Temporarily allow reading from this page.
       oSelf.uProtection = PAGE_READONLY;
-    elif oSelf.uProtection == PAGE_EXECUTE:
-      oSelf.uProtection = PAGE_EXECUTE_READ;
     # Open process to read memory
     hProcess = KERNEL32.OpenProcess(PROCESS_VM_READ, FALSE, oSelf.__uProcessId);
     hProcess \
         or fThrowError("OpenProcess(0x%08X, FALSE, %d/0x%X)" % (PROCESS_VM_READ, oSelf.__uProcessId,));
     try:
-      sBuffer = bUnicode and WSTR(uSize / 2) or STR(uSize);
+      sBytes = bUnicode and WSTR(uSize / 2) or STR(uSize);
       uBytesRead = SIZE_T(0);
       KERNEL32.ReadProcessMemory(
         hProcess,
         LPVOID(oSelf.__uStartAddress + uOffset), # lpBaseAddress
-        POINTER(sBuffer), # lpBuffer
+        POINTER(sBytes), # lpBuffer
         SIZE_T(uSize), # nSize
         POINTER(uBytesRead), # lpNumberOfBytesRead
       ) or fThrowError("ReadProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...)" % \
@@ -306,8 +361,8 @@ class cVirtualAllocation(object):
           (hProcess, oSelf.__uStartAddress + uOffset, uSize, uBytesRead.value);
       # Return read data as a string.
       if bUnicode:
-        return sBuffer.value;
-      return sBuffer.raw;
+        return sBytes.value;
+      return sBytes.raw;
     finally:
       KERNEL32.CloseHandle(hProcess) \
           or fThrowError("CloseHandle(0x%X)" % (hProcess,));
@@ -315,33 +370,62 @@ class cVirtualAllocation(object):
       if uOriginalProtection in [PAGE_NOACCESS, PAGE_EXECUTE]:
         oSelf.uProtection = uOriginalProtection;
   
-  def fauReadDataForOffsetAndSize(oSelf, uOffset, uSize):
-    sBytes = oSelf.fsReadDataForOffsetAndSize(uOffset, uSize);
-    return [ord(sByte) for sByte in sBytes];
+  def fsReadNullTerminatedStringForOffset(oSelf, uOffset, bUnicode = False):
+    sNull = bUnicode and u"\0" or "\0";
+    sString = "";
+    while 1:
+      uSize = min(guStringReadAheadBlockSize, oSelf.uSize - uOffset);
+      if uSize == 0:
+        return None; # String is not NULL terminated because it runs until the end of the virtual allocation.
+      sSubString = oSelf.fsReadStringForOffsetAndSize(uOffset, uSize, bUnicode);
+      uEndIndex = sSubString.find(sNull);
+      if uEndIndex >= 0:
+        return sString + sSubString[:uEndIndex];
+      sString += sSubString;
+      uOffset += uSize;
+  
+  def fauReadValuesForOffsetSizeAndCount(oSelf, uOffset, uSize, uCount):
+    sBytes = oSelf.fsReadBytesForOffsetAndSize(uOffset, uCount * uSize);
+    sUnpackValueFormat = {1: "B", 2: "H", 4: "L", 8: "Q"}.get(uSize);
+    assert sUnpackValueFormat, \
+        "Unsupported size %d (try 1,2,4 or 8)" % uSize;
+    return struct.unpack("<%s" % (sUnpackValueFormat * uCount), sBytes);
+  
+  def fauReadBytesForOffsetAndSize(oSelf, uOffset, uSize):
+    # Read `uSize` values of 1 byte:
+    return oSelf.fauReadValuesForOffsetSizeAndCount(uOffset, 1, uSize);
   
   def fuReadValueForOffsetAndSize(oSelf, uOffset, uSize):
-    uValue = 0;
-    for uByte in reversed(oSelf.fauReadDataForOffsetAndSize(uOffset, uSize)):
-      uValue = (uValue << 8) + uByte;
-    return uValue;
+    # Read 1 values of `uSize` byte:
+    return oSelf.fauReadValuesForOffsetSizeAndCount(uOffset, uSize, 1)[0];
   
-  def foReadStructure(oSelf, cStructure, uOffset = 0):
-    return cStructure.foFromString(oSelf.fsReadDataForOffsetAndSize(uOffset, SIZEOF(cStructure)));
+  def fuReadPointerForOffset(oSelf, uOffset):
+    # Read 1 value of `uPointerSize` bytes
+    return oSelf.fauReadValuesForOffsetAndSize(uOffset, oSelf.__uPointerSize, 1)[0];
   
-  def fWriteDataForOffset(oSelf, sData, uOffset, bUnicode = False):
+  def fauReadPointersForOffsetAndCount(oSelf, uOffset, uCount):
+    # Read `uCount` values of `uPointerSize` bytes
+    return oSelf.fauReadValuesForOffsetSizeAndCount(uOffset, oSelf.__uPointerSize, uCount);
+  
+  def foReadStructureForOffset(oSelf, cStructure, uOffset):
+    return cStructure.foFromBytesString(oSelf.fsReadBytesForOffsetAndSize(uOffset, SIZEOF(cStructure)));
+  
+  def fWriteBytesForOffset(oSelf, sBytes, uOffset):
+    return oSelf.fWriteStringForOffset(sBytes, uOffset);
+  def fWriteStringForOffset(oSelf, sString, uOffset, bUnicode = False):
     # Sanity checks
     assert oSelf.bAllocated, \
         "Cannot write memory that is not allocated!";
     assert uOffset >= 0, \
         "Offset -0x%X must be positive" % (-uOffset);
-    uSize = len(sData) * (bUnicode and 2 or 1);
+    uSize = len(sString) * (bUnicode and 2 or 1);
     assert uSize, \
         "You must supply data to write";
     assert uOffset < oSelf.__uSize, \
         "Offset 0x%X is outside of the virtual allocation of 0x%X bytes at 0x%08X" % \
         (uOffset, oSelf.__uSize, oSelf.__uStartAddress);
     assert uOffset + uSize <= oSelf.__uSize, \
-        "Offset 0x%X + sData size (0x%X) is outside of the virtual allocation of 0x%X bytes at 0x%08X" % \
+        "Offset 0x%X + sString size (0x%X) is outside of the virtual allocation of 0x%X bytes at 0x%08X" % \
         (uOffset, uSize, oSelf.__uSize, oSelf.__uStartAddress);
     # Modify protection to make sure the pages can be read.
     uOriginalProtection = oSelf.uProtection;
@@ -355,12 +439,12 @@ class cVirtualAllocation(object):
     hProcess \
         or fThrowError("OpenProcess(0x%08X, FALSE, %d/0x%X)" % (uFlags, oSelf.__uProcessId,));
     try:
-      sBuffer = bUnicode and WSTR(sData) or STR(sData);
+      sBytes = bUnicode and WSTR(sString) or STR(sString);
       uBytesWritten = SIZE_T(0);
       KERNEL32.WriteProcessMemory(
         hProcess,
         LPVOID(oSelf.__uStartAddress + uOffset), # lpBaseAddress
-        POINTER(sBuffer), # lpBuffer
+        POINTER(sBytes), # lpBuffer
         SIZE_T(uSize), # nSize
         POINTER(uBytesWritten), # lpNumberOfBytesRead
       ) or fThrowError("WriteProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...)" % \
@@ -375,20 +459,19 @@ class cVirtualAllocation(object):
       if uOriginalProtection in [PAGE_NOACCESS, PAGE_READONLY, PAGE_EXECUTE, PAGE_EXECUTE_READ]:
         oSelf.uProtection = uOriginalProtection;
   
-  def fDump(oSelf, sName = None):
+  def fasDump(oSelf):
     def fsNumberOrNone(uValue, sValue = None):
       return (uValue is not None and "0x%X" % uValue or "None") + (sValue and " (%s)" % sValue or "");
-    sName = sName or oSelf.__class__.__name__;
-    print (",--- %s " % sName).ljust(80, "-");
-    print "| uAllocationBaseAddress = %s" % fsNumberOrNone(oSelf.uAllocationBaseAddress);
-    print "| uAllocationProtection  = %s" % fsNumberOrNone(oSelf.uAllocationProtection, oSelf.sAllocationProtection);
-    print "| uStartAddress          = %s" % fsNumberOrNone(oSelf.uStartAddress);
-    print "| uSize                  = %s" % fsNumberOrNone(oSelf.uSize);
-    print "| uEndAddress            = %s" % fsNumberOrNone(oSelf.uEndAddress);
-    print "| uState                 = %s" % fsNumberOrNone(oSelf.uState, oSelf.sState);
-    print "| uProtection            = %s" % fsNumberOrNone(oSelf.uProtection, oSelf.sProtection);
-    print "| uType                  = %s" % fsNumberOrNone(oSelf.uType, oSelf.sType);
-    print "'".ljust(80, "-");
+    return [
+      "uAllocationBaseAddress = %s" % fsNumberOrNone(oSelf.uAllocationBaseAddress),
+      "uAllocationProtection  = %s" % fsNumberOrNone(oSelf.uAllocationProtection, oSelf.sAllocationProtection),
+      "uStartAddress          = %s" % fsNumberOrNone(oSelf.uStartAddress),
+      "uSize                  = %s" % fsNumberOrNone(oSelf.uSize),
+      "uEndAddress            = %s" % fsNumberOrNone(oSelf.uEndAddress),
+      "uState                 = %s" % fsNumberOrNone(oSelf.uState, oSelf.sState),
+      "uProtection            = %s" % fsNumberOrNone(oSelf.uProtection, oSelf.sProtection),
+      "uType                  = %s" % fsNumberOrNone(oSelf.uType, oSelf.sType),
+    ];
   
   def fAllocate(oSelf, uProtection = None):
     # Commit this virtual allocation if it is reserved

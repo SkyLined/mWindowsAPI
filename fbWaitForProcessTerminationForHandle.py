@@ -1,8 +1,8 @@
-from mDefines import *;
-from mFunctions import *;
-from mTypes import *;
-from mDLLs import KERNEL32;
-from fThrowError import fThrowError;
+from .mDefines import *;
+from .mFunctions import *;
+from .mTypes import *;
+from .mDLLs import KERNEL32;
+from .fThrowError import fThrowError;
 
 def fbWaitForProcessTerminationForHandle(hProcess, nTimeout = None):
   if nTimeout is None:
