@@ -4,6 +4,7 @@ from .mDefines import *;
 from .mFunctions import SUCCEEDED;
 from .mTypes import *;
 from .mDLLs import KERNEL32, NTDLL;
+from .cThread import cThread;
 from .cVirtualAllocation import cVirtualAllocation;
 from .fbIsProcessRunningForHandle import fbIsProcessRunningForHandle;
 from .fbTerminateProcessForHandle import fbTerminateProcessForHandle;
@@ -38,6 +39,7 @@ class cProcess(object):
     oSelf.__oProcessParameters = None;
     oSelf.__sBinaryPath = None;
     oSelf.__sCommandLine = None;
+    oSelf.__doThread_by_uId = {};
   
   @property
   def oPEB(oSelf):
@@ -142,6 +144,10 @@ class cProcess(object):
   def fSuspend(oSelf):
     return fSuspendProcessForId(oSelf.uId);
   
+  def fSuspendThreads(oSelf):
+    for oThread in oSelf.faoGetThreads:
+      oThread.fSuspend();
+  
   @property
   def uExitCode(oSelf):
     return fuGetProcessExitCodeForHandle(oSelf.__hProcess);
@@ -227,3 +233,29 @@ class cProcess(object):
   @property
   def uIntegrityLevel(oSelf):
     return fuGetProcessIntegrityLevelForId(oSelf.uId);
+  
+  def faoGetThreads(oSelf):
+    hThreadsSnapshot = KERNEL32.CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    (hThreadsSnapshot != INVALID_HANDLE_VALUE) \
+        or fThrowError("CreateToolhelp32Snapshot(0x%08X, 0)", TH32CS_SNAPTHREAD);
+    
+    oThreadEntry32 = THREADENTRY32();
+    oThreadEntry32.dwSize = SIZEOF(oThreadEntry32);
+    bGotThread = KERNEL32.Thread32First(hThreadsSnapshot, POINTER(oThreadEntry32))
+    bFirstThread = True;
+    aoThreads = [];
+    while bGotThread:
+      bFirstThread = False;
+      if oThreadEntry32.th32OwnerProcessID == oSelf.uId:
+        aoThreads.append(cThread(oSelf, oThreadEntry32.th32ThreadID));
+      bGotThread = KERNEL32.Thread32Next(hThreadsSnapshot, POINTER(oThreadEntry32));
+    uLastError = KERNEL32.GetLastError();
+    (HRESULT_FROM_WIN32(uLastError) == ERROR_NO_MORE_FILES) \
+        or fThrowError("Thread32%s(0x%08X, ...)" % \
+          (bFirstThread and "First" or "Next", hThreadsSnapshot.value,), uLastError);
+    KERNEL32.CloseHandle(hThreadsSnapshot) \
+        or fThrowError("CloseHandle(0x%08X)" % (hThreadsSnapshot.value,));
+    return aoThreads;
+  
+  def foGetThreadForId(oSelf, uId):
+    return cThread(oSelf, uId);
