@@ -2,6 +2,7 @@ import ctypes;
 
 CAST = lambda cType, oInstance: ctypes.cast(oInstance, cType);
 SIZEOF = ctypes.sizeof;
+ADDRESSOF = ctypes.addressof;
 
 def BUFFER(uSize):
   oBuffer = (ctypes.c_byte * uSize)();
@@ -19,6 +20,9 @@ def POINTER(cType_or_xInstance):
   else:
     # If this is an instance return a pointer to the instance.
     return ctypes.byref(cType_or_xInstance);
+
+def POINTER_VALUE(pxInstance):
+  return ctypes.c_void_p.from_buffer(pxInstance).value;
 
 def POINTER_32(cType_or_uAddress = None):
   if cType_or_uAddress is None or type(cType_or_uAddress).__class__ == type:
