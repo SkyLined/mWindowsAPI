@@ -1,6 +1,7 @@
 import os;
 
 from .mDefines import *;
+from .mFunctions import SUCCEEDED;
 from .mTypes import *;
 from .mDLLs import KERNEL32, NTDLL;
 from .cVirtualAllocation import cVirtualAllocation;
@@ -9,10 +10,10 @@ from .fbTerminateProcessForHandle import fbTerminateProcessForHandle;
 from .fbWaitForProcessTerminationForHandle import fbWaitForProcessTerminationForHandle;
 from .fsGetPythonISA import fsGetPythonISA;
 from .fsGetProcessISAFor_ import fsGetProcessISAForHandle;
+from .fSuspendProcessForId import fSuspendProcessForId;
 from .fThrowError import fThrowError;
 from .fuGetProcessExitCodeForHandle import fuGetProcessExitCodeForHandle;
 from .fuGetProcessIntegrityLevelForId import fuGetProcessIntegrityLevelForId;
-from .oSystemInfo import oSystemInfo;
 
 class cProcess(object):
   def __init__(oSelf, uId, hProcess = None):
@@ -24,7 +25,7 @@ class cProcess(object):
       hProcess \
           or fThrowError("OpenProcess(0x%08X, FALSE, 0x%08X)" % (uFlags, uId,));
     oSelf.__hProcess = hProcess;
-    # If we are running in 64-bit Python, ZwQueryInformationProcess will return a pointer to the 64-bit PEB of
+    # If we are running in 64-bit Python, NtQueryInformationProcess will return a pointer to the 64-bit PEB of
     # another process in the PROCESS_BASIC_INFORMATION struct. If we are running in 32-bit Python, we cannot get
     # information on a 64-bit process unless we start doing some dirty hacks, which I'd rather not. To find out if
     # the PEB is 32- or 64-bit, we will need to find out the bitness of Python, the OS and the target process:
@@ -53,25 +54,24 @@ class cProcess(object):
   @property
   def oPEB(oSelf):
     if oSelf.__oPEB is None:
-      # The type of PROCESS_BASIC_INFORMATION returned by ZwQueryInformationProcess depends on the ISA of the process
+      # The type of PROCESS_BASIC_INFORMATION returned by NtQueryInformationProcess depends on the ISA of the process
       # calling it, in this case it's the Python process we're running in:
       cProcessBasicInformation = {"x86": PROCESS_BASIC_INFORMATION_32, "x64": PROCESS_BASIC_INFORMATION_64}[fsGetPythonISA()];
       oProcessBasicInformation = cProcessBasicInformation();
       uReturnLength = ULONG();
-      uProcessInformationClass = ProcessBasicInformation;
-      uNTStatus = NTDLL.ZwQueryInformationProcess(
+      uNTStatus = NTDLL.NtQueryInformationProcess(
         oSelf.__hProcess,# ProcessHandle
-        uProcessInformationClass, # ProcessInformationClass
+        ProcessBasicInformation, # ProcessInformationClass
         CAST(PVOID, POINTER(oProcessBasicInformation)), # ProcessInformation
         SIZEOF(oProcessBasicInformation), # ProcessInformationLength
         POINTER(uReturnLength), # ReturnLength
       );
-      assert uNTStatus == STATUS_SUCCESS, \
-          "ZwQueryInformationProcess(0x%X, 0x%08X, ..., 0x%X, ...) = 0x%08X" % \
-          (oSelf.__hProcess, uProcessInformationClass, SIZEOF(oProcessBasicInformation), uNTStatus);
+      SUCCEEDED(uNTStatus) \
+          or fThrowError("NtQueryInformationProcess(0x%X, 0x%X, ..., 0x%X, ...)" % \
+              (oSelf.__hProcess, ProcessBasicInformation, SIZEOF(oProcessBasicInformation)), uNTStatus);
       assert uReturnLength.value == SIZEOF(oProcessBasicInformation), \
-          "ZwQueryInformationProcess(0x%X, 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % \
-          (oSelf.__hProcess, uProcessInformationClass, SIZEOF(oProcessBasicInformation), uReturnLength.value);
+          "NtQueryInformationProcess(0x%X, 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % \
+          (oSelf.__hProcess, ProcessBasicInformation, SIZEOF(oProcessBasicInformation), uReturnLength.value);
       # Read PEB
       uPEBAddress = oProcessBasicInformation.PebBaseAddress;
       # The type of PEB (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
