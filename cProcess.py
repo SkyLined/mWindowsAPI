@@ -134,6 +134,10 @@ class cProcess(object):
     return oSelf.__sCommandLine;
   
   def __del__(oSelf):
+    try:
+      oSelf.__hProcess;
+    except AttributeError:
+      return;
     KERNEL32.CloseHandle(oSelf.__hProcess) \
         or fThrowError("CloseHandle(0x%X)" % (oSelf.__hProcess,));
   
