@@ -38,18 +38,6 @@ class cProcess(object):
     oSelf.__oProcessParameters = None;
     oSelf.__sBinaryPath = None;
     oSelf.__sCommandLine = None;
-
-  def __foGetAllocatedVirtualAllocation(oSelf, uAddress, uSize, sNameInError):
-    oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
-    # Make sure it is allocated
-    assert oVirtualAllocation.bAllocated, \
-        "Allocation for %s (0x%X bytes) at address 0x%08X not found:\r\n%s" % \
-        (sNameInError, uSize, uAddress, "\r\n".join(oVirtualAllocation.fasDump()));
-    assert uAddress + uSize < oVirtualAllocation.uEndAddress, \
-        "Allocation for %s (0x%X bytes) at address 0x%08X is too small to contain expected value:\r\n%s" % \
-        (sNameInError, uSize, uAddress, "\r\n".join(oVirtualAllocation.fasDump()));
-    
-    return oVirtualAllocation;
   
   @property
   def oPEB(oSelf):
@@ -76,7 +64,7 @@ class cProcess(object):
       uPEBAddress = oProcessBasicInformation.PebBaseAddress;
       # The type of PEB (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
       cPEB = {"x86": PEB_32, "x64": PEB_64}[fsGetPythonISA()];
-      oVirtualAllocation = oSelf.__foGetAllocatedVirtualAllocation(uPEBAddress, SIZEOF(cPEB), "PEB");
+      oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uPEBAddress, SIZEOF(cPEB), "PEB");
       oSelf.__oPEB = oVirtualAllocation.foReadStructureForOffset(
         cStructure = cPEB,
         uOffset = uPEBAddress - oVirtualAllocation.uStartAddress,
@@ -94,7 +82,7 @@ class cProcess(object):
       uProcessParametersAddress = oSelf.oPEB.ProcessParameters;
       # The type of RTL_USER_PROCESS_PARAMETERS (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
       cRtlUserProcessParameters = {"x86": RTL_USER_PROCESS_PARAMETERS_32, "x64": RTL_USER_PROCESS_PARAMETERS_64}[fsGetPythonISA()];
-      oVirtualAllocation = oSelf.__foGetAllocatedVirtualAllocation(uProcessParametersAddress, SIZEOF(cRtlUserProcessParameters), "Process Parameters");
+      oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uProcessParametersAddress, SIZEOF(cRtlUserProcessParameters), "Process Parameters");
       oSelf.__oProcessParameters = oVirtualAllocation.foReadStructureForOffset(
         cStructure = cRtlUserProcessParameters,
         uOffset = uProcessParametersAddress - oVirtualAllocation.uStartAddress,
@@ -107,7 +95,7 @@ class cProcess(object):
       # Read Image Path Name
       uImagePathNameAddress = oSelf.oProcessParameters.ImagePathName.Buffer;
       uImagePathNameSize = oSelf.oProcessParameters.ImagePathName.Length;
-      oVirtualAllocation = oSelf.__foGetAllocatedVirtualAllocation(uImagePathNameAddress, uImagePathNameSize, "Image Path Name");
+      oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uImagePathNameAddress, uImagePathNameSize, "Image Path Name");
       oSelf.__sBinaryPath = oVirtualAllocation.fsReadStringForOffsetAndSize(
         uOffset = uImagePathNameAddress - oVirtualAllocation.uStartAddress,
         uSize = uImagePathNameSize,
@@ -125,7 +113,7 @@ class cProcess(object):
       # Read Command Line
       uCommandLineAddress = oSelf.oProcessParameters.CommandLine.Buffer;
       uCommandLineSize = oSelf.oProcessParameters.CommandLine.Length;
-      oVirtualAllocation = oSelf.__foGetAllocatedVirtualAllocation(uCommandLineAddress, uCommandLineSize, "Command Line");
+      oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uCommandLineAddress, uCommandLineSize, "Command Line");
       oSelf.__sCommandLine = oVirtualAllocation.fsReadStringForOffsetAndSize(
         uOffset = uCommandLineAddress - oVirtualAllocation.uStartAddress,
         uSize = uCommandLineSize,
@@ -169,6 +157,17 @@ class cProcess(object):
   
   def foGetVirtualAllocationForAddress(oSelf, uAddress):
     return cVirtualAllocation(oSelf.uId, uAddress);
+
+  def foGetAllocatedVirtualAllocationWithSizeCheck(oSelf, uAddress, uSize, sNameInError):
+    oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
+    # Make sure it is allocated
+    assert oVirtualAllocation.bAllocated, \
+        "Allocation for %s (0x%X bytes) at address 0x%08X not found:\r\n%s" % \
+        (sNameInError, uSize, uAddress, "\r\n".join(oVirtualAllocation.fasDump()));
+    assert uAddress + uSize < oVirtualAllocation.uEndAddress, \
+        "Allocation for %s (0x%X bytes) at address 0x%08X is too small to contain expected value:\r\n%s" % \
+        (sNameInError, uSize, uAddress, "\r\n".join(oVirtualAllocation.fasDump()));
+    return oVirtualAllocation;
   
   def fsReadBytesForAddressAndSize(oSelf, uAddress, uSize):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
