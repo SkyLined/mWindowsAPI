@@ -17,10 +17,10 @@ def fdsProcessesExecutableName_by_uId():
     bFirstProcess = False;
     dsProcessExecutableName_by_uIds[oProcessEntry32.th32ProcessID] = oProcessEntry32.szExeFile;
     bGotProcess = KERNEL32.Process32NextW(hProcessesSnapshot, POINTER(oProcessEntry32));
-  uProcess32_WError = KERNEL32.GetLastError();
-  (HRESULT_FROM_WIN32(uProcess32_WError) == ERROR_NO_MORE_FILES) \
+  uLastError = KERNEL32.GetLastError();
+  (HRESULT_FROM_WIN32(uLastError) == ERROR_NO_MORE_FILES) \
       or fThrowError("Process32%sW(0x%08X, ...)" % \
-      (bFirstProcess and "First" or "Next", hProcessesSnapshot.value,), uProcess32_WError);
+          (bFirstProcess and "First" or "Next", hProcessesSnapshot.value,), uLastError);
   KERNEL32.CloseHandle(hProcessesSnapshot) \
       or fThrowError("CloseHandle(0x%08X)" % (hProcessesSnapshot.value,));
   return dsProcessExecutableName_by_uIds;
