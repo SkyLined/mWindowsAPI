@@ -59,18 +59,19 @@ def fasDumpStructureOrUnionHelper(uOffset, uDepth, oStructureOrUnion, auBytes):
         sFooterFormat % "}",
       ]);
     elif cFieldType == cArrayType:
-      asDumpData.append(sHeaderFormat % ("", sFieldName, "["));
-      assert oField._type_ in [BYTE] or type(oField._type_) in [int, long], \
-          "Unhandled array element type %s/%s for field %s" % (repr(oField._type_), repr(type(oField._type_)), sFieldName);
-      uElementSize = SIZEOF(oField._type_);
-      for uElementIndex in xrange(oField._length_):
-        sElementIndex = uElementIndex < 10 and ("[%d]" % uElementIndex) or ("[%d/0x%X]" % (uElementIndex, uElementIndex));
-        uElementOffset = uOffset + cField.offset + uElementIndex * uElementSize
-        sElementBytes = " ".join(["%02X" % auBytes[uByteOffset] for uByteOffset in xrange(uElementOffset, uElementOffset + uElementSize)]);
-        sElementValue = "%s0x%%0%dX" % (oField[uElementIndex] < 0 and "-" or "", uElementSize * 2) % abs(oField[uElementIndex]);
-        asDumpData.append("  %04X %04X %-24s %s  %-30s %s" % \
-            (uElementOffset, uElementSize, sElementBytes, "  " * uDepth, sElementIndex, sElementValue));
-      asDumpData.append(sFooterFormat % "]");
+      if oField._type_ in [BYTE] or type(oField._type_) in [int, long]:
+        asDumpData.append(sHeaderFormat % ("", sFieldName, "["));
+        uElementSize = SIZEOF(oField._type_);
+        for uElementIndex in xrange(oField._length_):
+          sElementIndex = uElementIndex < 10 and ("[%d]" % uElementIndex) or ("[%d/0x%X]" % (uElementIndex, uElementIndex));
+          uElementOffset = uOffset + cField.offset + uElementIndex * uElementSize
+          sElementBytes = " ".join(["%02X" % auBytes[uByteOffset] for uByteOffset in xrange(uElementOffset, uElementOffset + uElementSize)]);
+          sElementValue = "%s0x%%0%dX" % (oField[uElementIndex] < 0 and "-" or "", uElementSize * 2) % abs(oField[uElementIndex]);
+          asDumpData.append("  %04X %04X %-24s %s  %-30s %s" % \
+              (uElementOffset, uElementSize, sElementBytes, "  " * uDepth, sElementIndex, sElementValue));
+        asDumpData.append(sFooterFormat % "]");
+      else:
+        asDumpData.append(sHeaderFormat % ("", sFieldName, "%s[%d]" % (oField._type_.__name__, oField._length_)));
     else:
       sFieldBytes = " ".join(["%02X" % auBytes[uByteOffset] for uByteOffset in xrange(uFieldOffset, uFieldOffset + cField.size)]);
       assert cFieldType == cSimpleType, \
@@ -169,7 +170,7 @@ def fDefineUnion(sName, *atxFields):
 # those structures are defined and will therefore be defined in a second round #
 ################################################################################
 
-#UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
+# This is used in enough structures to be defined first:
 fExportStructure32("UNICODE_STRING_32",
   (USHORT,      "Length"),
   (USHORT,      "MaximumLength"),
@@ -182,6 +183,14 @@ fExportStructure64("UNICODE_STRING_64",
 );
 
 #CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+fExportStructure32("CLIENT_ID_32",
+  (PVOID_32,    "UniqueProcess"),
+  (PVOID_32,    "UniqueThread"),
+);
+fExportStructure32("CLIENT_ID_64",
+  (PVOID_64,    "UniqueProcess"),
+  (PVOID_64,    "UniqueThread"),
+);
 fExportStructure("COORD", 
   (SHORT,       "X"),
   (SHORT,       "Y"),
@@ -193,6 +202,15 @@ fExportStructure32("CURDIR_32",
 fExportStructure64("CURDIR_64",
   (UNICODE_STRING_64, "DosPath"),
   (HANDLE_64,   "Handle"),
+);
+#EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+fExportStructure32("EXCEPTION_REGISTRATION_RECORD_32",
+  (PVOID_32,    "Next"), # Should be EXCEPTION_REGISTRATION_RECORD_32
+  (PVOID_32,    "Handler"), # Should be PEXCEPTION_ROUTINE_32
+);
+fExportStructure64("EXCEPTION_REGISTRATION_RECORD_64",
+  (PVOID_64,    "Next"), # Should be EXCEPTION_REGISTRATION_RECORD_64
+  (PVOID_64,    "Handler"), # Should be PEXCEPTION_ROUTINE_64
 );
 #FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 fExportStructure("FILETIME",
@@ -356,6 +374,10 @@ fExportStructure64("LIST_ENTRY_64",
   (PVOID_64,    "Blink"), # Should be PLIST_ENTRY_64 but circular references are not implemented.
 );
 #MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+fExportStructure("M128A",
+  (ULONGLONG,    "Low"),
+  (LONGLONG,     "High"),
+);
 fExportStructure("MEMORY_BASIC_INFORMATION", 
   (PVOID,       "BaseAddress"),
   (PVOID,       "AllocationBase"),
@@ -409,6 +431,31 @@ fExportStructure("MODULEENTRY32W",
   (HMODULE,     "hModule"),
   (WCHAR * (MAX_MODULE_NAME32 + 1), "szModule"),
   (WCHAR * MAX_PATH, "szExePath"),
+);
+#NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
+fExportStructure32("NT_TIB_32",
+  (PEXCEPTION_REGISTRATION_RECORD_32, "ExceptionList"),
+  (PVOID_32,    "StackBase"),
+  (PVOID_32,    "StackLimit"),
+  (PVOID_32,    "SubSystemTib"),
+  UNION(
+    (PVOID_32,  "FiberData"),
+    (ULONG,     "Version"),
+  ),
+  (PVOID_32,    "ArbitraryUserPointer"),
+  (PVOID_32,    "Self"), # Should be PNT_TIB_32
+);
+fExportStructure64("NT_TIB_64",
+  (PEXCEPTION_REGISTRATION_RECORD_64, "ExceptionList"),
+  (PVOID_64,    "StackBase"),
+  (PVOID_64,    "StackLimit"),
+  (PVOID_64,    "SubSystemTib"),
+  UNION(
+    (PVOID_64,  "FiberData"),
+    (ULONG,     "Version"),
+  ),
+  (PVOID_64,    "ArbitraryUserPointer"),
+  (PVOID_64,    "Self"), # Should be PNT_TIB_64
 );
 #OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 fExportStructure("OVERLAPPED",
@@ -648,6 +695,17 @@ fExportStructure("SYSTEM_INFO",
   (WORD,        "wProcessorRevision"),
 );
 
+#TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+fExportStructure("THREADENTRY32",
+  (DWORD,       "dwSize"),
+  (DWORD,       "cntUsage"),
+  (DWORD,       "th32ThreadID"),
+  (DWORD,       "th32OwnerProcessID"),
+  (LONG,        "tpBasePri"),
+  (LONG,        "tpDeltaPri"),
+  (DWORD,       "dwFlags"),
+);
+
 ################################################################################
 # Structures that contain or refer to other structures                         #
 ################################################################################
@@ -796,4 +854,164 @@ fExportStructure64("PROCESS_BASIC_INFORMATION_64",
   (PVOID_64 * 2, "Reserved2"),
   (PULONG_64,   "UniqueProcessId"),
   (PVOID_64,    "Reserved3"),
+);
+#TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+fExportStructure32("TEB_32",
+  (NT_TIB_32,  "NtTib"),
+  (PVOID_32,    "EnvironmentPointer"),
+  (CLIENT_ID_32, "ClientId"),
+  # There is more, but I do not need it at this point.
+);
+fExportStructure64("TEB_64",
+  (NT_TIB_64,  "NtTib"),
+  (PVOID_64,    "EnvironmentPointer"),
+  (CLIENT_ID_64, "ClientId"),
+  # There is more, but I do not need it at this point.
+);
+fExportStructure32("THREAD_BASIC_INFORMATION_32",
+  (NTSTATUS,    "ExitStatus"),
+  (PTEB_32,     "TebBaseAddress"),
+  (CLIENT_ID_32, "ClientId"),
+  (DWORD,       "AffinityMask"),
+  (DWORD,       "Priority"),
+  (DWORD,       "BasePriority"),
+);
+fExportStructure64("THREAD_BASIC_INFORMATION_64",
+  (NTSTATUS,    "ExitStatus"),
+  (PTEB_64,     "TebBaseAddress"),
+  (CLIENT_ID_64, "ClientId"),
+  (DWORD,       "AffinityMask"),
+  (DWORD,       "Priority"),
+  (DWORD,       "BasePriority"),
+);
+
+# Thread context
+fExportStructure32("FLOATING_SAVE_AREA_32",
+  (ULONG,        "ControlWord"),
+  (ULONG,        "StatusWord"),
+  (ULONG,        "TagWord"),
+  (ULONG,        "ErrorOffset"),
+  (ULONG,        "ErrorSelector"),
+  (ULONG,        "DataOffset"),
+  (ULONG,        "DataSelector"),
+  (UCHAR * 80,   "RegisterArea"),
+  (ULONG,        "Cr0NpxState"),
+);
+fExportStructure32("CONTEXT_32", 
+  (ULONG,       "ContextFlags"),
+  (ULONG,       "Dr0"),
+  (ULONG,       "Dr1"),
+  (ULONG,       "Dr2"),
+  (ULONG,       "Dr3"),
+  (ULONG,       "Dr6"),
+  (ULONG,       "Dr7"),
+  (FLOATING_SAVE_AREA_32, "FloatSave"),
+  (ULONG,       "SegGs"),
+  (ULONG,       "SegFs"),
+  (ULONG,       "SegEs"),
+  (ULONG,       "SegDs"),
+  (ULONG,       "Edi"),
+  (ULONG,       "Esi"),
+  (ULONG,       "Ebx"),
+  (ULONG,       "Edx"),
+  (ULONG,       "Ecx"),
+  (ULONG,       "Eax"),
+  (ULONG,       "Ebp"),
+  (ULONG,       "Eip"),
+  (ULONG,       "SegCs"),
+  (ULONG,       "Eflags"),
+  (ULONG,       "Esp"),
+  (ULONG,       "SegSs"),
+  (UCHAR * 512, "ExtendedRegisters"),
+);
+
+fExportStructure64("XMM_SAVE_AREA32",
+  (WORD,        "ControlWord"),
+  (WORD,        "StatusWord"),
+  (BYTE,        "TagWord"),
+  (BYTE,        "Reserved1"),
+  (WORD,        "ErrorOpcode"),
+  (DWORD,       "ErrorOffset"),
+  (WORD,        "ErrorSelector"),
+  (WORD,        "Reserved2"),
+  (DWORD,       "DataOffset"),
+  (WORD,        "DataSelector"),
+  (WORD,        "Reserved3"),
+  (DWORD,       "MxCsr"),
+  (DWORD,       "MxCsr_Mask"),
+  (M128A * 8,   "FloatRegisters"),
+  (M128A * 16,  "XmmRegisters"),
+  (BYTE * 96,   "Reserved4"),
+);
+
+fExportStructure64("CONTEXT_64", 
+  (DWORD64,     "P1Home"),
+  (DWORD64,     "P2Home"),
+  (DWORD64,     "P3Home"),
+  (DWORD64,     "P4Home"),
+  (DWORD64,     "P5Home"),
+  (DWORD64,     "P6Home"),
+  (DWORD,       "ContextFlags"),
+  (DWORD,       "MxCsr"),
+  (WORD,        "SegCs"),
+  (WORD,        "SegDs"),
+  (WORD,        "SegEs"),
+  (WORD,        "SegFs"),
+  (WORD,        "SegGs"),
+  (WORD,        "SegSs"),
+  (DWORD,       "EFlags"),
+  (DWORD64,     "Dr0"),
+  (DWORD64,     "Dr1"),
+  (DWORD64,     "Dr2"),
+  (DWORD64,     "Dr3"),
+  (DWORD64,     "Dr6"),
+  (DWORD64,     "Dr7"),
+  (DWORD64,     "Rax"),
+  (DWORD64,     "Rcx"),
+  (DWORD64,     "Rdx"),
+  (DWORD64,     "Rbx"),
+  (DWORD64,     "Rsp"),
+  (DWORD64,     "Rbp"),
+  (DWORD64,     "Rsi"),
+  (DWORD64,     "Rdi"),
+  (DWORD64,     "R8"),
+  (DWORD64,     "R9"),
+  (DWORD64,     "R10"),
+  (DWORD64,     "R11"),
+  (DWORD64,     "R12"),
+  (DWORD64,     "R13"),
+  (DWORD64,     "R14"),
+  (DWORD64,     "R15"),
+  (DWORD64,     "Rip"),
+  UNION( 
+    (XMM_SAVE_AREA32, "FltSave"),
+    STRUCT(
+      (M128A * 2,       "Header"),
+      (M128A * 8,       "Legacy"),
+      (M128A,           "Xmm0"),
+      (M128A,           "Xmm1"),
+      (M128A,           "Xmm2"),
+      (M128A,           "Xmm3"),
+      (M128A,           "Xmm4"),
+      (M128A,           "Xmm5"),
+      (M128A,           "Xmm6"),
+      (M128A,           "Xmm7"),
+      (M128A,           "Xmm8"),
+      (M128A,           "Xmm9"),
+      (M128A,           "Xmm10"),
+      (M128A,           "Xmm11"),
+      (M128A,           "Xmm12"),
+      (M128A,           "Xmm13"),
+      (M128A,           "Xmm14"),
+      (M128A,           "Xmm15"),
+    ),
+  ),
+  (BYTE * 0x17,  "Padding"),
+  (M128A * 26,  "VectorRegister"),
+  (DWORD64,     "VectorControl"),
+  (DWORD64,     "DebugControl"),
+  (DWORD64,     "LastBranchToRip"),
+  (DWORD64,     "LastBranchFromRip"),
+  (DWORD64,     "LastExceptionToRip"),
+  (DWORD64,     "LastExceptionFromRip"),
 );
