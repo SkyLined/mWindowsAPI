@@ -151,6 +151,9 @@ class cProcess(object):
   def fbWait(oSelf, uTimeout = None):
     return fbWaitForProcessTerminationForHandle(oSelf.__hProcess, uTimeout);
   
+  def fSuspend(oSelf):
+    return fSuspendProcessForId(oSelf.uId);
+  
   @property
   def uExitCode(oSelf):
     return fuGetProcessExitCodeForHandle(oSelf.__hProcess);
