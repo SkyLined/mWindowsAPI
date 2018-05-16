@@ -1,7 +1,7 @@
 from .mDefines import *;
-from .mFunctions import *;
 from .mTypes import *;
 from .mDLLs import KERNEL32;
+from .fTerminateThreadForHandle import fTerminateThreadForHandle;
 from .fThrowError import fThrowError;
 
 def fbTerminateThreadForId(uThreadId):
@@ -9,8 +9,7 @@ def fbTerminateThreadForId(uThreadId):
   if not hThread:
     return False;
   try:
-    KERNEL32.TerminateThread(hThread) \
-        or fThrowError("TerminateThread(0x%X)" % (hThread.value,));
+    fTerminateThreadForHandle(hThread);
   finally:
     KERNEL32.CloseHandle(hThread) \
         or fThrowError("CloseHandle(0x%X)" % (hThread.value,));
