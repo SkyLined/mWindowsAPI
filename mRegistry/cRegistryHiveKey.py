@@ -5,7 +5,7 @@ from ..mFunctions import WIN32_FROM_HRESULT;
 # There are more imports at the end that need to be there and not here to prevent import loops.
 
 class cRegistryHiveKey(object):
-  def __init__(oSelf, xUnused = None, sKeyName = None, oRegistryHive = None, oWinRegKey = None, bWinRegKeyOpenForWriting = False, **dxRegistryHiveArguments):
+  def __init__(oSelf, xUnused = None, sKeyName = None, oRegistryHive = None, oWinRegKey = None, bWinRegKeyOpenForWriting = False, uRegistryBits = 0, **dxRegistryHiveArguments):
     assert xUnused is None, \
         "Constructor arguments must be named values!";
     assert sKeyName is not None, \
@@ -20,6 +20,7 @@ class cRegistryHiveKey(object):
     oSelf.__sKeyName = sKeyName;
     oSelf.__oWinRegKey = oWinRegKey;
     oSelf.__bKeyOpenForWriting = bWinRegKeyOpenForWriting;
+    oSelf.__uRegistryBits = uRegistryBits;
   
   @property
   def oRegistryHive(oSelf):
@@ -42,19 +43,19 @@ class cRegistryHiveKey(object):
     oSelf.__sKeyName = sKeyName;
   def __foOpenWinRegKey(oSelf, bForWriting = False):
     # return cached oWinRegKey if appropriate or create a new oWinRegKey
-    if bForWriting and not oSelf.__bKeyOpenForWriting:
+    if (bForWriting and not oSelf.__bKeyOpenForWriting):
       oSelf.__oWinRegKey = None;
     if oSelf.__oWinRegKey is None:
-      oSelf.__oWinRegKey = oSelf.__oRegistryHive.foOpenWinRegKey(oSelf.sKeyName, bForWriting = bForWriting);
+      oSelf.__oWinRegKey = oSelf.__oRegistryHive.foOpenWinRegKey(oSelf.sKeyName, bForWriting = bForWriting, uRegistryBits = oSelf.__uRegistryBits);
       oSelf.__bKeyOpenForWriting = bForWriting;
     return oSelf.__oWinRegKey;
 
   def __foCreateWinRegKey(oSelf, bForWriting = False):
     # return cached oWinRegKey if appropriate or create a new oWinRegKey
-    if bForWriting and not oSelf.__bKeyOpenForWriting:
+    if (bForWriting and not oSelf.__bKeyOpenForWriting):
       oSelf.__oWinRegKey = None;
     if oSelf.__oWinRegKey is None:
-      oSelf.__oWinRegKey = oSelf.__oRegistryHive.foCreateWinRegKey(oSelf.sKeyName, bForWriting = bForWriting);
+      oSelf.__oWinRegKey = oSelf.__oRegistryHive.foCreateWinRegKey(oSelf.sKeyName, bForWriting = bForWriting, uRegistryBits = oSelf.__uRegistryBits);
       oSelf.__bKeyOpenForWriting = bForWriting;
     return oSelf.__oWinRegKey;
   
@@ -65,8 +66,10 @@ class cRegistryHiveKey(object):
   def fbCreate(oSelf, bForWriting = False):
     if oSelf.bExists:
       return True;
-    oSelf.__oWinRegKey = oSelf.oRegistryHive.foCreateWinRegKey(oSelf.sKeyName, bForWriting = bForWriting);
-    return oSelf.__oWinRegKey is not None;
+    oSelf.__oWinRegKey = oSelf.__oRegistryHive.foCreateWinRegKey(oSelf.sKeyName, bForWriting = bForWriting, uRegistryBits = oSelf.__uRegistryBits);
+    bSuccess = oSelf.__oWinRegKey is not None;
+    oSelf.__bKeyOpenForWriting = bSuccess and bForWriting;
+    return bSuccess;
   
   def fbDelete(oSelf):
     for sName in oSelf.doSubKey_by_sName.keys():
@@ -75,7 +78,7 @@ class cRegistryHiveKey(object):
     return oSelf.oParentHiveKey.fbDeleteSubKey(oSelf.sKeyName);
   
   def fbDeleteSubKey(oSelf, sSubKeyName):
-    return oSelf.__oRegistryHive.fbDeleteHiveKeySubKey(oSelf, sSubKeyName);
+    return oSelf.__oRegistryHive.fbDeleteHiveKeySubKey(oSelf, sSubKeyName, uRegistryBits = oSelf.__uRegistryBits);
   
   @property
   def oParentHiveKey(oSelf):
@@ -83,15 +86,15 @@ class cRegistryHiveKey(object):
       sParentKeyName = oSelf.sKeyName[:oSelf.sKeyName.rindex("\\")];
     except ValueError:
       return None; # This is a root key; there is no parent
-    return cRegistryHiveKey(sKeyName = sParentKeyName, oRegistryHive = oRegistryHive);
+    return cRegistryHiveKey(sKeyName = sParentKeyName, oRegistryHive = oSelf.__oRegistryHive, uRegistryBits = oSelf.__uRegistryBits);
   
   def foCreateSubKey(oSelf, sSubKeyName, bForWriting = False):
-    return oSelf.oRegistryHive.foCreateHiveKey(r"%s\%s" % (oSelf.sKeyName, sSubKeyName), bForWriting = bForWriting);
+    return oSelf.__oRegistryHive.foCreateHiveKey(r"%s\%s" % (oSelf.sKeyName, sSubKeyName), bForWriting = bForWriting, uRegistryBits = oSelf.__uRegistryBits);
   
   def foGetSubKey(oSelf, sSubKeyName):
     return cRegistryHiveKey(
       sKeyName = r"%s\%s" % (oSelf.sKeyName, sSubKeyName),
-      oRegistryHive = oSelf.oRegistryHive,
+      oRegistryHive = oSelf.__oRegistryHive,
     );
   
   @property
@@ -114,7 +117,7 @@ class cRegistryHiveKey(object):
         return doSubKey_by_sName;
       doSubKey_by_sName[sSubKeyName] = cRegistryHiveKey(
         sKeyName = "%s\%s" % (oSelf.sKeyName, sSubKeyName),
-        oRegistryHive = oSelf.oRegistryHive,
+        oRegistryHive = oSelf.__oRegistryHive,
       );
   
   @property
