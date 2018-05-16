@@ -6,6 +6,8 @@ from .mTypes import SYSTEM_INFO;
 
 def fsHKLMValue(sKeyName, sValueName):
   oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyName = sKeyName, sValueName = sValueName);
+  if not oRegistryValue:
+    oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyName = sKeyName, sValueName = sValueName, uRegistryBits = 64);
   assert oRegistryValue, \
       "Cannot read HKLM\%s\%s" % (sKeyName, sValueName);
   assert oRegistryValue.sTypeName == "REG_SZ", \
