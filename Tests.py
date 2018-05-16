@@ -1,4 +1,4 @@
-import os, sys, subprocess, threading, time;
+import os, re, sys, subprocess, threading, time;
 
 sMainFolderPath = os.path.dirname(os.path.abspath(__file__));
 sParentFolderPath = os.path.dirname(sMainFolderPath);
@@ -53,15 +53,17 @@ if __name__ == "__main__":
   assert oRegistryHiveKeyNamedValue.foGet() is None, \
       "Deleting named registry value failed!";
   
-  # Test oSystemInfo
-  print "* Testing oSystemInfo...";
-  print "  OS version: %s" %  oSystemInfo.sOSVersion;
-  print "  Processors:      %d" % oSystemInfo.uNumberOfProcessors;
-  print "  Address range:   0x%08X - 0x%08X" % (oSystemInfo.uMinimumApplicationAddress, oSystemInfo.uMaximumApplicationAddress);
-  print "  Page size:       0x%X" % oSystemInfo.uPageSize;
-  print "  Allocation granularity: 0x%X" % oSystemInfo.uAllocationAddressGranularity;
-  print "  System name: %s" % oSystemInfo.sSystemName;
-  print "  System id: %s" % oSystemInfo.sUniqueSystemId;
+  # Test system info
+  print "* Testing system info...";
+  print "  * fsGetPythonISA() = %s" % fsGetPythonISA();
+  print "  * oSystemInfo...";
+  print "    | OS version: %s" %  oSystemInfo.sOSVersion;
+  print "    | Processors:      %d" % oSystemInfo.uNumberOfProcessors;
+  print "    | Address range:   0x%08X - 0x%08X" % (oSystemInfo.uMinimumApplicationAddress, oSystemInfo.uMaximumApplicationAddress);
+  print "    | Page size:       0x%X" % oSystemInfo.uPageSize;
+  print "    | Allocation granularity: 0x%X" % oSystemInfo.uAllocationAddressGranularity;
+  print "    | System name: %s" % oSystemInfo.sSystemName;
+  print "    | System id: %s" % oSystemInfo.sUniqueSystemId;
   
   # Test console functions
   print "* Testing KERNEL32 console functions...";
@@ -85,11 +87,9 @@ if __name__ == "__main__":
   print "* Testing process functions...";
   # Test process functions
   sTestApplicationPath = os.getenv("ComSpec");
-  oTestProcess = subprocess.Popen(sTestApplicationPath);
+  oTestProcess = subprocess.Popen(sTestApplicationPath, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE);
   print "  + Started test process %d..." % oTestProcess.pid;
   try:
-    print "  * Testing fSuspendProcessForId...";
-    fSuspendProcessForId(oTestProcess.pid);
     # cProcess
     print "  * Testing cProcess...";
     oProcess = cProcess(oTestProcess.pid);
@@ -97,8 +97,49 @@ if __name__ == "__main__":
     print "    + Binary start address = 0x%08X" % oProcess.uBinaryStartAddress;
     print "    + Binary Path = %s" % repr(oProcess.sBinaryPath);
     print "    + Command line = %s" % repr(oProcess.sCommandLine);
+    print "  * Testing cProcess.fSuspend()...";
+    oProcess.fSuspend();
+    print "  * Testing cProcess.oPEB...";
+    for sLine in oProcess.oPEB.fasDump("Process %d/0x%X PEB" % (oProcess.uId, oProcess.uId)):
+      print "    | " + sLine;
+    # Threads
+    print "  * Testing cProcess.faoGetThreads...";
+    aoThreads = oProcess.faoGetThreads();
+    print "    + Thread ids: %s" % repr([oThread.uId for oThread in aoThreads]);
+    print "  * Testing cProcess.foGetThreadForId(%d)..." % aoThreads[0].uId;
+    oThread = oProcess.foGetThreadForId(aoThreads[0].uId);
+    for oThread in aoThreads:
+      print "  * Testing cThread.fSuspend() for thread %d..." % oThread.uId;
+      oThread.fSuspend();
+      print "  * Testing cThread.oTEB for thread %d..." % oThread.uId;
+      for sLine in oThread.oTEB.fasDump("Thread %d/0x%X TEB" % (oThread.uId, oThread.uId)):
+        print "    | " + sLine;
+      print "  * Stack: 0x%X - 0x%X" % (oThread.uStackBottomAddress, oThread.uStackTopAddress);
+      print "  * Registers:";
+      duRegisterValue_by_sName = oThread.fduGetRegisterValueByName();
+      for sRegisterName in sorted(duRegisterValue_by_sName.keys()):
+        if "rip" in duRegisterValue_by_sName:
+          if re.match(r"^r([a-z]+|\d+)$", sRegisterName):
+            print "    | %s = 0x%X" % (sRegisterName, duRegisterValue_by_sName[sRegisterName]);
+        elif re.match(r"^e[a-z]+$", sRegisterName):
+          print "    | %s = 0x%X" % (sRegisterName, duRegisterValue_by_sName[sRegisterName]);
+# This may crash the application
+#      oThread.fSetRegisters({
+#        "rax": 0xAAAAAAAAAAAAAAAA,
+#        "rbx": 0xBBBBBBBBBBBBBBBB,
+#        "rcx": 0xCCCCCCCCCCCCCCCC,
+#        "rdx": 0xDDDDDDDDDDDDDDDD,
+#        "rsi": 0x5555555555555555,
+#        "rdi": 0xDDDDDDDDDDDDDDDD,
+#        "rsp": 0x5555555555555555,
+#        "rbp": 0xBBBBBBBBBBBBBBBB,
+#        "rip": 0x1111111111111111,
+#      });
+#      oThread.fbResume();
+#      assert oThread.fbResume(), \
+#        "Still suspended";
     # cVirtualAllocation
-    oBinaryVirtualAllocation = cVirtualAllocation(oTestProcess.pid, oProcess.uBinaryStartAddress);
+    oBinaryVirtualAllocation = cVirtualAllocation(oProcess.uId, oProcess.uBinaryStartAddress);
     assert oBinaryVirtualAllocation.bAllocated, \
         "Expected memory to be allocated at address 0x%08X" % oProcess.uBinaryStartAddress;
     assert oBinaryVirtualAllocation.uStartAddress == oProcess.uBinaryStartAddress, \
@@ -110,26 +151,26 @@ if __name__ == "__main__":
     # fdsProcessesExecutableName_by_uId (make sure test process binary is included)
     print "  * Testing fdsProcessesExecutableName_by_uId...";
     dsProcessesExecutableName_by_uId = fdsProcessesExecutableName_by_uId();
-    sProcessesExecutableName = dsProcessesExecutableName_by_uId.get(oTestProcess.pid);
+    sProcessesExecutableName = dsProcessesExecutableName_by_uId.get(oProcess.uId);
     assert sProcessesExecutableName, \
-        "Test process id %d/0x%X not found in process list!" % (oTestProcess.pid, oTestProcess.pid);
+        "Test process id %d/0x%X not found in process list!" % (oProcess.uId, oProcess.uId);
     assert sProcessesExecutableName.lower() == os.path.basename(sTestApplicationPath).lower(), \
-        "Text process %d/0x%X is reported to run %s" % (oTestProcess.pid, sProcessesExecutableName);
+        "Text process %d/0x%X is reported to run %s" % (oProcess.uId, sProcessesExecutableName);
     # fuGetProcessIntegrityLevelForId
     print "  * Testing fuGetProcessIntegrityLevelForId...";
-    uProcessIntegrityLevel = fuGetProcessIntegrityLevelForId(oTestProcess.pid);
+    uProcessIntegrityLevel = fuGetProcessIntegrityLevelForId(oProcess.uId);
     assert uProcessIntegrityLevel is not None, \
-        "Test process %d/0x%X integrity level could not be determined!" % (oTestProcess.pid, oTestProcess.pid);
+        "Test process %d/0x%X integrity level could not be determined!" % (oProcess.uId, oProcess.uId);
     print "    + IntegrityLevel = 0x%X." % uProcessIntegrityLevel;
     # fuGetProcessMemoryUsage
     # cVirtualAllocation.foCreateInProcessForId()
     # cVirtualAllocation.fAllocate()
     # cVirtualAllocation.fFree()
     print "  * Testing Memory management functions...";
-    uProcessMemoryUsage = fuGetProcessMemoryUsage(oTestProcess.pid);
+    uProcessMemoryUsage = fuGetProcessMemoryUsage(oProcess.uId);
     print "    + Memory usage = 0x%X." % uProcessMemoryUsage;
     uMemoryAllocationSize = 0x1230000;
-    oVirtualAllocation = cVirtualAllocation.foCreateInProcessForId(oTestProcess.pid, uMemoryAllocationSize, bReserved = True);
+    oVirtualAllocation = cVirtualAllocation.foCreateInProcessForId(oProcess.uId, uMemoryAllocationSize, bReserved = True);
     print ",".ljust(80, "-");
     for sLine in oVirtualAllocation.fasDump():
       print "| %s" % sLine;
@@ -138,7 +179,7 @@ if __name__ == "__main__":
         "Attempt to reserve 0x%X bytes failed" % uMemoryAllocationSize;
     assert oVirtualAllocation.uSize == uMemoryAllocationSize, \
         "Attempted to reserve 0x%X bytes, but got 0x%X" % (uMemoryAllocationSize, oVirtualAllocation.uSize);
-    uProcessMemoryUsageAfterReservation = fuGetProcessMemoryUsage(oTestProcess.pid);
+    uProcessMemoryUsageAfterReservation = fuGetProcessMemoryUsage(oProcess.uId);
     print "    + Memory usage after reserving 0x%X bytes = 0x%X." % \
         (oVirtualAllocation.uSize, uProcessMemoryUsageAfterReservation);
 # For unknown reasons, the memory usage can drop after reserving memory !?
@@ -150,7 +191,7 @@ if __name__ == "__main__":
     for sLine in oVirtualAllocation.fasDump():
       print "| %s" % sLine;
     print "`".ljust(80, "-");
-    uProcessMemoryUsageAfterAllocation = fuGetProcessMemoryUsage(oTestProcess.pid);
+    uProcessMemoryUsageAfterAllocation = fuGetProcessMemoryUsage(oProcess.uId);
     print "    + Memory usage after allocating 0x%X bytes = 0x%X." % \
         (oVirtualAllocation.uSize, uProcessMemoryUsageAfterAllocation);
     assert uProcessMemoryUsageAfterAllocation >= uProcessMemoryUsageAfterReservation + uMemoryAllocationSize, \
@@ -161,7 +202,7 @@ if __name__ == "__main__":
     for sLine in oVirtualAllocation.fasDump():
       print "| %s" % sLine;
     print "`".ljust(80, "-");
-    uProcessMemoryUsageAfterFree = fuGetProcessMemoryUsage(oTestProcess.pid);
+    uProcessMemoryUsageAfterFree = fuGetProcessMemoryUsage(oProcess.uId);
     print "    + Memory usage after freeing memory = 0x%X." % uProcessMemoryUsageAfterFree;
     assert uProcessMemoryUsageAfterFree >= uProcessMemoryUsage, \
         "Process memory usage was expected to be at least 0x%X after free, but is 0x%X" % \
@@ -170,10 +211,10 @@ if __name__ == "__main__":
     # cJobObject
     # Also test if OOM error codes cause a Python MemoryError exception to be thrown.
     print "  * Testing cJobObject...";
-    oJobObject = cJobObject(oTestProcess.pid);
+    oJobObject = cJobObject(oProcess.uId);
     oJobObject.fSetMaxTotalMemoryUse(uProcessMemoryUsageAfterFree + uMemoryAllocationSize / 2);
     try:
-      cVirtualAllocation.foCreateInProcessForId(oTestProcess.pid, uMemoryAllocationSize);
+      cVirtualAllocation.foCreateInProcessForId(oProcess.uId, uMemoryAllocationSize);
     except MemoryError, oMemoryError:
       pass;
     else:
@@ -187,11 +228,11 @@ if __name__ == "__main__":
     
     # fbTerminateProcessForId
     print "  * Testing fbTerminateProcessForId...";
-    fbTerminateProcessForId(oTestProcess.pid);
+    fbTerminateProcessForId(oProcess.uId);
     assert oTestProcess.poll() != None, \
         "Test process was not terminated!";
     # fdsProcessesExecutableName_by_uId (make sure test process is removed)
-    assert oTestProcess.pid not in fdsProcessesExecutableName_by_uId(), \
+    assert oProcess.uId not in fdsProcessesExecutableName_by_uId(), \
         "Test process is still reported to exist after being terminated!?";
     print "  + Test process was terminated.";
     
