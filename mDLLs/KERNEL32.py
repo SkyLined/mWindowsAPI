@@ -4,9 +4,6 @@ from ..fsGetPythonISA import fsGetPythonISA;
 
 KERNEL32 = cDLL("kernel32.dll");
 
-PCONTEXT = POINTER({"x86": CONTEXT_32, "x64": CONTEXT_64}[fsGetPythonISA()]);
-PPCONTEXT = POINTER(PCONTEXT);
-
 KERNEL32.fDefineFunction(BOOL,    "AssignProcessToJobObject", HANDLE, HANDLE);
 KERNEL32.fDefineFunction(BOOL,    "CloseHandle", HANDLE);
 KERNEL32.fDefineFunction(HANDLE,  "CreateToolhelp32Snapshot", DWORD, DWORD);
@@ -33,14 +30,12 @@ KERNEL32.fDefineFunction(DWORD,   "GetShortPathNameA", LPCSTR, LPSTR, DWORD);
 KERNEL32.fDefineFunction(DWORD,   "GetShortPathNameW", LPCWSTR, LPWSTR, DWORD);
 KERNEL32.fDefineFunction(HANDLE,  "GetStdHandle", DWORD);
 KERNEL32.fDefineFunction(VOID,    "GetSystemInfo", LPSYSTEM_INFO);
-KERNEL32.fDefineFunction(BOOL,    "GetThreadContext", HANDLE, PCONTEXT);
 KERNEL32.fDefineFunction(UINT,    "GetWindowsDirectoryA", LPSTR, UINT);
 KERNEL32.fDefineFunction(UINT,    "GetWindowsDirectoryW", LPWSTR, UINT);
 KERNEL32.fDefineFunction(LPVOID,  "HeapAlloc", HANDLE, DWORD, SIZE_T);
 KERNEL32.fDefineFunction(HANDLE,  "HeapCreate", DWORD, SIZE_T, SIZE_T);
 KERNEL32.fDefineFunction(BOOL,    "HeapFree", HANDLE, DWORD, LPVOID);
 KERNEL32.fDefineFunction(LPVOID,  "HeapReAlloc", HANDLE, DWORD, LPVOID, SIZE_T);
-KERNEL32.fDefineFunction(BOOL,    "InitializeContext", PVOID, DWORD, PPCONTEXT, PWORD);
 KERNEL32.fDefineFunction(BOOL,    "IsWow64Process", HANDLE, PBOOL);
 KERNEL32.fDefineFunction(BOOL,    "IsProcessInJob", HANDLE, HANDLE, PBOOL);
 KERNEL32.fDefineFunction(BOOL,    "K32EnumProcesses", PDWORD, DWORD, PDWORD);
@@ -65,7 +60,6 @@ KERNEL32.fDefineFunction(BOOL,    "SetInformationJobObject", HANDLE, JOBOBJECTIN
 KERNEL32.fDefineFunction(BOOL,    "SetConsoleTextAttribute", HANDLE, WORD);
 KERNEL32.fDefineFunction(BOOL,    "SetConsoleTitleA", LPCSTR);
 KERNEL32.fDefineFunction(BOOL,    "SetConsoleTitleW", LPCWSTR);
-KERNEL32.fDefineFunction(BOOL,    "SetThreadContext", HANDLE, PCONTEXT);
 KERNEL32.fDefineFunction(DWORD,   "SuspendThread", HANDLE);
 KERNEL32.fDefineFunction(BOOL,    "TerminateProcess", HANDLE, UINT);
 KERNEL32.fDefineFunction(BOOL,    "TerminateThread", HANDLE, DWORD);
@@ -84,3 +78,11 @@ KERNEL32.fDefineFunction(BOOL,    "WriteConsoleA", HANDLE, LPCSTR, DWORD, LPDWOR
 KERNEL32.fDefineFunction(BOOL,    "WriteConsoleW", HANDLE, LPCWSTR, DWORD, LPDWORD, LPVOID);
 KERNEL32.fDefineFunction(BOOL,    "WriteFile", HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED);
 KERNEL32.fDefineFunction(BOOL,    "WriteProcessMemory", HANDLE, LPVOID, LPCVOID, SIZE_T, PSIZE_T);
+if fsGetPythonISA() == "x64":
+  KERNEL32.fDefineFunction(BOOL,    "GetThreadContext", HANDLE, PCONTEXT_64);
+  KERNEL32.fDefineFunction(BOOL,    "SetThreadContext", HANDLE, PCONTEXT_64);
+  KERNEL32.fDefineFunction(BOOL,    "Wow64GetThreadContext", HANDLE, PCONTEXT_32);
+  KERNEL32.fDefineFunction(BOOL,    "Wow64SetThreadContext", HANDLE, PCONTEXT_32);
+else:
+  KERNEL32.fDefineFunction(BOOL,    "GetThreadContext", HANDLE, PCONTEXT_32);
+  KERNEL32.fDefineFunction(BOOL,    "SetThreadContext", HANDLE, PCONTEXT_32);
