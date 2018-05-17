@@ -1,6 +1,7 @@
+import re;
 from .cVirtualAllocation import cVirtualAllocation;
 from .mDefines import *;
-from .mFunctions import SUCCEEDED;
+from .mFunctions import POINTER_VALUE, SUCCEEDED;
 from .mTypes import *;
 from .mDLLs import KERNEL32, NTDLL;
 from .fbIsThreadRunningForHandle import fbIsThreadRunningForHandle;
@@ -180,7 +181,7 @@ class cThread(object):
           "NtQueryInformationThread(0x%X, 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % \
           (hThread, ThreadBasicInformation, SIZEOF(oThreadBasicInformation), uReturnLength.value);
       # Read TEB
-      uTEBAddress = oThreadBasicInformation.TebBaseAddress;
+      uTEBAddress = POINTER_VALUE(oThreadBasicInformation.TebBaseAddress);
       # The type of TEB (32- or 64-bit) depends on the type of THREAD_BASIC_INFORMATION (see above)
       cTEB = {"x86": TEB_32, "x64": TEB_64}[fsGetPythonISA()];
       oVirtualAllocation = oSelf.oProcess.foGetAllocatedVirtualAllocationWithSizeCheck(uTEBAddress, SIZEOF(cTEB), "TEB");
@@ -221,11 +222,11 @@ class cThread(object):
   
   @property
   def uStackBottomAddress(oSelf):
-    return oSelf.oTEB.NtTib.StackBase;
+    return POINTER_VALUE(oSelf.oTEB.NtTib.StackBase);
   
   @property
   def uStackTopAddress(oSelf):
-    return oSelf.oTEB.NtTib.StackLimit;
+    return POINTER_VALUE(oSelf.oTEB.NtTib.StackLimit);
   
   @property
   def oStackVirtualAllocation(oSelf):

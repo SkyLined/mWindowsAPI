@@ -6,7 +6,7 @@ from ..fsGetPythonISA import fsGetPythonISA;
 
 uNamelessStructureOrUnionsCounter = 0;
 
-__all__ = asExportedNames = [
+__all__ = [
   "fcStructure",
   "fcStructure_32",
   "fcStructure_64",
@@ -74,17 +74,24 @@ def fasDumpStructureOrUnionHelper(uOffset, uDepth, oStructureOrUnion, auBytes):
         asDumpData.append(sHeaderFormat % ("", sFieldName, "%s[%d]" % (oField._type_.__name__, oField._length_)));
     else:
       sFieldBytes = " ".join(["%02X" % auBytes[uByteOffset] for uByteOffset in xrange(uFieldOffset, uFieldOffset + cField.size)]);
-      assert cFieldType == cSimpleType, \
-          "Unhandled field type %s for field %s" % (repr(cFieldType), sFieldName);
-      cFieldType = type(oField);
-      if cFieldType in [str, unicode]:
-        uByte = ord(oField);
-        sByte = uByte in xrange(0x20, 0x7e) and oField or ".";
-        sValue = "'%s' (0x%X)" % (sByte, uByte);
+      if cFieldType == type(ctypes.POINTER(ctypes.c_int)):
+        uValue = POINTER_VALUE(oField);
+        sValue = uValue is None and "NULL" or {"x86":"0x%08X", "x64":"0x%016X"}[fsGetPythonISA()] % uValue;
       else:
-        assert cFieldType in [int, long], \
-            "Unhandled simple field type %s for field %s" % (repr(cFieldType), sFieldName);
-        sValue = "%s0x%%0%dX" % (oField < 0 and "-" or "", cField.size * 2) % abs(oField);
+        assert cFieldType == cSimpleType, \
+            "Unhandled field type %s for field %s" % (repr(cFieldType), sFieldName);
+        cFieldType = type(oField);
+        if cFieldType in [cPOINTER_64, cPOINTER_32]:
+          uValue = POINTER_VALUE(oField);
+          sValue = uValue is None and "NULL" or {cPOINTER_32:"0x%08X", cPOINTER_64:"0x%016X"}[cFieldType] % uValue;
+        elif cFieldType in [str, unicode]:
+          uByte = ord(oField);
+          sByte = uByte in xrange(0x20, 0x7e) and oField or ".";
+          sValue = "'%s' (0x%X)" % (sByte, uByte);
+        else:
+          assert cFieldType in [int, long], \
+              "Unhandled simple field type %s for field %s" % (repr(cFieldType), sFieldName);
+          sValue = "%s0x%%0%dX" % (oField < 0 and "-" or "", cField.size * 2) % abs(oField);
       asDumpData.append(sHeaderFormat % (sFieldBytes, sFieldName, sValue));
   return asDumpData;
 
@@ -148,21 +155,27 @@ def fcUnion(sName, *axFields, **dxOption_by_sName):
 
 # Defining a structure also defines "P<struct_name>" and "PP<struct_name>" as a
 # pointer-to-structure and a pointer-to-pointer-to-structure respectively.
-def fExportStructureOrUnion(fcDefineType, fPointer, sName, *atxFields):
+def fExportStructureOrUnion(fcDefineType, sName, *atxFields):
   cType = fcDefineType(sName, *atxFields);
-  globals()[sName] = cType;
-  globals()["LP" + sName] = fPointer(cType);
-  globals()["P" + sName] = fPointer(cType);
-  globals()["PP" + sName] = fPointer(fPointer(cType));
-  asExportedNames.extend([sName, "LP" + sName, "P" + sName, "PP" + sName]);
+  for (sName, xType) in {
+              sName: cType,
+       "LP" + sName: POINTER(cType),
+        "P" + sName: POINTER(cType),
+       "PP" + sName: POINTER(POINTER(cType)),
+     "P32_" + sName: POINTER_32(cType),
+     "P64_" + sName: POINTER_64(cType),
+  }.items():
+    globals()[sName] = xType; # Make it available locally
+    __all__.append(sName); # Make it available as an export.
+
 def fExportStructure(sName, *atxFields):
-  fExportStructureOrUnion(fcStructure, POINTER, sName, *atxFields);
+  fExportStructureOrUnion(fcStructure, sName, *atxFields);
 def fExportStructure32(sName, *atxFields):
-  fExportStructureOrUnion(fcStructure_32, POINTER_32, sName, *atxFields);
+  fExportStructureOrUnion(fcStructure_32, sName, *atxFields);
 def fExportStructure64(sName, *atxFields):
-  fExportStructureOrUnion(fcStructure_64, POINTER_64, sName, *atxFields);
+  fExportStructureOrUnion(fcStructure_64, sName, *atxFields);
 def fDefineUnion(sName, *atxFields):
-  fExportStructureOrUnion(fcUnion, POINTER, sName, *atxFields);
+  fExportStructureOrUnion(fcUnion, sName, *atxFields);
 
 ################################################################################
 # Simple structures that contain only primitives and no other structures are   #
@@ -987,7 +1000,17 @@ fExportStructure64("CONTEXT_64",
     (XMM_SAVE_AREA32, "FltSave"),
     STRUCT(
       (M128A * 2,       "Header"),
-      (M128A * 8,       "Legacy"),
+      UNION(
+        (M128A * 8,       "Legacy"),
+        (M128A,           "St0"),
+        (M128A,           "St1"),
+        (M128A,           "St2"),
+        (M128A,           "St3"),
+        (M128A,           "St4"),
+        (M128A,           "St5"),
+        (M128A,           "St6"),
+        (M128A,           "St7"),
+      ),
       (M128A,           "Xmm0"),
       (M128A,           "Xmm1"),
       (M128A,           "Xmm2"),

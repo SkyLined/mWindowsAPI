@@ -131,7 +131,7 @@ class cVirtualAllocation(object):
       oMemoryBasicInformation = MEMORY_BASIC_INFORMATION();
       uStoredBytes = KERNEL32.VirtualQueryEx(
         hProcess,
-        LPVOID(uAddress), # lpAddress
+        uAddress, # lpAddress
         POINTER(oMemoryBasicInformation), # lpBuffer,
         SIZEOF(MEMORY_BASIC_INFORMATION), # nLength
       );

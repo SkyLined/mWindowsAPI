@@ -63,7 +63,7 @@ class cProcess(object):
           "NtQueryInformationProcess(0x%X, 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % \
           (oSelf.__hProcess, ProcessBasicInformation, SIZEOF(oProcessBasicInformation), uReturnLength.value);
       # Read PEB
-      uPEBAddress = oProcessBasicInformation.PebBaseAddress;
+      uPEBAddress = POINTER_VALUE(oProcessBasicInformation.PebBaseAddress);
       # The type of PEB (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
       cPEB = {"x86": PEB_32, "x64": PEB_64}[fsGetPythonISA()];
       oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uPEBAddress, SIZEOF(cPEB), "PEB");
@@ -75,13 +75,13 @@ class cProcess(object):
   
   @property
   def uBinaryStartAddress(oSelf):
-    return oSelf.oPEB.ImageBaseAddress;
+    return POINTER_VALUE(oSelf.oPEB.ImageBaseAddress);
   
   @property
   def oProcessParameters(oSelf):
     if oSelf.__oProcessParameters is None:
       # Read Process Parameters
-      uProcessParametersAddress = oSelf.oPEB.ProcessParameters;
+      uProcessParametersAddress = POINTER_VALUE(oSelf.oPEB.ProcessParameters);
       # The type of RTL_USER_PROCESS_PARAMETERS (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
       cRtlUserProcessParameters = {"x86": RTL_USER_PROCESS_PARAMETERS_32, "x64": RTL_USER_PROCESS_PARAMETERS_64}[fsGetPythonISA()];
       oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uProcessParametersAddress, SIZEOF(cRtlUserProcessParameters), "Process Parameters");
@@ -95,7 +95,7 @@ class cProcess(object):
   def sBinaryPath(oSelf):
     if oSelf.__sBinaryPath is None:
       # Read Image Path Name
-      uImagePathNameAddress = oSelf.oProcessParameters.ImagePathName.Buffer;
+      uImagePathNameAddress = POINTER_VALUE(oSelf.oProcessParameters.ImagePathName.Buffer);
       uImagePathNameSize = oSelf.oProcessParameters.ImagePathName.Length;
       oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uImagePathNameAddress, uImagePathNameSize, "Image Path Name");
       oSelf.__sBinaryPath = oVirtualAllocation.fsReadStringForOffsetAndSize(
@@ -113,7 +113,7 @@ class cProcess(object):
   def sCommandLine(oSelf):
     if oSelf.__sCommandLine is None:
       # Read Command Line
-      uCommandLineAddress = oSelf.oProcessParameters.CommandLine.Buffer;
+      uCommandLineAddress = POINTER_VALUE(oSelf.oProcessParameters.CommandLine.Buffer);
       uCommandLineSize = oSelf.oProcessParameters.CommandLine.Length;
       oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uCommandLineAddress, uCommandLineSize, "Command Line");
       oSelf.__sCommandLine = oVirtualAllocation.fsReadStringForOffsetAndSize(
