@@ -13,7 +13,7 @@ from .fSuspendThreadForHandle import fSuspendThreadForHandle;
 from .fThrowError import fThrowError;
 from .fuGetThreadExitCodeForHandle import fuGetThreadExitCodeForHandle;
 
-gddtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA = {
+gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA = {
   "x86": {
     # 8 bit
     "ah":   ("Eax", 8, 8),
@@ -44,6 +44,54 @@ gddtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA = {
     "ebp":  ("Ebp", 32, 0),
     "esp":  ("Esp", 32, 0),
     "eip":  ("Eip", 32, 0),
+    "*sp":  ("Esp", 32, 0),
+    "*ip":  ("Eip", 32, 0),
+    # 64 bit
+    "mm0":  ("FloatSave.RegisterArea", 80, 0*80),
+    "mm1":  ("FloatSave.RegisterArea", 80, 1*80),
+    "mm2":  ("FloatSave.RegisterArea", 80, 2*80),
+    "mm3":  ("FloatSave.RegisterArea", 80, 3*80),
+    "mm4":  ("FloatSave.RegisterArea", 80, 4*80),
+    "mm5":  ("FloatSave.RegisterArea", 80, 5*80),
+    "mm6":  ("FloatSave.RegisterArea", 80, 6*80),
+    "mm7":  ("FloatSave.RegisterArea", 80, 7*80),
+    # 80 bit floats
+# Python has no support for 80 bit floats, so implementing this is going to be quite a lot of work.
+#    "st0":  ("FloatSave.RegisterArea", 80, 0*80),
+#    "st1":  ("FloatSave.RegisterArea", 80, 1*80),
+#    "st2":  ("FloatSave.RegisterArea", 80, 2*80),
+#    "st3":  ("FloatSave.RegisterArea", 80, 3*80),
+#    "st4":  ("FloatSave.RegisterArea", 80, 4*80),
+#    "st5":  ("FloatSave.RegisterArea", 80, 5*80),
+#    "st6":  ("FloatSave.RegisterArea", 80, 6*80),
+#    "st7":  ("FloatSave.RegisterArea", 80, 7*80),
+    # 128 bit
+    "xmm0": ("ExtendedRegisters", 128, 0*128 + 0x500),
+    "xmm1": ("ExtendedRegisters", 128, 1*128 + 0x500),
+    "xmm2": ("ExtendedRegisters", 128, 2*128 + 0x500),
+    "xmm3": ("ExtendedRegisters", 128, 3*128 + 0x500),
+    "xmm4": ("ExtendedRegisters", 128, 4*128 + 0x500),
+    "xmm5": ("ExtendedRegisters", 128, 5*128 + 0x500),
+    "xmm6": ("ExtendedRegisters", 128, 6*128 + 0x500),
+    "xmm7": ("ExtendedRegisters", 128, 7*128 + 0x500),
+    # Flags
+    "cf":   ("Eflags", 1, 0),
+    "pf":   ("Eflags", 1, 2),
+    "af":   ("Eflags", 1, 4),
+    "zf":   ("Eflags", 1, 6),
+    "sf":   ("Eflags", 1, 7),
+    "tf":   ("Eflags", 1, 8),
+    "if":   ("Eflags", 1, 9),
+    "df":   ("Eflags", 1, 10),
+    "of":   ("Eflags", 1, 11),
+    "iopl": ("Eflags", 2, 12),
+    "nt":   ("Eflags", 1, 14),
+    "rf":   ("Eflags", 1, 16),
+    "vm":   ("Eflags", 1, 17),
+    "ac":   ("Eflags", 1, 18),
+    "vif":  ("Eflags", 1, 19),
+    "vip":  ("Eflags", 1, 20),
+    "id":   ("Eflags", 1, 21),
   },
   "x64": {
     # 8 bit
@@ -119,6 +167,8 @@ gddtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA = {
     "rbp":  ("Rbp", 64, 0),
     "rsp":  ("Rsp", 64, 0),
     "rip":  ("Rip", 64, 0),
+    "*sp":  ("Rsp", 64, 0),
+    "*ip":  ("Rip", 64, 0),
     "r8":   ("R8",  64, 0),
     "r9":   ("R9",  64, 0),
     "r10":  ("R10", 64, 0),
@@ -127,6 +177,59 @@ gddtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA = {
     "r13":  ("R13", 64, 0),
     "r14":  ("R14", 64, 0),
     "r15":  ("R15", 64, 0),
+    "mm0":  ("FltSave.FloatRegisters[0]", 64, 0),
+    "mm1":  ("FltSave.FloatRegisters[1]", 64, 0),
+    "mm2":  ("FltSave.FloatRegisters[2]", 64, 0),
+    "mm3":  ("FltSave.FloatRegisters[3]", 64, 0),
+    "mm4":  ("FltSave.FloatRegisters[4]", 64, 0),
+    "mm5":  ("FltSave.FloatRegisters[5]", 64, 0),
+    "mm6":  ("FltSave.FloatRegisters[6]", 64, 0),
+    "mm7":  ("FltSave.FloatRegisters[7]", 64, 0),
+    # 80 bit
+# Python has no support for 80 bit floats, so implementing this is going to be quite a lot of work.
+#    "st0":  ("FltSave.FloatRegisters[0]", 80, 0),
+#    "st1":  ("FltSave.FloatRegisters[1]", 80, 0),
+#    "st2":  ("FltSave.FloatRegisters[2]", 80, 0),
+#    "st3":  ("FltSave.FloatRegisters[3]", 80, 0),
+#    "st4":  ("FltSave.FloatRegisters[4]", 80, 0),
+#    "st5":  ("FltSave.FloatRegisters[5]", 80, 0),
+#    "st6":  ("FltSave.FloatRegisters[6]", 80, 0),
+#    "st7":  ("FltSave.FloatRegisters[7]", 80, 0),
+    # 128 bit
+    "xmm0": ("Xmm0", 128, 0),
+    "xmm1": ("Xmm1", 128, 0),
+    "xmm2": ("Xmm2", 128, 0),
+    "xmm3": ("Xmm3", 128, 0),
+    "xmm4": ("Xmm4", 128, 0),
+    "xmm5": ("Xmm5", 128, 0),
+    "xmm6": ("Xmm6", 128, 0),
+    "xmm7": ("Xmm7", 128, 0),
+    "xmm8": ("Xmm8", 128, 0),
+    "xmm9": ("Xmm9", 128, 0),
+    "xmm10": ("Xmm10", 128, 0),
+    "xmm11": ("Xmm11", 128, 0),
+    "xmm12": ("Xmm12", 128, 0),
+    "xmm13": ("Xmm13", 128, 0),
+    "xmm14": ("Xmm14", 128, 0),
+    "xmm15": ("Xmm15", 128, 0),
+    # Flags
+    "cf":   ("EFlags", 1, 0),
+    "pf":   ("EFlags", 1, 2),
+    "af":   ("EFlags", 1, 4),
+    "zf":   ("EFlags", 1, 6),
+    "sf":   ("EFlags", 1, 7),
+    "tf":   ("EFlags", 1, 8),
+    "if":   ("EFlags", 1, 9),
+    "df":   ("EFlags", 1, 10),
+    "of":   ("EFlags", 1, 11),
+    "iopl": ("EFlags", 2, 12),
+    "nt":   ("EFlags", 1, 14),
+    "rf":   ("EFlags", 1, 16),
+    "vm":   ("EFlags", 1, 17),
+    "ac":   ("EFlags", 1, 18),
+    "vif":  ("EFlags", 1, 19),
+    "vip":  ("EFlags", 1, 20),
+    "id":   ("EFlags", 1, 21),
   },
 };
 
@@ -235,66 +338,134 @@ class cThread(object):
     return oSelf.__oStackVirtualAllocation;
   
   def __foGetThreadContext(oSelf):
-    # The type of CONTEXT returned by GetThreadContext depends on the ISA of the calling process (the Python process
-    # we're running in):
-    cThreadContext = {"x86": CONTEXT_32, "x64": CONTEXT_64}[fsGetPythonISA()];
+    # The type of CONTEXT we want to get and the function we need to use to do so depend on the ISA of both the target
+    # process and the calling process (the Python process we're running in):
+    if fsGetPythonISA() == "x86":
+      cThreadContext = CONTEXT_32;
+      sGetThreadContextFunctionName = "GetThreadContext";
+    elif oSelf.oProcess.sISA == "x86":
+      cThreadContext = CONTEXT_32;
+      sGetThreadContextFunctionName = "Wow64GetThreadContext";
+    else:
+      cThreadContext = CONTEXT_64;
+      sGetThreadContextFunctionName = "GetThreadContext";
     oThreadContext = cThreadContext();
     hThread = oSelf.fhOpenWithFlags(THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION);
     oThreadContext.ContextFlags = CONTEXT_ALL;
-    KERNEL32.GetThreadContext(
+    getattr(KERNEL32, sGetThreadContextFunctionName)(
       hThread, # hThread
       POINTER(oThreadContext), # lpContext
     ) \
-        or fThrowError("GetThreadContext(0x%08X, ...)" % (hThread,));
+        or fThrowError("%s(0x%08X, ...)" % (sGetThreadContextFunctionName, hThread));
     return oThreadContext;
+  
+  def __fxGetRegisterFromThreadContext(oSelf, oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize):
+    xValue = oThreadContext;
+    for sMemberName in re.split("[\.\[]", sThreadContextMemberName):
+      if sMemberName[-1] == "]":
+        xValue = xValue[long(sMemberName[:-1])];
+      else:
+        xValue = getattr(xValue, sMemberName);
+    if xValue.__class__ == M128A:
+      uValue = (xValue.High * (1 << 64)) ^ xValue.Low;
+      return (uValue >> uBitOffset) & ((1 << uBitSize) - 1);
+    elif isinstance(xValue, int) or isinstance(xValue, long):
+      uValue = xValue;
+      return (uValue >> uBitOffset) & ((1 << uBitSize) - 1);
+    else:
+      auMemberValueBytes = xValue;
+      uValue = 0;
+      for uByteIndex in xrange(uBitOffset >> 3, (uBitOffset + uBitSize) >> 3):
+        iStartBitOffsetForMemberValueByte = uBitOffset - uByteIndex * 8;
+        iEndBitOffsetForMemberValueByte = iStartBitOffsetForMemberValueByte + uBitSize;
+        uValueComponent = auMemberValueBytes[uByteIndex];
+        if iStartBitOffsetForMemberValueByte > 0:
+          uValueComponent = uValueComponent >> iStartBitOffsetForMemberValueByte;
+        else:
+          uValueComponent = uValueComponent << -iStartBitOffsetForMemberValueByte;
+        if iEndBitOffsetForMemberValueByte < 8:
+          uValueComponent = uValueComponent & ((1 << iEndBitOffsetForMemberValueByte) - 1);
+        uValue += uValueComponent;
+      return uValue;
+
+  def __fSetRegisterInThreadContext(oSelf, oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize, uRegisterValue):
+    xValue = oThreadContext;
+    xParent = None;
+    for sMemberName in re.split("[\.\[]", sThreadContextMemberName):
+      xParent = xValue;
+      if sMemberName[-1] == "]":
+        xValue = xValue[long(sMemberName[:-1])];
+      else:
+        xValue = getattr(xValue, sMemberName);
+    if xValue.__class__ == M128A:
+      uM128AValue = (xValue.High * (1 << 64)) ^ xValue.Low;
+      uCurrentValueInM128A = uValue & (((1 << uBitSize) - 1) << uBitOffset);
+      uNewValueInM128A = uRegisterValue << uBitOffset;
+      # Subtract the current value and add the new value:
+      uM128AValue = uM128AValue - uCurrentValueInM128A + uNewValueInM128A;
+      xValue.High = uM128AValue >> 64;
+      xValue.Low = uM128AValue & ((1 << 64) - 1);
+    elif isinstance(xValue, int) or isinstance(xValue, long):
+      uValue = xValue
+      uCurrentValue = uValue & (((1 << uBitSize) - 1) << uBitOffset);
+      uNewValue = uRegisterValue << uBitOffset;
+      uValue = uValue - uCurrentValue + uNewValue;
+      if sMemberName[-1] == "]":
+        xParent[long(sMemberName[:-1])] = uValue;
+      else:
+        setattr(xParent, sMemberName, uValue);
+    else:
+      raise NotImplementedError("Really not looking forward to this...");
   
   def fduGetRegisterValueByName(oSelf):
     # Actual valid registers depend on the ISA of the target process:
-    dtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName = \
-        gddtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
+    dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName = \
+        gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
     duRegisterValues_by_sName = {};
     oThreadContext = oSelf.__foGetThreadContext();
-    for (sRegisterName, (sThreadContextStructMemberName, uBitSize, uBitOffset)) in \
-        dtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName.items():
-      uRegisterValue = (getattr(oThreadContext, sThreadContextStructMemberName) >> uBitOffset) & ((1 << uBitSize) - 1);
+    for (sRegisterName, (sThreadContextMemberName, uBitSize, uBitOffset)) in \
+        dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName.items():
+      uRegisterValue = oSelf.__fxGetRegisterFromThreadContext(oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize);
       duRegisterValues_by_sName[sRegisterName] = uRegisterValue;
     return duRegisterValues_by_sName;
   
   def fuGetRegister(oSelf, sRegisterName):
     # Actual valid registers depend on the ISA of the target process:
-    dtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName = \
-        gddtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
-    assert sRegisterName in dtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName, \
+    dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName = \
+        gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
+    assert sRegisterName in dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName, \
         "Register %s is not available in the context of %s process %d" % (sRegisterName, oSelf.oProcess.sISA, oSelf.oProcess.uId);
-    (sThreadContextStructMemberName, uBitSize, uBitOffset) = \
-        dtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName[sRegisterName];
-    return (getattr(oSelf.__foGetThreadContext(), sThreadContextStructMemberName) >> uBitOffset) & ((1 << uBitSize) - 1);
+    (sThreadContextMemberName, uBitSize, uBitOffset) = \
+        dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName[sRegisterName];
+    oThreadContext = oSelf.__foGetThreadContext();
+    return oSelf.__fxGetRegisterFromThreadContext(oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize);
   
   def fSetRegister(oSelf, sRegisterName, uRegisterValue):
     return oSelf.fSetRegisters({sRegisterName: uRegisterValue});
   
   def fSetRegisters(oSelf, duRegisterValue_by_sName):
     # Actual valid registers depend on the ISA of the target process:
-    dtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName = \
-        gddtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
+    dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName = \
+        gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
     oThreadContext = oSelf.__foGetThreadContext();
     for (sRegisterName, uRegisterValue) in duRegisterValue_by_sName.items():
-      assert sRegisterName in dtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName, \
+      assert sRegisterName in dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName, \
           "Register %s is not available in the context of %s process %d" % (sRegisterName, oSelf.oProcess.sISA, oSelf.oProcess.uId);
-      (sThreadContextStructMemberName, uBitSize, uBitOffset) = \
-          dtxThreadContextStructMemberNameBitSizeAndOffset_by_sRegisterName[sRegisterName];
+      (sThreadContextMemberName, uBitSize, uBitOffset) = \
+          dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName[sRegisterName];
       assert uRegisterValue & ((1 << uBitSize) - 1) == uRegisterValue, \
           "value 0x%X cannot be stored in %d bit" % (uRegisterValue, uBitSize);
-      uContextStructMemberValue = getattr(oThreadContext, sThreadContextStructMemberName);
-      uCurrentValueInStructMember = uContextStructMemberValue & (((1 << uBitSize) - 1) << uBitOffset);
-      uNewValueInStructMember = uRegisterValue << uBitOffset;
-      # Subtract the current value and add the new value:
-      uContextStructMemberValue = uContextStructMemberValue - uCurrentValueInStructMember + uNewValueInStructMember;
-      setattr(oThreadContext, sThreadContextStructMemberName, uContextStructMemberValue);
+      oSelf.__fSetRegisterInThreadContext(oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize, uRegisterValue);
     hThread = oSelf.fhOpenWithFlags(THREAD_SET_CONTEXT);
-    KERNEL32.SetThreadContext(
+    # The function we need to use to set the context depends on the ISA of both the target process and the calling
+    # process (the Python process we're running in):
+    if fsGetPythonISA() == "x64" and oSelf.oProcess.sISA == "x86":
+      sSetThreadContextFunctionName = "Wow64SetThreadContext";
+    else:
+      sSetThreadContextFunctionName = "SetThreadContext";
+    getattr(KERNEL32, sSetThreadContextFunctionName)(
         hThread,# hThread
         POINTER(oThreadContext), # lpContext
     ) \
-        or fThrowError("SetThreadContext(0x%08X, ...)" % (hThread,));
-   
+        or fThrowError("%s(0x%08X, ...)" % (sSetThreadContextFunctionName, hThread));
+
