@@ -8,6 +8,7 @@ from .fbIsThreadRunningForHandle import fbIsThreadRunningForHandle;
 from .fbResumeThreadForHandle import fbResumeThreadForHandle;
 from .fTerminateThreadForHandle import fTerminateThreadForHandle;
 from .fbWaitForThreadTerminationForHandle import fbWaitForThreadTerminationForHandle;
+from .fsGetThreadDescriptionForHandle import fsGetThreadDescriptionForHandle;
 from .fsGetPythonISA import fsGetPythonISA;
 from .fSuspendThreadForHandle import fSuspendThreadForHandle;
 from .fThrowError import fThrowError;
@@ -289,6 +290,10 @@ class cThread(object):
   @property
   def uExitCode(oSelf):
     return fuGetThreadExitCodeForHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
+  
+  @property
+  def sDescription(oSelf):
+    return fsGetThreadDescriptionForHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
   
   @property
   def oTEB(oSelf):

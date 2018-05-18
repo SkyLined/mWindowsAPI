@@ -109,13 +109,15 @@ if __name__ == "__main__":
     print "  * Testing cProcess.foGetThreadForId(%d)..." % aoThreads[0].uId;
     oThread = oProcess.foGetThreadForId(aoThreads[0].uId);
     for oThread in aoThreads:
-      print "  * Testing cThread.fSuspend() for thread %d..." % oThread.uId;
+      print "  * Testing cThread for thread %d..." % oThread.uId;
+      print "    * cThread.fSuspend()";
       oThread.fSuspend();
-      print "  * Testing cThread.oTEB for thread %d..." % oThread.uId;
+      print "    * Description: %s" % (oThread.sDescription,);
+      print "    * Stack: 0x%X - 0x%X" % (oThread.uStackBottomAddress, oThread.uStackTopAddress);
+      print "    * TEB:";
       for sLine in oThread.oTEB.fasDump("Thread %d/0x%X TEB" % (oThread.uId, oThread.uId)):
         print "    | " + sLine;
-      print "  * Stack: 0x%X - 0x%X" % (oThread.uStackBottomAddress, oThread.uStackTopAddress);
-      print "  * Registers:";
+      print "    * Registers:";
       duRegisterValue_by_sName = oThread.fduGetRegisterValueByName();
       for sRegisterName in sorted(duRegisterValue_by_sName.keys()):
         if "rip" in duRegisterValue_by_sName:
