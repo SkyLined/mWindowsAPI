@@ -54,6 +54,15 @@ def POINTER_VALUE(pxInstance):
   except TypeError:
     raise TypeError("Cannot get the pointer value of a %s (%s)" % (type(pxInstance), repr(pxInstance)));
 
+def POINTER_TARGET(pxInstance):
+  assert not pxInstance.__class__ in [cPOINTER_32, cPOINTER_64, ctypes.c_void_p], \
+      "Unfortunately, this is not implemented";
+  if hasattr(pxInstance, "contents"):
+    return pxInstance.contents;
+  if hasattr(pxInstance, "value"):
+    return pxInstance.value;
+  raise TypeError("Cannot get the pointer target of a %s (%s)" % (type(pxInstance), repr(pxInstance)));
+
 def STR(sData_or_uSize, uSize = None):
   return ctypes.create_string_buffer(sData_or_uSize, uSize);
 
