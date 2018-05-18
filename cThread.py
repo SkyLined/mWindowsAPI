@@ -261,6 +261,35 @@ class cThread(object):
       oSelf.__dhThread_by_uFlags[uFlags] = hThread;
     return hThread;
   
+  def __del__(oSelf):
+    try:
+      oSelf.__dhThread_by_uFlags;
+    except AttributeError:
+      return;
+    for hThread in oSelf.__dhThread_by_uFlags.values():
+      KERNEL32.CloseHandle(hThread) \
+          or fThrowError("CloseHandle(0x%X)" % (hThread,));
+  
+  @property
+  def bIsRunning(oSelf):
+    return fbIsThreadRunningForHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
+  
+  def fTerminate(oSelf, uTimeout = None):
+    return fTerminateThreadForHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION), uTimeout);
+  
+  def fSuspend(oSelf):
+    return fSuspendThreadForHandle(oSelf.fhOpenWithFlags(THREAD_SUSPEND_RESUME));
+  
+  def fbResume(oSelf):
+    return fbResumeThreadForHandle(oSelf.fhOpenWithFlags(THREAD_SUSPEND_RESUME));
+  
+  def fbWait(oSelf, uTimeout = None):
+    return fbWaitForThreadTerminationForHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION), uTimeout);
+  
+  @property
+  def uExitCode(oSelf):
+    return fuGetThreadExitCodeForHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
+  
   @property
   def oTEB(oSelf):
     if oSelf.__oTEB is None:
@@ -293,35 +322,6 @@ class cThread(object):
         uOffset = uTEBAddress - oVirtualAllocation.uStartAddress,
       );
     return oSelf.__oTEB;
-  
-  def __del__(oSelf):
-    try:
-      oSelf.__dhThread_by_uFlags;
-    except AttributeError:
-      return;
-    for hThread in oSelf.__dhThread_by_uFlags.values():
-      KERNEL32.CloseHandle(hThread) \
-          or fThrowError("CloseHandle(0x%X)" % (hThread,));
-  
-  @property
-  def bIsRunning(oSelf):
-    return fbIsThreadRunningForHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
-  
-  def fTerminate(oSelf, uTimeout = None):
-    return fTerminateThreadForHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION), uTimeout);
-  
-  def fSuspend(oSelf):
-    return fSuspendThreadForHandle(oSelf.fhOpenWithFlags(THREAD_SUSPEND_RESUME));
-  
-  def fbResume(oSelf):
-    return fbResumeThreadForHandle(oSelf.fhOpenWithFlags(THREAD_SUSPEND_RESUME));
-  
-  def fbWait(oSelf, uTimeout = None):
-    return fbWaitForThreadTerminationForHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION), uTimeout);
-  
-  @property
-  def uExitCode(oSelf):
-    return fuGetThreadExitCodeForHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
   
   @property
   def uStackBottomAddress(oSelf):
