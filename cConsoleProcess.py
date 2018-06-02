@@ -59,7 +59,7 @@ class cConsoleProcess(cProcess):
             POINTER(oProcessInformation), # lpProcessInformation
           ):
             uCreateProcessError = KERNEL32.GetLastError();
-            (HRESULT_FROM_WIN32(uCreateProcessError) in [ERROR_FILE_NOT_FOUND, ERROR_INVALID_NAME]) \
+            (HRESULT_FROM_WIN32(uCreateProcessError) in [ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME]) \
                 or fThrowError("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
                 (repr(sBinaryPath), repr(sCommandLine), uCreationFlags, sWorkingDirectory), uCreateProcessError);
             return None;
