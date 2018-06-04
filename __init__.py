@@ -3,6 +3,7 @@ from .cJobObject import cJobObject;
 from .cPipe import cPipe;
 from .cProcess import cProcess;
 from .cVirtualAllocation import cVirtualAllocation;
+from .fauProcessesIdsForExecutableName import fauProcessesIdsForExecutableName;
 from .fbIsProcessRunningForHandle import fbIsProcessRunningForHandle;
 from .fbIsProcessRunningForId import fbIsProcessRunningForId;
 from .fbTerminateProcessForHandle import fbTerminateProcessForHandle;
