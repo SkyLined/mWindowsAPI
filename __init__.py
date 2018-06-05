@@ -4,6 +4,7 @@ from .cPipe import cPipe;
 from .cProcess import cProcess;
 from .cVirtualAllocation import cVirtualAllocation;
 from .fauProcessesIdsForExecutableName import fauProcessesIdsForExecutableName;
+from .fauProcessesIdsForExecutableNames import fauProcessesIdsForExecutableNames;
 from .fbIsProcessRunningForHandle import fbIsProcessRunningForHandle;
 from .fbIsProcessRunningForId import fbIsProcessRunningForId;
 from .fbTerminateProcessForHandle import fbTerminateProcessForHandle;
