@@ -57,7 +57,7 @@ if __name__ == "__main__":
   print "* Testing system info...";
   print "  * fsGetPythonISA() = %s" % fsGetPythonISA();
   print "  * oSystemInfo...";
-  print "    | OS version: %s" %  oSystemInfo.sOSVersion;
+  print "    | OS: %s" %  oSystemInfo.sOSFullDetails;
   print "    | Processors:      %d" % oSystemInfo.uNumberOfProcessors;
   print "    | Address range:   0x%08X - 0x%08X" % (oSystemInfo.uMinimumApplicationAddress, oSystemInfo.uMaximumApplicationAddress);
   print "    | Page size:       0x%X" % oSystemInfo.uPageSize;

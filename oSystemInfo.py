@@ -4,12 +4,14 @@ from .mFunctions import POINTER, WSTR;
 from .mRegistry import cRegistryValue;
 from .mTypes import SYSTEM_INFO;
 
-def fsHKLMValue(sKeyName, sValueName):
+def fsHKLMValue(sKeyName, sValueName, bRequired = True):
   oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyName = sKeyName, sValueName = sValueName);
   if not oRegistryValue:
     oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyName = sKeyName, sValueName = sValueName, uRegistryBits = 64);
-  assert oRegistryValue, \
-      "Cannot read HKLM\%s\%s" % (sKeyName, sValueName);
+    if not oRegistryValue:
+      assert not bRequired, \
+          "Cannot read HKLM\%s\%s" % (sKeyName, sValueName);
+      return None;
   assert oRegistryValue.sTypeName == "REG_SZ", \
       r"Expected HKLM\%s\%s to be REG_SZ, got %s" % (sKeyName, sValueName, oRegistryValue.sType);
   return oRegistryValue.xValue;
@@ -31,6 +33,7 @@ class cSystemInfo(object):
     oSelf.uAllocationAddressGranularity = oSystemInfo.dwAllocationGranularity;
     
     oSelf.__sOSName = None;
+    oSelf.__sOSVersion = None;
     oSelf.__sOSReleaseId = None;
     oSelf.__sOSBuild = None;
     oSelf.__sOSPath = None;
@@ -41,12 +44,26 @@ class cSystemInfo(object):
   def sOSName(oSelf):
     if not oSelf.__sOSName:
       oSelf.__sOSName = fsHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ProductName");
+      sServicePackName = fsHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CSDVersion", bRequired = False);
+      if sServicePackName:
+        oSelf.__sOSName += " " + sServicePackName;
     return oSelf.__sOSName;
-
+  
+  @property
+  def sOSVersion(oSelf):
+    if not oSelf.__sOSVersion:
+      oSelf.__sOSVersion = fsHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CurrentVersion");
+    return oSelf.__sOSVersion;
+  
   @property
   def sOSReleaseId(oSelf):
     if not oSelf.__sOSReleaseId:
-      oSelf.__sOSReleaseId = fsHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ReleaseId");
+      oSelf.__sOSReleaseId = (
+        # Windows 10
+        fsHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ReleaseId", bRequired = False) \
+        # Windows 7
+        or fsHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CSDBuildNumber")
+      );
     return oSelf.__sOSReleaseId;
   @property
   def uReleaseId(oSelf):
@@ -84,8 +101,8 @@ class cSystemInfo(object):
     return oSelf.__sUniqueSystemId;
   
   @property
-  def sOSVersion(oSelf):
-    return "%s release %s, build %s %s in %s" % \
-        (oSelf.sOSName, oSelf.sOSReleaseId, oSelf.sOSBuild, oSelf.sOSISA, oSelf.sOSPath);
+  def sOSFullDetails(oSelf):
+    return "%s (version %s, release %s, build %s %s) in %s" % \
+        (oSelf.sOSName, oSelf.sOSVersion, oSelf.sOSReleaseId, oSelf.sOSBuild, oSelf.sOSISA, oSelf.sOSPath);
 
 oSystemInfo = cSystemInfo();
