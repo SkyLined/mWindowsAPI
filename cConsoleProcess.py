@@ -1,10 +1,11 @@
-from .mDefines import *;
-from .mFunctions import *;
-from .mTypes import *;
-from .mDLLs import KERNEL32;
 from .cPipe import cPipe;
 from .cProcess import cProcess;
-from .fThrowError import fThrowError;
+from .fbLastErrorIs import fbLastErrorIs;
+from .fThrowLastError import fThrowLastError;
+from .mDefines import *;
+from .mDLLs import KERNEL32;
+from .mFunctions import *;
+from .mTypes import *;
 
 class cConsoleProcess(cProcess):
   @staticmethod
@@ -22,22 +23,28 @@ class cConsoleProcess(cProcess):
     bSuspended = False,
     bDebug = False,
   ):
-    oStdInPipe = bRedirectStdIn and cPipe("StdIn", bInheritableInput = False) or None;
+    # The output of oStdInPipe is inherited so the application can read from it when we write to the input.
+    # The output of oStdInPipe is closed by us after the application is started, as we do not use it and
+    # want Windows to clean it up when the application terminates.
+    # The input of oStdOutPipe and oStdErrPipe are inherited so the the application can write to them.
+    # The input of oStdOutPipe and oStdErrPipe are closed by us after the application is started, as we do
+    # not use them and want Windows to clean them up when the application terminates.
+    oStdInPipe = bRedirectStdIn and cPipe.foCreate("StdIn", bInheritableInput = False) or None;
     try:
-      oStdOutPipe = bRedirectStdOut and cPipe("StdOut", bInheritableOutput = False) or None;
+      oStdOutPipe = bRedirectStdOut and cPipe.foCreate("StdOut", bInheritableOutput = False) or None;
       try:
-        oStdErrPipe = bRedirectStdErr and cPipe("StdErr", bInheritableOutput = False) or None;
+        oStdErrPipe = bRedirectStdErr and cPipe.foCreate("StdErr", bInheritableOutput = False) or None;
         try:
           sCommandLine = " ".join([
             (s and (s[0] == '"' or s.find(" ") == -1)) and s or '"%s"' % s.replace('"', '\\"')
             for s in [sBinaryPath] + asArguments
           ]);
-          uCreationFlags = sum([
+          dwCreationFlags = DWORD(sum([
             bSuspended and CREATE_SUSPENDED or 0,
             bDebug and DEBUG_PROCESS or 0,
-          ]);
+          ]));
           oStartupInfo = STARTUPINFOW();
-          oStartupInfo.cb = SIZEOF(oStartupInfo);
+          oStartupInfo.cb = fuSizeOf(oStartupInfo);
           oStartupInfo.lpDesktop = NULL;
           oStartupInfo.lpDesktop = NULL;
           oStartupInfo.dwFlags = STARTF_USESTDHANDLES;
@@ -52,23 +59,21 @@ class cConsoleProcess(cProcess):
             NULL, # lpProcessAttributes
             NULL, # lpThreadAttributes
             TRUE, # bInheritHandles
-            uCreationFlags, # dwCreationFlags
+            dwCreationFlags, # dwCreationFlags
             NULL, # lpEnvironment
             sWorkingDirectory, # lpCurrentDirectory
             POINTER(oStartupInfo), # lpStartupInfo
             POINTER(oProcessInformation), # lpProcessInformation
           ):
-            uCreateProcessError = KERNEL32.GetLastError();
-            (HRESULT_FROM_WIN32(uCreateProcessError) in [ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME]) \
-                or fThrowError("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
-                (repr(sBinaryPath), repr(sCommandLine), uCreationFlags, sWorkingDirectory), uCreateProcessError);
+            if not fbLastErrorIs(ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME):
+              fThrowLastError("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
+                  (repr(sBinaryPath), repr(sCommandLine), dwCreationFlags.value, repr(sWorkingDirectory)));
             return None;
           # Close all handles that we no longer need:
-          KERNEL32.CloseHandle(oProcessInformation.hThread) \
-              or fThrowError("CloseHandle(0x%X)" % (oProcessInformation.hThread,));
-          # We use one end of the stdin/out/err pipes and the child uses the other. However, we still have the other
-          # ends open as well. We should close them because otherwise the pipes will not be closed when the child
-          # terminates (because we are keeping them open).
+          if not KERNEL32.CloseHandle(oProcessInformation.hThread):
+            fThrowLastError("CloseHandle(0x%X)" % (oProcessInformation.hThread.value,));
+          # Close the ends of the stdin/out/err pipes that we do not use; the child will keep them open until it dies
+          # at which point they can be cleaned up because we are not keeping them open ourselves.
           oStdInPipe and oStdInPipe.fClose(bOutput = True); 
           oStdOutPipe and oStdOutPipe.fClose(bInput = True);
           oStdErrPipe and oStdErrPipe.fClose(bInput = True);

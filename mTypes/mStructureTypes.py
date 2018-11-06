@@ -61,7 +61,7 @@ def fasDumpStructureOrUnionHelper(uOffset, uDepth, oStructureOrUnion, auBytes):
     elif cFieldType == cArrayType:
       if oField._type_ in [BYTE] or type(oField._type_) in [int, long]:
         asDumpData.append(sHeaderFormat % ("", sFieldName, "["));
-        uElementSize = SIZEOF(oField._type_);
+        uElementSize = fuSizeOf(oField._type_);
         for uElementIndex in xrange(oField._length_):
           sElementIndex = uElementIndex < 10 and ("[%d]" % uElementIndex) or ("[%d/0x%X]" % (uElementIndex, uElementIndex));
           uElementOffset = uOffset + cField.offset + uElementIndex * uElementSize
@@ -74,15 +74,15 @@ def fasDumpStructureOrUnionHelper(uOffset, uDepth, oStructureOrUnion, auBytes):
         asDumpData.append(sHeaderFormat % ("", sFieldName, "%s[%d]" % (oField._type_.__name__, oField._length_)));
     else:
       sFieldBytes = " ".join(["%02X" % auBytes[uByteOffset] for uByteOffset in xrange(uFieldOffset, uFieldOffset + cField.size)]);
-      if cFieldType == type(ctypes.POINTER(ctypes.c_int)):
-        uValue = POINTER_VALUE(oField);
+      if cFieldType == type(POINTER(ctypes.c_int)):
+        uValue = fuPointerValue(oField);
         sValue = uValue is None and "NULL" or {"x86":"0x%08X", "x64":"0x%016X"}[fsGetPythonISA()] % uValue;
       else:
         assert cFieldType == cSimpleType, \
             "Unhandled field type %s for field %s" % (repr(cFieldType), sFieldName);
         cFieldType = type(oField);
         if cFieldType in [cPOINTER_64, cPOINTER_32]:
-          uValue = POINTER_VALUE(oField);
+          uValue = fuPointerValue(oField);
           sValue = uValue is None and "NULL" or {cPOINTER_32:"0x%08X", cPOINTER_64:"0x%016X"}[cFieldType] % uValue;
         elif cFieldType in [str, unicode]:
           uByte = ord(oField);
@@ -124,11 +124,11 @@ def fcStructureOrUnion(cBaseType, sName, axFields, uAlignmentBytes = None):
       "_anonymous_": asAnonymousFieldNames,
       "foFromBytesString": classmethod(
         lambda cStructureOrUnion, sData, uOffset = 0:
-          cStructureOrUnion.from_buffer_copy(sData[uOffset : uOffset + ctypes.sizeof(cStructureOrUnion)])
+          cStructureOrUnion.from_buffer_copy(sData[uOffset : uOffset + fuSizeOf(cStructureOrUnion)])
       ),
       "fsToBytesString": (
         lambda oStructureOrUnion:
-          ctypes.string_at(ctypes.addressof(oStructureOrUnion),ctypes.sizeof(oStructureOrUnion))
+          ctypes.string_at(fuAddressOf(oStructureOrUnion), fuSizeOf(oStructureOrUnion))
       ),
       "fauToBytes": (
         lambda oStructureOrUnion:

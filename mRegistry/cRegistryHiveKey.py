@@ -1,7 +1,8 @@
 import _winreg;
 
-from ..mDefines import ERROR_FILE_NOT_FOUND;
-from ..mFunctions import WIN32_FROM_HRESULT;
+from ..fbErrorIs import fbErrorIs;
+from ..mDefines import *;
+from ..mFunctions import *;
 # There are more imports at the end that need to be there and not here to prevent import loops.
 
 class cRegistryHiveKey(object):
@@ -73,8 +74,7 @@ class cRegistryHiveKey(object):
   
   def fbDelete(oSelf):
     for sName in oSelf.doSubKey_by_sName.keys():
-      if not oSelf.fbDeleteSubKey(sSubKeyName):
-        return False;
+      oSelf.fbDeleteSubKey(sSubKeyName);
     return oSelf.oParentHiveKey.fbDeleteSubKey(oSelf.sKeyName);
   
   def fbDeleteSubKey(oSelf, sSubKeyName):
@@ -156,9 +156,8 @@ class cRegistryHiveKey(object):
     try:
       xValue, uType = _winreg.QueryValueEx(oWinRegKey, sValueName);
     except WindowsError, oWindowsError:
-      if oWindowsError.errno == WIN32_FROM_HRESULT(ERROR_FILE_NOT_FOUND):
-        # The value does not exist.
-        return None;
+      if fbErrorIs(HRESULT_FROM_WIN32(oWindowsError.errno), ERROR_FILE_NOT_FOUND):
+        return None; # The value does not exist.
       raise;
     return cRegistryValue(uType = uType, xValue = xValue);
 
@@ -182,9 +181,9 @@ class cRegistryHiveKey(object):
     try:
       _winreg.DeleteValue(oWinRegKey, sValueName);
     except WindowsError, oWindowsError:
-      if oWindowsError.errno == WIN32_FROM_HRESULT(ERROR_FILE_NOT_FOUND):
-        return True; # The value does not exist.
-      raise;
+      if not fbErrorIs(HRESULT_FROM_WIN32(oWindowsError.errno), ERROR_FILE_NOT_FOUND):
+        raise;
+      return False; # The value does not exist.
     return True;
   
   @property

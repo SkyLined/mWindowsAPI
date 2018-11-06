@@ -1,7 +1,8 @@
 import _winreg;
 
-from ..mDefines import ERROR_FILE_NOT_FOUND;
-from ..mFunctions import WIN32_FROM_HRESULT;
+from ..fbErrorIs import fbErrorIs;
+from ..mDefines import *;
+from ..mFunctions import *;
 
 gduHive_by_sName = {
   "HKCR":                             _winreg.HKEY_CLASSES_ROOT,
@@ -91,9 +92,10 @@ class cRegistryHive(object):
     try:
       return _winreg.OpenKey(oSelf.oHive, sKeyName, 0, uAccessMask);
     except WindowsError, oWindowsError:
-      if oWindowsError.errno == WIN32_FROM_HRESULT(ERROR_FILE_NOT_FOUND):
-        # The key does not exist.
-        return None;
+      if not fbErrorIs(HRESULT_FROM_WIN32(oWindowsError.errno), ERROR_FILE_NOT_FOUND):
+        raise;
+      return None; # The key does not exist.
+  
   def foOpenHiveKey(oSelf, sKeyName, bForWriting = False, uRegistryBits = 0):
     oWinRegKey = oSelf.foOpenWinRegKey(sKeyName, bForWriting = bForWriting, uRegistryBits = uRegistryBits);
     return oWinRegKey and cRegistryHiveKey(
@@ -110,10 +112,9 @@ class cRegistryHive(object):
     try:
       _winreg.DeleteKey(oWinRegKey, sSubKeyName);
     except WindowsError, oWindowsError:
-      if oWindowsError.errno == WIN32_FROM_HRESULT(ERROR_FILE_NOT_FOUND):
-        # The key does not exist.
-        return True;
-      return False;
+      if not fbErrorIs(HRESULT_FROM_WIN32(oWindowsError.errno), ERROR_FILE_NOT_FOUND):
+        raise;
+      return False; # The value does not exist.
     return True;
   
   @property

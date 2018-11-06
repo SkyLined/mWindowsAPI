@@ -1,8 +1,9 @@
-from .mDefines import MAX_PATH, PROCESSOR_ARCHITECTURE_AMD64, PROCESSOR_ARCHITECTURE_INTEL;
+from .fThrowLastError import fThrowLastError;
+from .mDefines import *;
 from .mDLLs import KERNEL32;
-from .mFunctions import POINTER, WSTR;
+from .mFunctions import *;
 from .mRegistry import cRegistryValue;
-from .mTypes import SYSTEM_INFO;
+from .mTypes import *;
 
 def fsHKLMValue(sKeyName, sValueName, bRequired = True):
   oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyName = sKeyName, sValueName = sValueName);
@@ -82,9 +83,9 @@ class cSystemInfo(object):
   def sOSPath(oSelf):
     if oSelf.__sOSPath is None:
       sBuffer = WSTR(MAX_PATH);
-      uPathSize = KERNEL32.GetWindowsDirectoryW(sBuffer, MAX_PATH);
-      uPathSize > 0 \
-          or fThrowError("GetWindowsDirectoryW(..., 0x%X)" % (MAX_PATH,));
+      oPathSize = KERNEL32.GetWindowsDirectoryW(sBuffer, MAX_PATH);
+      if oPathSize.value == 0:
+        fThrowLastError("GetWindowsDirectoryW(..., 0x%X)" % (MAX_PATH,));
       oSelf.__sPath = sBuffer.value;
     return oSelf.__sPath;
   

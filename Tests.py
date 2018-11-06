@@ -32,6 +32,8 @@ for sModuleName in sys.modules.keys():
 # Restore the search path
 sys.path = asOriginalSysPath;
 
+from mWindowsAPI.fThrowLastError import fThrowLastError;
+
 if __name__ == "__main__":
   # Test registry access
   print "* Testing Registry access...";
@@ -69,20 +71,17 @@ if __name__ == "__main__":
   print "* Testing KERNEL32 console functions...";
   hStdOut = KERNEL32.GetStdHandle(STD_OUTPUT_HANDLE);
   oConsoleScreenBufferInfo = CONSOLE_SCREEN_BUFFER_INFO();
-  assert KERNEL32.GetConsoleScreenBufferInfo(hStdOut, PCONSOLE_SCREEN_BUFFER_INFO(oConsoleScreenBufferInfo)), \
-      "GetConsoleScreenBufferInfo(0x%08X, ...) => Error 0x%08X" % \
-      (hStdOut, KERNEL32.GetLastError());
+  if not KERNEL32.GetConsoleScreenBufferInfo(hStdOut, POINTER(oConsoleScreenBufferInfo)):
+    fThrowLastError("GetConsoleScreenBufferInfo(0x%08X, 0x%X)" % (hStdOut.value, fuAddressof(oConsoleScreenBufferInfo)));
   print "  Console buffer size (WxH): %d x %d" % (oConsoleScreenBufferInfo.dwSize.X, oConsoleScreenBufferInfo.dwSize.Y);
   print "  Console window size (WxH): %d x %d" % (oConsoleScreenBufferInfo.dwMaximumWindowSize.X, oConsoleScreenBufferInfo.dwMaximumWindowSize.Y);
   uOriginalColor = oConsoleScreenBufferInfo.wAttributes & 0xFF;
   uTestColor = (uOriginalColor & 0xF0) | 0x0A; # Bright green foreground, keep same background.
-  assert KERNEL32.SetConsoleTextAttribute(hStdOut, uTestColor), \
-      "SetConsoleTextAttribute(0x%08X, 0x%02X) => Error 0x%08X" % \
-      (hStdOut, uTestColor, KERNEL32.GetLastError());
+  if not KERNEL32.SetConsoleTextAttribute(hStdOut, uTestColor):
+    fThrowLastError("SetConsoleTextAttribute(0x%08X, 0x%02X)" % (hStdOut.value, uTestColor));
   print "  * This should be green.";
-  assert KERNEL32.SetConsoleTextAttribute(hStdOut, uOriginalColor), \
-      "SetConsoleTextAttribute(0x%08X, 0x%02X) => Error 0x%08X" % \
-      (hStdOut, uOriginalColor, KERNEL32.GetLastError());
+  if not KERNEL32.SetConsoleTextAttribute(hStdOut, uOriginalColor):
+    fThrowLastError("SetConsoleTextAttribute(0x%08X, 0x%02X)" % (hStdOut.value, uOriginalColor));
   
   print "* Testing process functions...";
   # Test process functions
@@ -93,6 +92,9 @@ if __name__ == "__main__":
     # cProcess
     print "  * Testing cProcess...";
     oProcess = cProcess(oTestProcess.pid);
+    sISAFromId = fsGetISAForProcessId(oProcess.uId);
+    assert sISAFromId == oProcess.sISA, \
+        "%s != %s" % (sISAFromId, oProcess.sISA);
     print "    + ISA = %s" % repr(oProcess.sISA);
     print "    + Binary start address = 0x%08X" % oProcess.uBinaryStartAddress;
     print "    + Binary Path = %s" % repr(oProcess.sBinaryPath);
@@ -103,6 +105,11 @@ if __name__ == "__main__":
     for sLine in oProcess.oPEB.fasDump("Process %d/0x%X PEB" % (oProcess.uId, oProcess.uId)):
       print "    | " + sLine;
     # Threads
+    print "  * Testing cProcess.fuCreateThreadForAddress...";
+    uThreadId = oProcess.fuCreateThreadForAddress(0, bSuspended = True);
+    print "  * Testing fbTerminateForThreadId...";
+    assert fbTerminateForThreadId(uThreadId), \
+        "Expected true";
     print "  * Testing cProcess.faoGetThreads...";
     aoThreads = oProcess.faoGetThreads();
     print "    + Thread ids: %s" % repr([oThread.uId for oThread in aoThreads]);
@@ -158,21 +165,21 @@ if __name__ == "__main__":
         "Test process id %d/0x%X not found in process list!" % (oProcess.uId, oProcess.uId);
     assert sProcessesExecutableName.lower() == os.path.basename(sTestApplicationPath).lower(), \
         "Text process %d/0x%X is reported to run %s" % (oProcess.uId, sProcessesExecutableName);
-    # fuGetProcessIntegrityLevelForId
-    print "  * Testing fuGetProcessIntegrityLevelForId...";
-    uProcessIntegrityLevel = fuGetProcessIntegrityLevelForId(oProcess.uId);
+    # fuGetIntegrityLevelForProcessId
+    print "  * Testing oProcess.uIntegrityLevel...";
+    uProcessIntegrityLevel = oProcess.uIntegrityLevel;
     assert uProcessIntegrityLevel is not None, \
         "Test process %d/0x%X integrity level could not be determined!" % (oProcess.uId, oProcess.uId);
     print "    + IntegrityLevel = 0x%X." % uProcessIntegrityLevel;
-    # fuGetProcessMemoryUsage
-    # cVirtualAllocation.foCreateInProcessForId()
+    # fuGetMemoryUsageForProcessId
+    # cVirtualAllocation.foCreateForProcessId()
     # cVirtualAllocation.fAllocate()
     # cVirtualAllocation.fFree()
     print "  * Testing Memory management functions...";
-    uProcessMemoryUsage = fuGetProcessMemoryUsage(oProcess.uId);
+    uProcessMemoryUsage = fuGetMemoryUsageForProcessId(oProcess.uId);
     print "    + Memory usage = 0x%X." % uProcessMemoryUsage;
     uMemoryAllocationSize = 0x1230000;
-    oVirtualAllocation = cVirtualAllocation.foCreateInProcessForId(oProcess.uId, uMemoryAllocationSize, bReserved = True);
+    oVirtualAllocation = cVirtualAllocation.foCreateForProcessId(oProcess.uId, uMemoryAllocationSize, bReserved = True);
     print ",".ljust(80, "-");
     for sLine in oVirtualAllocation.fasDump():
       print "| %s" % sLine;
@@ -181,7 +188,7 @@ if __name__ == "__main__":
         "Attempt to reserve 0x%X bytes failed" % uMemoryAllocationSize;
     assert oVirtualAllocation.uSize == uMemoryAllocationSize, \
         "Attempted to reserve 0x%X bytes, but got 0x%X" % (uMemoryAllocationSize, oVirtualAllocation.uSize);
-    uProcessMemoryUsageAfterReservation = fuGetProcessMemoryUsage(oProcess.uId);
+    uProcessMemoryUsageAfterReservation = oProcess.uMemoryUsage;
     print "    + Memory usage after reserving 0x%X bytes = 0x%X." % \
         (oVirtualAllocation.uSize, uProcessMemoryUsageAfterReservation);
 # For unknown reasons, the memory usage can drop after reserving memory !?
@@ -193,7 +200,7 @@ if __name__ == "__main__":
     for sLine in oVirtualAllocation.fasDump():
       print "| %s" % sLine;
     print "`".ljust(80, "-");
-    uProcessMemoryUsageAfterAllocation = fuGetProcessMemoryUsage(oProcess.uId);
+    uProcessMemoryUsageAfterAllocation = oProcess.uMemoryUsage;
     print "    + Memory usage after allocating 0x%X bytes = 0x%X." % \
         (oVirtualAllocation.uSize, uProcessMemoryUsageAfterAllocation);
     assert uProcessMemoryUsageAfterAllocation >= uProcessMemoryUsageAfterReservation + uMemoryAllocationSize, \
@@ -204,7 +211,7 @@ if __name__ == "__main__":
     for sLine in oVirtualAllocation.fasDump():
       print "| %s" % sLine;
     print "`".ljust(80, "-");
-    uProcessMemoryUsageAfterFree = fuGetProcessMemoryUsage(oProcess.uId);
+    uProcessMemoryUsageAfterFree = oProcess.uMemoryUsage;
     print "    + Memory usage after freeing memory = 0x%X." % uProcessMemoryUsageAfterFree;
     assert uProcessMemoryUsageAfterFree >= uProcessMemoryUsage, \
         "Process memory usage was expected to be at least 0x%X after free, but is 0x%X" % \
@@ -216,7 +223,7 @@ if __name__ == "__main__":
     oJobObject = cJobObject(oProcess.uId);
     oJobObject.fSetMaxTotalMemoryUse(uProcessMemoryUsageAfterFree + uMemoryAllocationSize / 2);
     try:
-      cVirtualAllocation.foCreateInProcessForId(oProcess.uId, uMemoryAllocationSize);
+      cVirtualAllocation.foCreateForProcessId(oProcess.uId, uMemoryAllocationSize);
     except MemoryError, oMemoryError:
       pass;
     else:
@@ -228,9 +235,9 @@ if __name__ == "__main__":
           uMemoryAllocationSize);
     print "    + JobObject memory limits applied correctly.";
     
-    # fbTerminateProcessForId
-    print "  * Testing fbTerminateProcessForId...";
-    fbTerminateProcessForId(oProcess.uId);
+    # fbTerminateForProcessId
+    print "  * Testing fbTerminateForProcessId...";
+    fbTerminateForProcessId(oProcess.uId);
     assert oTestProcess.poll() != None, \
         "Test process was not terminated!";
     # fdsProcessesExecutableName_by_uId (make sure test process is removed)
@@ -238,8 +245,8 @@ if __name__ == "__main__":
         "Test process is still reported to exist after being terminated!?";
     print "  + Test process was terminated.";
     
-    # TODO: add test for fbTerminateThreadForId, fDebugBreakProcessForId, fSuspendProcessForId, \
-    # fuCreateThreadInProcessForIdAndAddress and fSendCtrlCToProcessForId.
+    # TODO: add test for fbTerminateForThreadId, fDebugBreakForProcessId, fSuspendForProcessId, \
+    # fuCreateThreadForProcessIdAndAddress and fSendCtrlCForProcessId.
     # This will require attaching a debugger to the process to determine a thread id, resume the application, or catch
     # the exceptions these functions throw.
     
@@ -273,10 +280,10 @@ if __name__ == "__main__":
         pass;
       else:
         raise AssertionError("Should not be able to write to a closed pipe!");
-    fTestPipe(cPipe());
+    fTestPipe(cPipe.foCreate());
     print "  * Testing cPipe with non-inheritable handles...";
-    fTestPipe(cPipe(bInheritableInput = False, bInheritableOutput = False));
-    # cConsoleProcess, fSuspendProcessForId
+    fTestPipe(cPipe.foCreate(bInheritableInput = False, bInheritableOutput = False));
+    # cConsoleProcess, fSuspendForProcessId
     print "* Testing cConsoleProcess...";
     sExpectedOutput = "Test";
     oConsoleProcess = cConsoleProcess.foCreateForBinaryPathAndArguments(
@@ -290,7 +297,7 @@ if __name__ == "__main__":
         "Expected %s, got %s" % (repr(sExpectedOutput), repr(sActualOutput));
     # Suspend the process to test for a known issue: attempting to close handles on a
     # suspended process will hang until the process is resumed or killed.
-    fSuspendProcessForId(oConsoleProcess.uId);
+    fSuspendForProcessId(oConsoleProcess.uId);
     def fPipeReadingThread():
       print "  * Reading end of console process output in thread...";
       sBytesRead = oConsoleProcess.oStdOutPipe.fsReadBytes();
@@ -301,7 +308,7 @@ if __name__ == "__main__":
     def fKillProcessThread():
       time.sleep(1);
       print "  * Terminating console process...";
-      fbTerminateProcessForId(oConsoleProcess.uId);
+      fbTerminateForProcessId(oConsoleProcess.uId);
     oKillProcessThread = threading.Thread(target = fKillProcessThread);
     oKillProcessThread.start();
     print "  * Closing pipes...";

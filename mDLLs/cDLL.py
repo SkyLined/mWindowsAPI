@@ -38,7 +38,7 @@ class cDLLFunction(object):
       else:
         oSelf.__fFunctionWrapper = fxBasicFunctionWrapper;
     try:
-      return oSelf.__fFunctionWrapper(*axArguments);
+      xReturnValue = oSelf.__fFunctionWrapper(*axArguments);
     except ctypes.ArgumentError:
       for uIndex in xrange(len(axArguments)):
         xArgument = axArguments[uIndex];
@@ -48,6 +48,10 @@ class cDLLFunction(object):
         except TypeError as oTypeError:
           raise TypeError("Argument %d of call to %s cannot be converted from %s to %s: %s" % \
               (uIndex + 1, oSelf.sName, repr(xArgument), repr(xExpectedArgumentType), oTypeError.args[0]));
+    if oSelf.xReturnType is not None:
+      return oSelf.xReturnType(xReturnValue);
+    assert xReturnValue is None, \
+        "%s should return None but got %s" % repr(xReturnValue);
   
   def __str__(oSelf):
     return "<cDLLFunction(%s!%s)>" % (oSelf.oDLL.sName, oSelf.sName);

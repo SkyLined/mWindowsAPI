@@ -21,7 +21,7 @@ CHAR = ctypes.c_char;
 DOUBLE = ctypes.c_double;
 DWORD = ctypes.c_ulong;
 DWORD64 = ctypes.c_ulonglong;
-DWORD_PTR = SIZEOF(ctypes.c_void_p) == 4 and ctypes.c_ulong or ctypes.c_ulonglong;
+DWORD_PTR = fuSizeOf(ctypes.c_void_p) == 4 and ctypes.c_ulong or ctypes.c_ulonglong;
 #FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 FLOAT = ctypes.c_float;
 #HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
@@ -103,7 +103,7 @@ UINT32 = ctypes.c_uint;
 UINT64 = ctypes.c_ulonglong;
 ULONG = ctypes.c_ulong;
 ULONGLONG = ctypes.c_ulonglong;
-ULONG_PTR = SIZEOF(ctypes.c_void_p) == 4 and ctypes.c_ulong or ctypes.c_ulonglong;
+ULONG_PTR = fuSizeOf(ctypes.c_void_p) == 4 and ctypes.c_ulong or ctypes.c_ulonglong;
 USHORT = ctypes.c_ushort;
 #VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 VOID = None
