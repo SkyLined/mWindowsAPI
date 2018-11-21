@@ -6,6 +6,8 @@ from .mDLLs import KERNEL32;
 from .mTypes import *;
 
 def fbTerminateForProcessHandle(hProcess, nTimeoutInSeconds = None, bWait = True):
+  assert isinstance(hProcess, HANDLE), \
+      "%s is not a HANDLE" % repr(hProcess);
   assert bWait or nTimeoutInSeconds is None, \
       "Invalid arguments nTimeoutInSeconds = %f and bWait = %s" % (nTimeoutInSeconds, bWait);
   bTerminated = KERNEL32.TerminateProcess(hProcess, 0);
