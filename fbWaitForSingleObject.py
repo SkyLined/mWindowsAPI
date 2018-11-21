@@ -4,6 +4,8 @@ from .mDLLs import KERNEL32;
 from .mTypes import *;
 
 def fbWaitForSingleObject(hObject, nTimeoutInSeconds = None):
+  assert isinstance(hObject, HANDLE), \
+      "%s is not a HANDLE" % repr(hObject);
   dwMilliseconds = DWORD(INFINITE if nTimeoutInSeconds is None else long(nTimeoutInSeconds * 1000));
   dwResult = KERNEL32.WaitForSingleObject(hObject, dwMilliseconds);
   if dwResult.value == WAIT_TIMEOUT:
