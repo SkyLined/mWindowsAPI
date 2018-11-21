@@ -6,6 +6,8 @@ from .mFunctions import POINTER;
 from .mTypes import DWORD;
 
 def fuGetExitCodeForProcessHandle(hProcess):
+  assert isinstance(hProcess, HANDLE), \
+      "%s is not a HANDLE" % repr(hProcess);
   if fbIsRunningForProcessHandle(hProcess):
     # Still running; no exit code.
     return None;
