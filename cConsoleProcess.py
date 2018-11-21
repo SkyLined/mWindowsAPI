@@ -52,7 +52,6 @@ class cConsoleProcess(cProcess):
           oStartupInfo.hStdOutput = oStdOutPipe and oStdOutPipe.hInput or KERNEL32.GetStdHandle(STD_OUTPUT_HANDLE);
           oStartupInfo.hStdError = oStdErrPipe and oStdErrPipe.hInput or KERNEL32.GetStdHandle(STD_ERROR_HANDLE);
           oProcessInformation = PROCESS_INFORMATION();
-          
           if not KERNEL32.CreateProcessW(
             sBinaryPath, # lpApplicationName
             sCommandLine, # lpCommandLine
@@ -77,7 +76,7 @@ class cConsoleProcess(cProcess):
           oStdInPipe and oStdInPipe.fClose(bOutput = True); 
           oStdOutPipe and oStdOutPipe.fClose(bInput = True);
           oStdErrPipe and oStdErrPipe.fClose(bInput = True);
-          return cConsoleProcess(oProcessInformation.dwProcessId, oStdInPipe, oStdOutPipe, oStdErrPipe, hProcess = oProcessInformation.hProcess);
+          return cConsoleProcess(oProcessInformation.dwProcessId, oStdInPipe, oStdOutPipe, oStdErrPipe, hProcess = HANDLE(oProcessInformation.hProcess));
         except:
           oStdErrPipe and oStdErrPipe.fClose();
           raise;
