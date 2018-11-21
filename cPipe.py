@@ -196,9 +196,8 @@ class cPipe(object):
           raise;
         break;
       if uByte == 0x0A: # LF
-        if sData.endswith("\r"):
-          # If EOL was CRLF, strip CR:
-          sData = sData[:-1];
+        # If EOL was CRLF, strip CR:
+        sData = sData.rstrip("\r");
         break;
       sData += chr(uByte);
     return sData;
