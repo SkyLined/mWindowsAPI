@@ -24,6 +24,8 @@ from .mTypes import *;
 class cProcess(object):
   def __init__(oSelf, uId, hProcess = None):
     oSelf.uId = uId;
+    assert hProcess is None or isinstance(hProcess, HANDLE), \
+        "hProcess (%s) is not a valid handle" % repr(hProcess);
     if hProcess is None:
       # Try to open the process if no handle is provided...
       hProcess = fhOpenForProcessIdAndDesiredAccess(uId, PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ);
@@ -127,11 +129,11 @@ class cProcess(object):
   
   def __del__(oSelf):
     try:
-      oSelf.__hProcess;
+      hProcess = oSelf.__hProcess;
     except AttributeError:
       return;
-    if not KERNEL32.CloseHandle(oSelf.__hProcess):
-      fThrowLastError("CloseHandle(0x%X)" % (oSelf.__hProcess.value,));
+    if not KERNEL32.CloseHandle(hProcess):
+      fThrowLastError("CloseHandle(0x%X)" % (hProcess.value,));
   
   @property
   def bIsRunning(oSelf):
