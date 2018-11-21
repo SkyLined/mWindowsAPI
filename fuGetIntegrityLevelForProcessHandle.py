@@ -8,6 +8,8 @@ from .mFunctions import *;
 from .mTypes import *;
 
 def fuGetIntegrityLevelForProcessHandle(hProcess):
+  assert isinstance(hProcess, HANDLE), \
+      "%s is not a HANDLE" % repr(hProcess);
   dwDesiredAccess = DWORD(TOKEN_QUERY);
   hToken = HANDLE();
   if not KERNEL32.OpenProcessToken(hProcess, dwDesiredAccess, POINTER(hToken)):
