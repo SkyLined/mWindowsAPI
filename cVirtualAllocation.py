@@ -18,7 +18,8 @@ uBasicProtectionFlagsMask = 0xFF;
 
 def fsProtection(uProtection):
   if uProtection is None: return None;
-  return {
+  return " | ".join([s for s in [
+    {
       PAGE_NOACCESS: "PAGE_NOACCESS",
       PAGE_READONLY: "PAGE_READONLY",
       PAGE_READWRITE: "PAGE_READWRITE",
@@ -27,7 +28,9 @@ def fsProtection(uProtection):
       PAGE_EXECUTE_READ: "PAGE_EXECUTE_READ",
       PAGE_EXECUTE_READWRITE: "PAGE_EXECUTE_READWRITE",
       PAGE_EXECUTE_WRITECOPY: "PAGE_EXECUTE_WRITECOPY",
-    }[uProtection & uBasicProtectionFlagsMask];
+    }[uProtection & uBasicProtectionFlagsMask],
+    "PAGE_GUARD" if uProtection & PAGE_GUARD else None,
+  ] if s]);
 
 def fasAllowedAccessTypesForProtection(uProtection):
   return {
@@ -238,7 +241,7 @@ class cVirtualAllocation(object):
     return oSelf.bAllocated and "execute" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
   @property
   def bGuard(oSelf):
-    return oSelf.bAllocated and (oSelf.uProtection & PAGE_GUARD);
+    return oSelf.bAllocated and (oSelf.uAllocationProtection & PAGE_GUARD);
   
   @uProtection.setter
   def uProtection(oSelf, uNewProtection):
