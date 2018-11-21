@@ -66,6 +66,7 @@ KERNEL32.fDefineFunction(BOOL,    "SetConsoleTitleA", LPCSTR);
 KERNEL32.fDefineFunction(BOOL,    "SetConsoleTitleW", LPCWSTR);
 KERNEL32.fDefineFunction(BOOL,    "SetHandleInformation", HANDLE, DWORD, DWORD);
 KERNEL32.fDefineFunction(BOOL,    "SetInformationJobObject", HANDLE, JOBOBJECTINFOCLASS, LPVOID, DWORD);
+KERNEL32.fDefineFunction(VOID,    "SetLastError", DWORD);
 KERNEL32.fDefineFunction(BOOL,    "SetNamedPipeHandleState", HANDLE, LPDWORD, LPDWORD, LPDWORD);
 KERNEL32.fDefineFunction(DWORD,   "SuspendThread", HANDLE);
 KERNEL32.fDefineFunction(BOOL,    "TerminateProcess", HANDLE, UINT);
