@@ -80,18 +80,21 @@ def fasDumpStructureOrUnionHelper(uOffset, uDepth, oStructureOrUnion, auBytes):
       else:
         assert cFieldType == cSimpleType, \
             "Unhandled field type %s for field %s" % (repr(cFieldType), sFieldName);
-        cFieldType = type(oField);
-        if cFieldType in [cPOINTER_64, cPOINTER_32]:
-          uValue = fuPointerValue(oField);
-          sValue = uValue is None and "NULL" or {cPOINTER_32:"0x%08X", cPOINTER_64:"0x%016X"}[cFieldType] % uValue;
-        elif cFieldType in [str, unicode]:
-          uByte = ord(oField);
-          sByte = uByte in xrange(0x20, 0x7e) and oField or ".";
-          sValue = "'%s' (0x%X)" % (sByte, uByte);
+        if oField is None:
+          sValue = "NULL";
         else:
-          assert cFieldType in [int, long], \
-              "Unhandled simple field type %s for field %s" % (repr(cFieldType), sFieldName);
-          sValue = "%s0x%%0%dX" % (oField < 0 and "-" or "", cField.size * 2) % abs(oField);
+          cFieldType = type(oField);
+          if cFieldType in [cPOINTER_64, cPOINTER_32]:
+            uValue = fuPointerValue(oField);
+            sValue = uValue is None and "NULL" or {cPOINTER_32:"0x%08X", cPOINTER_64:"0x%016X"}[cFieldType] % uValue;
+          elif cFieldType in [str, unicode]:
+            uByte = ord(oField);
+            sByte = uByte in xrange(0x20, 0x7e) and oField or ".";
+            sValue = "'%s' (0x%X)" % (sByte, uByte);
+          else:
+            assert cFieldType in [int, long], \
+                "Unhandled simple field type %s for field %s" % (repr(cFieldType), sFieldName);
+            sValue = "%s0x%%0%dX" % (oField < 0 and "-" or "", cField.size * 2) % abs(oField);
       asDumpData.append(sHeaderFormat % (sFieldBytes, sFieldName, sValue));
   return asDumpData;
 
