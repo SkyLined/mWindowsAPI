@@ -8,6 +8,8 @@ from .mTypes import *;
 def fbTerminateForProcessHandle(hProcess, nTimeoutInSeconds = None, bWait = True):
   assert isinstance(hProcess, HANDLE), \
       "%s is not a HANDLE" % repr(hProcess);
+  assert hProcess.value is not None, \
+      "Cannot terminate a NULL HANDLE";
   assert bWait or nTimeoutInSeconds is None, \
       "Invalid arguments nTimeoutInSeconds = %f and bWait = %s" % (nTimeoutInSeconds, bWait);
   bTerminated = KERNEL32.TerminateProcess(hProcess, 0);
