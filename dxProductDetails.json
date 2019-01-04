@@ -13,5 +13,5 @@
   "sProductAuthor": "SkyLined", 
   "sProductName": "mWindowsAPI", 
   "sProductURL": "https://github.com/SkyLined/mWindowsAPI", 
-  "sTrialPeriodDuration": "1m"
+  "oTrialPeriodDuration": "1m"
 }
