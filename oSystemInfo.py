@@ -5,7 +5,7 @@ from .mFunctions import *;
 from .mRegistry import cRegistryValue;
 from .mTypes import *;
 
-def fsHKLMValue(sKeyName, sValueName, bRequired = True):
+def fxHKLMValue(sKeyName, sValueName, sTypeName, bRequired = True):
   oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyName = sKeyName, sValueName = sValueName);
   if not oRegistryValue:
     oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyName = sKeyName, sValueName = sValueName, uRegistryBits = 64);
@@ -13,9 +13,14 @@ def fsHKLMValue(sKeyName, sValueName, bRequired = True):
       assert not bRequired, \
           "Cannot read HKLM\%s\%s" % (sKeyName, sValueName);
       return None;
-  assert oRegistryValue.sTypeName == "REG_SZ", \
-      r"Expected HKLM\%s\%s to be REG_SZ, got %s" % (sKeyName, sValueName, oRegistryValue.sType);
+  assert oRegistryValue.sTypeName == sTypeName, \
+      r"Expected HKLM\%s\%s to be %s, got %s" % (sKeyName, sValueName, sTypeName, oRegistryValue.sTypeName);
   return oRegistryValue.xValue;
+
+def fsHKLMValue(sKeyName, sValueName, bRequired = True):
+  return fxHKLMValue(sKeyName, sValueName, "REG_SZ", bRequired);
+def fuHKLMValue(sKeyName, sValueName, bRequired = True):
+  return fxHKLMValue(sKeyName, sValueName, "REG_DWORD", bRequired);
 
 class cSystemInfo(object):
   def __init__(oSelf):
@@ -34,6 +39,8 @@ class cSystemInfo(object):
     oSelf.uAllocationAddressGranularity = oSystemInfo.dwAllocationGranularity;
     
     oSelf.__sOSName = None;
+    oSelf.__uOSMajorVersionNumber = None;
+    oSelf.__uOSMinorVersionNumber = None;
     oSelf.__sOSVersion = None;
     oSelf.__sOSReleaseId = None;
     oSelf.__sOSBuild = None;
@@ -52,9 +59,15 @@ class cSystemInfo(object):
   
   @property
   def sOSVersion(oSelf):
-    if not oSelf.__sOSVersion:
-      oSelf.__sOSVersion = fsHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CurrentVersion");
-    return oSelf.__sOSVersion;
+    if oSelf.__uOSMajorVersionNumber is None:
+      oSelf.__uOSMajorVersionNumber = fuHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CurrentMajorVersionNumber", bRequired = False);
+    if oSelf.__uOSMajorVersionNumber is not None and oSelf.__uOSMinorVersionNumber is None:
+      oSelf.__uOSMinorVersionNumber = fuHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CurrentMinorVersionNumber", bRequired = False);
+    if oSelf.__uOSMajorVersionNumber is None or oSelf.__uOSMinorVersionNumber is None:
+      if not oSelf.__sOSVersion:
+        oSelf.__sOSVersion = fsHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CurrentVersion");
+      return oSelf.__sOSVersion;
+    return "%d.%d" % (oSelf.__uOSMajorVersionNumber, oSelf.__uOSMinorVersionNumber);
   
   @property
   def sOSReleaseId(oSelf):
@@ -77,7 +90,9 @@ class cSystemInfo(object):
     return oSelf.__sOSBuild;
   @property
   def uOSBuild(oSelf):
-    return long(oSelf.sOSBuild);
+    if not oSelf.__sOSBuild:
+      oSelf.__sOSBuildNumber = fsHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CurrentBuildNumber");
+    return long(oSelf.__sOSBuildNumber);
   
   @property
   def sOSPath(oSelf):
