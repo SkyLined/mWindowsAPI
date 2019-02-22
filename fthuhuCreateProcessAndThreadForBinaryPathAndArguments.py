@@ -33,4 +33,4 @@ def fthuhuCreateProcessAndThreadForBinaryPathAndArguments(sBinaryPath, asArgumen
       fThrowLastError("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
           (repr(sBinaryPath), repr(sCommandLine), uFlags, repr(sWorkingDirectory)));
     return (None, None, None, None);
-  return (oProcessInformation.hProcess, oProcessInformation.dwProcessId.value, oProcessInformation.hThread, oProcessInformation.dwThreadId.value);
+  return (oProcessInformation.hProcess, oProcessInformation.dwProcessId, oProcessInformation.hThread, oProcessInformation.dwThreadId);
