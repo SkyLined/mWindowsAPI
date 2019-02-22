@@ -9,7 +9,7 @@ from .mTypes import *;
 
 def fbWaitForTerminationForProcessId(uProcessId, nTimeoutInSeconds = None):
   # Try to open the process so we can wait for it...
-  hProcess = fhOpenForProcessIdAndDesiredAccess(uProcessId, SYNCHRONIZE, bMustExists = False);
+  hProcess = fhOpenForProcessIdAndDesiredAccess(uProcessId, SYNCHRONIZE, bMustExist = False);
   if not fbIsValidHandle(hProcess):
     return True; # No process exists with this id.
   bSuccess = False;
