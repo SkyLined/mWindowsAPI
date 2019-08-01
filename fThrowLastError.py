@@ -1,3 +1,4 @@
+from mWindowsSDK import *;
 from fThrowError import fThrowError;
 
 def fThrowLastError(sFailedOperation):
