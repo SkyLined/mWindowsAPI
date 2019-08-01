@@ -1,3 +1,4 @@
+from mWindowsSDK import *;
 from .fThrowLastError import fThrowLastError;
 
 def fSuspendForThreadHandle(ohThread):
