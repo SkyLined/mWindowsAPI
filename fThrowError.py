@@ -1,6 +1,4 @@
-from .mFunctions import *;
-from .mDefines import *;
-from .mDLLs import KERNEL32;
+from mWindowsSDK import *;
 
 def fThrowError(sFailedOperation, uError):
   hResult = HRESULT_FROM_WIN32(uError);

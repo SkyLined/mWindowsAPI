@@ -1,15 +1,14 @@
+from mWindowsSDK import *;
+from .mDLLs import oKernel32;
 from .fThrowLastError import fThrowLastError;
-from .mDefines import *;
-from .mDLLs import KERNEL32;
-from .mTypes import *;
 
-def fbWaitForSingleObject(hObject, nTimeoutInSeconds = None):
-  assert isinstance(hObject, HANDLE), \
-      "%s is not a HANDLE" % repr(hObject);
-  dwMilliseconds = DWORD(INFINITE if nTimeoutInSeconds is None else long(nTimeoutInSeconds * 1000));
-  dwResult = KERNEL32.WaitForSingleObject(hObject, dwMilliseconds);
-  if dwResult.value == WAIT_TIMEOUT:
+def fbWaitForSingleObject(ohSubject, nTimeoutInSeconds = None):
+  assert isinstance(ohSubject, HANDLE), \
+      "%s is not a HANDLE" % repr(ohSubject);
+  odwMilliseconds = DWORD(INFINITE if nTimeoutInSeconds is None else long(nTimeoutInSeconds * 1000));
+  odwResult = oKernel32.WaitForSingleObject(ohSubject, odwMilliseconds);
+  if odwResult.value == WAIT_TIMEOUT:
     return False; # Timeout waiting for object.
-  if dwResult.value == WAIT_OBJECT_0:
+  if odwResult.value == WAIT_OBJECT_0:
     return True; # Object was signaled.
-  fThrowLastError("WaitForSingleObject(0x%08X, %s) = 0x%08X" % (hObject.value, "INFINITE" if nTimeoutInSeconds is None else "%d" % dwMilliseconds.value, dwResult.value));
+  fThrowLastError("WaitForSingleObject(0x%X, %s) = 0x%X" % (ohSubject.value, "INFINITE" if nTimeoutInSeconds is None else "%d" % odwMilliseconds.value, odwResult.value));

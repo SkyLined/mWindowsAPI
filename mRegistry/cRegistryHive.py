@@ -1,8 +1,6 @@
 import _winreg;
-
+from mWindowsSDK import *;
 from ..fbErrorIs import fbErrorIs;
-from ..mDefines import *;
-from ..mFunctions import *;
 
 gduHive_by_sName = {
   "HKCR":                             _winreg.HKEY_CLASSES_ROOT,

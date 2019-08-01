@@ -1,20 +1,18 @@
 import re;
+from mWindowsSDK import *;
+from .mDLLs import oKernel32, oNTDLL;
 from .cVirtualAllocation import cVirtualAllocation;
 from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
 from .fbResumeForThreadHandle import fbResumeForThreadHandle;
 from .fbTerminateForThreadHandle import fbTerminateForThreadHandle;
 from .fbWaitForTerminationForThreadHandle import fbWaitForTerminationForThreadHandle;
-from .fhOpenForThreadIdAndDesiredAccess import fhOpenForThreadIdAndDesiredAccess;
+from .fohOpenForThreadIdAndDesiredAccess import fohOpenForThreadIdAndDesiredAccess;
 from .fsGetDescriptionForThreadHandle import fsGetDescriptionForThreadHandle;
 from .fsGetPythonISA import fsGetPythonISA;
 from .fSuspendForThreadHandle import fSuspendForThreadHandle;
 from .fThrowError import fThrowError;
 from .fThrowLastError import fThrowLastError;
 from .fuGetExitCodeForThreadHandle import fuGetExitCodeForThreadHandle;
-from .mDefines import *;
-from .mDLLs import KERNEL32, NTDLL;
-from .mFunctions import *;
-from .mTypes import *;
 
 gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA = {
   "x86": {
@@ -237,95 +235,99 @@ gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA = {
 };
 
 class cThread(object):
-  def __init__(oSelf, oProcess, uId, hThread = None, uThreadHandleFlags = None):
+  def __init__(oSelf, oProcess, uId, ohThread = None, uThreadHandleFlags = None):
     oSelf.oProcess = oProcess;
+    assert isinstance(uId, (int, long)), \
+        "uId must be an integer not %s" % repr(uId);
     oSelf.uId = uId;
-    if hThread:
+    if ohThread:
+      assert isinstance(ohThread, HANDLE), \
+          "ohThread (%s) is not a valid handle" % repr(ohThread);
       assert uThreadHandleFlags is not None, \
-          "You must provide uThreadHandleFlags when you provide hThread";
-      oSelf.__hThread = hThread;
+          "You must provide uThreadHandleFlags when you provide ohThread";
+      oSelf.__ohThread = ohThread;
       oSelf.__uThreadHandleFlags = uThreadHandleFlags;
     else:
-      oSelf.__hThread = None;
+      oSelf.__ohThread = None;
       oSelf.__uThreadHandleFlags = 0;
     oSelf.__oTEB = None;
     oSelf.__oStackVirtualAllocation = None;
     oSelf.__oThreadContext = None;
   
-  def fhOpenWithFlags(oSelf, uRequiredFlags):
+  def fohOpenWithFlags(oSelf, uRequiredFlags):
     # See if we have an open handle with the required flags, and keep track of all the flags we've used before.
     uExistingFlags = 0;
-    if oSelf.__hThread:
+    if oSelf.__ohThread:
       if oSelf.__uThreadHandleFlags & uRequiredFlags == uRequiredFlags:
-        return oSelf.__hThread;
+        return oSelf.__ohThread;
     # The open handle does not have the required flags, create one with the required flags and all other flags we've
     # used before. This makes sense because we already have that access and by combining the flags increases the
     # change of having a handle that matches the required flags during the next call to this function.
     uFlags = oSelf.__uThreadHandleFlags | uRequiredFlags;
-    hThread = fhOpenForThreadIdAndDesiredAccess(oSelf.uId, uFlags);
-    oSelf.__hThread = hThread;
+    ohThread = fohOpenForThreadIdAndDesiredAccess(oSelf.uId, uFlags);
+    oSelf.__ohThread = ohThread;
     oSelf.__uThreadHandleFlags = uFlags;
-    return hThread;
+    return ohThread;
   
   def __del__(oSelf):
     try:
-      hThread = oSelf.__hThread;
+      ohThread = oSelf.__ohThread;
     except AttributeError:
       return;
-    if hThread and not KERNEL32.CloseHandle(hThread):
-      fThrowLastError("CloseHandle(0x%X)" % (hThread.value,));
+    if ohThread and not oKernel32.CloseHandle(ohThread):
+      fThrowLastError("CloseHandle(0x%X)" % (ohThread.value,));
   
   @property
   def bIsRunning(oSelf):
-    return fbIsRunningForThreadHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
+    return fbIsRunningForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
   
   def fbTerminate(oSelf, uTimeout = None):
-    return fbTerminateForThreadHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION), uTimeout);
+    return fbTerminateForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION), uTimeout);
   
   def fSuspend(oSelf):
-    return fSuspendForThreadHandle(oSelf.fhOpenWithFlags(THREAD_SUSPEND_RESUME));
+    return fSuspendForThreadHandle(oSelf.fohOpenWithFlags(THREAD_SUSPEND_RESUME));
   
   def fbResume(oSelf):
-    return fbResumeForThreadHandle(oSelf.fhOpenWithFlags(THREAD_SUSPEND_RESUME));
+    return fbResumeForThreadHandle(oSelf.fohOpenWithFlags(THREAD_SUSPEND_RESUME));
   
   def fbWait(oSelf, uTimeout = None):
-    return fbWaitForTerminationForThreadHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION), uTimeout);
+    return fbWaitForTerminationForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION), uTimeout);
   
   @property
   def uExitCode(oSelf):
-    return fuGetExitCodeForThreadHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
+    return fuGetExitCodeForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
   
   @property
   def sDescription(oSelf):
-    return fsGetDescriptionForThreadHandle(oSelf.fhOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
+    return fsGetDescriptionForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
   
   @property
   def oTEB(oSelf):
     if oSelf.__oTEB is None:
       # The type of THREAD_BASIC_INFORMATION returned by NtQueryInformationThread depends on the ISA of the calling
       # process (the Python process we're running in):
-      cThreadBasicInformation = {"x86": THREAD_BASIC_INFORMATION_32, "x64": THREAD_BASIC_INFORMATION_64}[fsGetPythonISA()];
+      cThreadBasicInformation = {"x86": THREAD_BASIC_INFORMATION32, "x64": THREAD_BASIC_INFORMATION64}[fsGetPythonISA()];
       oThreadBasicInformation = cThreadBasicInformation();
-      uReturnLength = ULONG();
-      hThread = oSelf.fhOpenWithFlags(THREAD_QUERY_INFORMATION);
-      oNTStatus = NTDLL.NtQueryInformationThread(
-        hThread,# ThreadHandle
+      ouReturnLength = ULONG();
+      ohThread = oSelf.fohOpenWithFlags(THREAD_QUERY_INFORMATION);
+      oNTStatus = oNTDLL.NtQueryInformationThread(
+        ohThread,# ThreadHandle
         ThreadBasicInformation, # ThreadInformationClass
-        fxCast(PVOID, POINTER(oThreadBasicInformation)), # ThreadInformation
-        fuSizeOf(oThreadBasicInformation), # ThreadInformationLength
-        POINTER(uReturnLength), # ReturnLength
+        oThreadBasicInformation.foCreatePointer(PVOID), # ThreadInformation
+        oThreadBasicInformation.fuGetSize(), # ThreadInformationLength
+        ouReturnLength.foCreatePointer(), # ReturnLength
       );
-      if not SUCCEEDED(oNTStatus):
+      if NT_ERROR(oNTStatus):
         fThrowError("NtQueryInformationThread(0x%X, 0x%X, ..., 0x%X, ...)" % \
-              (hThread.value, ThreadBasicInformation, fuSizeOf(oThreadBasicInformation)), oNTStatus.value);
-      assert uReturnLength.value == fuSizeOf(oThreadBasicInformation), \
+              (ohThread.value, ThreadBasicInformation, oThreadBasicInformation.fuGetSize()), oNTStatus.value);
+      assert ouReturnLength.value == oThreadBasicInformation.fuGetSize(), \
           "NtQueryInformationThread(0x%X, 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % \
-          (hThread, ThreadBasicInformation, fuSizeOf(oThreadBasicInformation), uReturnLength.value);
+          (ohThread, ThreadBasicInformation, oThreadBasicInformation.fuGetSize(), ouReturnLength.value);
       # Read TEB
-      uTEBAddress = fuPointerValue(oThreadBasicInformation.TebBaseAddress);
+      uTEBAddress = oThreadBasicInformation.TebBaseAddress.value;
       # The type of TEB (32- or 64-bit) depends on the type of THREAD_BASIC_INFORMATION (see above)
-      cTEB = {"x86": TEB_32, "x64": TEB_64}[fsGetPythonISA()];
-      oVirtualAllocation = oSelf.oProcess.foGetAllocatedVirtualAllocationWithSizeCheck(uTEBAddress, fuSizeOf(cTEB), "TEB");
+      cTEB = {"x86": TEB32, "x64": TEB64}[fsGetPythonISA()];
+      oVirtualAllocation = oSelf.oProcess.foGetAllocatedVirtualAllocationWithSizeCheck(uTEBAddress, cTEB.fuGetSize(), "TEB");
       oSelf.__oTEB = oVirtualAllocation.foReadStructureForOffset(
         cStructure = cTEB,
         uOffset = uTEBAddress - oVirtualAllocation.uStartAddress,
@@ -334,11 +336,11 @@ class cThread(object):
   
   @property
   def uStackBottomAddress(oSelf):
-    return fuPointerValue(oSelf.oTEB.NtTib.StackBase);
+    return oSelf.oTEB.NtTib.StackBase.value;
   
   @property
   def uStackTopAddress(oSelf):
-    return fuPointerValue(oSelf.oTEB.NtTib.StackLimit);
+    return oSelf.oTEB.NtTib.StackLimit.value;
   
   @property
   def oStackVirtualAllocation(oSelf):
@@ -350,37 +352,38 @@ class cThread(object):
     # The type of CONTEXT we want to get and the function we need to use to do so depend on the ISA of both the target
     # process and the calling process (the Python process we're running in):
     if fsGetPythonISA() == "x86":
-      cThreadContext = CONTEXT_32;
+      cThreadContext = CONTEXT32;
       sGetThreadContextFunctionName = "GetThreadContext";
     elif oSelf.oProcess.sISA == "x86":
-      cThreadContext = CONTEXT_32;
+      cThreadContext = CONTEXT32;
       sGetThreadContextFunctionName = "Wow64GetThreadContext";
     else:
-      cThreadContext = CONTEXT_64;
+      cThreadContext = CONTEXT64;
       sGetThreadContextFunctionName = "GetThreadContext";
     oThreadContext = cThreadContext();
-    hThread = oSelf.fhOpenWithFlags(THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION);
+    ohThread = oSelf.fohOpenWithFlags(THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION);
     oThreadContext.ContextFlags = CONTEXT_ALL;
-    fbGetThreadContext = getattr(KERNEL32, sGetThreadContextFunctionName);
+    fbGetThreadContext = getattr(oKernel32, sGetThreadContextFunctionName);
     if not fbGetThreadContext(
-      hThread, # hThread
-      POINTER(oThreadContext), # lpContext
+      ohThread, # hThread
+      oThreadContext.foCreatePointer(), # lpContext
     ):
-      fThrowLastError("%s(0x%08X, ...)" % (sGetThreadContextFunctionName, hThread.value));
+      fThrowLastError("%s(0x%X, 0x%X)" % (sGetThreadContextFunctionName, ohThread.value, oThreadContext.fuGetAddress()));
     return oThreadContext;
   
   def __fxGetRegisterFromThreadContext(oSelf, oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize):
+    # Walk down the "sThreadContextMemberName" path to get the value from oThreadContext.
     xValue = oThreadContext;
     for sMemberName in re.split("[\.\[]", sThreadContextMemberName):
       if sMemberName[-1] == "]":
         xValue = xValue[long(sMemberName[:-1])];
       else:
         xValue = getattr(xValue, sMemberName);
-    if xValue.__class__ == M128A:
-      uValue = (xValue.High * (1 << 64)) ^ xValue.Low;
+    if isinstance(xValue, M128A):
+      uValue = (xValue.High.value * (1 << 64)) ^ xValue.Low.value;
       return (uValue >> uBitOffset) & ((1 << uBitSize) - 1);
-    elif isinstance(xValue, int) or isinstance(xValue, long):
-      uValue = xValue;
+    elif isinstance(xValue, cIntegerType):
+      uValue = xValue.value;
       return (uValue >> uBitOffset) & ((1 << uBitSize) - 1);
     else:
       auMemberValueBytes = xValue;
@@ -399,6 +402,7 @@ class cThread(object):
       return uValue;
 
   def __fSetRegisterInThreadContext(oSelf, oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize, uRegisterValue):
+    # Walk down the "sThreadContextMemberName" path to find the parent of the value from oThreadContext.
     xValue = oThreadContext;
     xParent = None;
     for sMemberName in re.split("[\.\[]", sThreadContextMemberName):
@@ -407,16 +411,16 @@ class cThread(object):
         xValue = xValue[long(sMemberName[:-1])];
       else:
         xValue = getattr(xValue, sMemberName);
-    if xValue.__class__ == M128A:
-      uM128AValue = (xValue.High * (1 << 64)) ^ xValue.Low;
+    if isinstance(xValue, M128A):
+      uM128AValue = (xValue.High.value * (1 << 64)) ^ xValue.Low.value;
       uCurrentValueInM128A = uValue & (((1 << uBitSize) - 1) << uBitOffset);
       uNewValueInM128A = uRegisterValue << uBitOffset;
       # Subtract the current value and add the new value:
       uM128AValue = uM128AValue - uCurrentValueInM128A + uNewValueInM128A;
       xValue.High = uM128AValue >> 64;
       xValue.Low = uM128AValue & ((1 << 64) - 1);
-    elif isinstance(xValue, int) or isinstance(xValue, long):
-      uValue = xValue
+    elif isinstance(xValue, cIntegerType):
+      uValue = xValue.value;
       uCurrentValue = uValue & (((1 << uBitSize) - 1) << uBitOffset);
       uNewValue = uRegisterValue << uBitOffset;
       uValue = uValue - uCurrentValue + uNewValue;
@@ -466,17 +470,17 @@ class cThread(object):
       assert uRegisterValue & ((1 << uBitSize) - 1) == uRegisterValue, \
           "value 0x%X cannot be stored in %d bit" % (uRegisterValue, uBitSize);
       oSelf.__fSetRegisterInThreadContext(oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize, uRegisterValue);
-    hThread = oSelf.fhOpenWithFlags(THREAD_SET_CONTEXT);
+    ohThread = oSelf.fohOpenWithFlags(THREAD_SET_CONTEXT);
     # The function we need to use to set the context depends on the ISA of both the target process and the calling
     # process (the Python process we're running in):
     if fsGetPythonISA() == "x64" and oSelf.oProcess.sISA == "x86":
       sSetThreadContextFunctionName = "Wow64SetThreadContext";
     else:
       sSetThreadContextFunctionName = "SetThreadContext";
-    fbSetThreadContext = getattr(KERNEL32, sSetThreadContextFunctionName);
+    fbSetThreadContext = getattr(oKernel32, sSetThreadContextFunctionName);
     if not fbSetThreadContext(
-      hThread,# hThread
-      POINTER(oThreadContext), # lpContext
+      ohThread,# hThread
+      oThreadContext.foCreatePointer(), # lpContext
     ):
-      fThrowLastError("%s(0x%08X, ...)" % (sSetThreadContextFunctionName, hThread.value));
+      fThrowLastError("%s(0x%08X, ...)" % (sSetThreadContextFunctionName, ohThread.value));
 

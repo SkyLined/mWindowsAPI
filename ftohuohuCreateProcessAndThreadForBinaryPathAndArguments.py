@@ -1,36 +1,38 @@
+from mWindowsSDK import *;
+from .mDLLs import oKernel32;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
-from .mDefines import *;
-from .mDLLs import KERNEL32;
-from .mFunctions import *;
-from .mTypes import *;
 
-def fthuhuCreateProcessAndThreadForBinaryPathAndArguments(sBinaryPath, asArguments, sWorkingDirectory = None, bSuspended = False):
+def ftohuohuCreateProcessAndThreadForBinaryPathAndArguments(sBinaryPath, asArguments, sWorkingDirectory = None, bSuspended = False):
   sCommandLine = " ".join([
     (s and (s[0] == '"' or s.find(" ") == -1)) and s or '"%s"' % s.replace('"', '\\"')
     for s in [sBinaryPath] + asArguments
   ]);
-  uFlags = (bSuspended and CREATE_SUSPENDED or 0);
   oStartupInfo = STARTUPINFOW();
-  oStartupInfo.cb = fuSizeOf(oStartupInfo);
+  oStartupInfo.cb = oStartupInfo.fuGetSize();
   oStartupInfo.lpDesktop = NULL;
   oStartupInfo.lpDesktop = NULL;
   oStartupInfo.dwFlags = 0;
   oProcessInformation = PROCESS_INFORMATION();
-  if not KERNEL32.CreateProcessW(
+  if not oKernel32.CreateProcessW(
     sBinaryPath, # lpApplicationName
     sCommandLine, # lpCommandLine
     NULL, # lpProcessAttributes
     NULL, # lpThreadAttributes
     FALSE, # bInheritHandles
-    uFlags, # dwCreationFlags
+    bSuspended and CREATE_SUSPENDED or 0, # dwCreationFlags
     NULL, # lpEnvironment
     sWorkingDirectory, # lpCurrentDirectory
-    POINTER(oStartupInfo), # lpStartupInfo
-    POINTER(oProcessInformation), # lpProcessInformation
+    oStartupInfo.foCreatePointer(), # lpStartupInfo
+    oProcessInformation.foCreatePointer(), # lpProcessInformation
   ):
     if not fbLastErrorIs(ERROR_FILE_NOT_FOUND, ERROR_INVALID_NAME):
       fThrowLastError("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
           (repr(sBinaryPath), repr(sCommandLine), uFlags, repr(sWorkingDirectory)));
     return (None, None, None, None);
-  return (oProcessInformation.hProcess, oProcessInformation.dwProcessId, oProcessInformation.hThread, oProcessInformation.dwThreadId);
+  return (
+    oProcessInformation.ohProcess,
+    oProcessInformation.odwProcessId.value,
+    oProcessInformation.ohThread,
+    oProcessInformation.odwThreadId.value
+  );

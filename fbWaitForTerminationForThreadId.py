@@ -1,22 +1,22 @@
+from mWindowsSDK import *;
+from .mDLLs import oKernel32;
 from .fbIsRunningForThreadId import fbIsRunningForThreadId;
+from .fbIsValidHandle import fbIsValidHandle;
 from .fbWaitForTerminationForThreadHandle import fbWaitForTerminationForThreadHandle;
+from .fohOpenForThreadIdAndDesiredAccess import fohOpenForThreadIdAndDesiredAccess;
 from .fThrowError import fThrowError;
-from .mDefines import *;
-from .mDLLs import KERNEL32;
-from .mFunctions import *;
-from .mTypes import *;
 
 def fbWaitForTerminationForThreadId(uThreadId, nTimeoutInSeconds = None):
   # Try to open the thread so we can wait for it...
-  hThread = fhOpenForThreadIdAndDesiredAccess(uThreadId, SYNCHRONIZE, bMustExist = False);
-  if not fbIsValidHandle(hThread):
+  ohThread = fohOpenForThreadIdAndDesiredAccess(uThreadId, SYNCHRONIZE, bMustExist = False);
+  if not fbIsValidHandle(ohThread):
     return True; # No thread with the given id exists.
   bSuccess = False;
   try:
-    bResult = fbWaitForTerminationForThreadHandle(hThread, nTimeoutInSeconds);
+    bResult = fbWaitForTerminationForThreadHandle(ohThread, nTimeoutInSeconds);
     bSuccess = True;
   finally:
     # Only throw an exception if one isn't already being thrown:
-    if not KERNEL32.CloseHandle(hThread) and bSuccess:
-      fThrowLastError("CloseHandle(0x%X)" % (hThread.value,));
+    if not oKernel32.CloseHandle(ohThread) and bSuccess:
+      fThrowLastError("CloseHandle(0x%X)" % (ohThread.value,));
   return bResult;

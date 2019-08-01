@@ -1,4 +1,4 @@
 from .fbWaitForSingleObject import fbWaitForSingleObject;
 
-def fbIsRunningForProcessHandle(hProcess):
-  return fbWaitForSingleObject(hProcess, 0);
+def fbIsRunningForProcessHandle(ohProcess):
+  return fbWaitForSingleObject(ohProcess, 0);

@@ -1,4 +1,4 @@
 
-def fbErrorIs(hResult, *tuAcceptableHResults):
+def fbErrorIs(ohResult, *tuAcceptableHResults):
   # Check if the hResult is in a list of acceptable errors
-  return hResult.value in tuAcceptableHResults;
+  return ohResult.value in tuAcceptableHResults;

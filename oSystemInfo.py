@@ -1,9 +1,7 @@
+from mWindowsSDK import *;
+from .mDLLs import oKernel32;
 from .fThrowLastError import fThrowLastError;
-from .mDefines import *;
-from .mDLLs import KERNEL32;
-from .mFunctions import *;
 from .mRegistry import cRegistryValue;
-from .mTypes import *;
 
 def fxHKLMValue(sKeyName, sValueName, sTypeName, bRequired = True):
   oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyName = sKeyName, sValueName = sValueName);
@@ -25,18 +23,18 @@ def fuHKLMValue(sKeyName, sValueName, bRequired = True):
 class cSystemInfo(object):
   def __init__(oSelf):
     oSystemInfo = SYSTEM_INFO();
-    KERNEL32.GetNativeSystemInfo(POINTER(oSystemInfo));
+    oKernel32.GetNativeSystemInfo(oSystemInfo.foCreatePointer());
     oSelf.sOSISA = {
       PROCESSOR_ARCHITECTURE_INTEL: "x86",
       PROCESSOR_ARCHITECTURE_AMD64: "x64",
-    }.get(oSystemInfo.wProcessorArchitecture);
+    }.get(oSystemInfo.wProcessorArchitecture.value);
     assert oSelf.sOSISA is not None, \
-        "Unknown processor architecture 0x%X" % oSystemInfo.wProcessorArchitecture;
-    oSelf.uPageSize = oSystemInfo.dwPageSize;
-    oSelf.uMinimumApplicationAddress = oSystemInfo.lpMinimumApplicationAddress;
-    oSelf.uMaximumApplicationAddress = oSystemInfo.lpMaximumApplicationAddress;
-    oSelf.uNumberOfProcessors = oSystemInfo.dwNumberOfProcessors;
-    oSelf.uAllocationAddressGranularity = oSystemInfo.dwAllocationGranularity;
+        "Unknown processor architecture 0x%X" % oSystemInfo.wProcessorArchitecture.value;
+    oSelf.uPageSize = oSystemInfo.dwPageSize.value;
+    oSelf.uMinimumApplicationAddress = oSystemInfo.lpMinimumApplicationAddress.value;
+    oSelf.uMaximumApplicationAddress = oSystemInfo.lpMaximumApplicationAddress.value;
+    oSelf.uNumberOfProcessors = oSystemInfo.dwNumberOfProcessors.value;
+    oSelf.uAllocationAddressGranularity = oSystemInfo.dwAllocationGranularity.value;
     
     oSelf.__sOSName = None;
     oSelf.__uOSMajorVersionNumber = None;
@@ -97,11 +95,14 @@ class cSystemInfo(object):
   @property
   def sOSPath(oSelf):
     if oSelf.__sOSPath is None:
-      sBuffer = WSTR(MAX_PATH);
-      oPathSize = KERNEL32.GetWindowsDirectoryW(sBuffer, MAX_PATH);
+      oBuffer = foCreateBuffer(MAX_PATH);
+      oPathSize = oKernel32.GetWindowsDirectoryW(
+        oBuffer.foCreatePointer(LPWSTR),
+        MAX_PATH
+      );
       if oPathSize.value == 0:
         fThrowLastError("GetWindowsDirectoryW(..., 0x%X)" % (MAX_PATH,));
-      oSelf.__sPath = sBuffer.value;
+      oSelf.__sPath = oBuffer.fsGetString();
     return oSelf.__sPath;
   
   @property

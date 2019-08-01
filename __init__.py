@@ -31,3 +31,44 @@ from .fuGetExitCodeForProcessId import fuGetExitCodeForProcessId;
 from .fuGetIntegrityLevelForProcessId import fuGetIntegrityLevelForProcessId;
 from .fuGetMemoryUsageForProcessId import fuGetMemoryUsageForProcessId;
 from .oSystemInfo import oSystemInfo;
+import mDbgHelp;
+import mDLLs;
+import mRegistry;
+all = [
+  "cConsoleProcess",
+  "cJobObject",
+  "cPipe",
+  "cProcess",
+  "cVirtualAllocation",
+  "fauProcessesIdsForExecutableName",
+  "fauProcessesIdsForExecutableNames",
+  "fbIsRunningForProcessHandle",
+  "fbIsRunningForProcessId",
+  "fbResumeForThreadHandle",
+  "fbResumeForThreadId",
+  "fbTerminateForProcessHandle",
+  "fbTerminateForProcessId",
+  "fbTerminateForThreadId",
+  "fbWaitForTerminationForProcessHandle",
+  "fbWaitForTerminationForProcessId",
+  "fDebugBreakForProcessId",
+  "fdsProcessesExecutableName_by_uId",
+  "fResumeForProcessId",
+  "fSendCtrlCForProcessId",
+  "fsGetISAForProcessId",
+  "fsGetISAForProcessHandle",
+  "fsGetPythonISA",
+  "fStartDebuggingForProcessId",
+  "fStopDebuggingForProcessId",
+  "fSuspendForProcessId",
+  "fuCreateProcessForBinaryPathAndArguments",
+  "fuCreateThreadForProcessIdAndAddress",
+  "fuGetExitCodeForProcessHandle",
+  "fuGetExitCodeForProcessId",
+  "fuGetIntegrityLevelForProcessId",
+  "fuGetMemoryUsageForProcessId",
+  "oSystemInfo",
+  "mDbgHelp",
+  "mDLLs",
+  "mRegistry",
+];

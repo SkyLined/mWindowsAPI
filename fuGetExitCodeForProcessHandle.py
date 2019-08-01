@@ -1,17 +1,15 @@
+from mWindowsSDK import *;
+from .mDLLs import oKernel32;
 from .fbIsRunningForProcessHandle import fbIsRunningForProcessHandle;
 from .fThrowLastError import fThrowLastError;
-from .mDefines import STILL_ACTIVE;
-from .mDLLs import KERNEL32;
-from .mFunctions import POINTER;
-from .mTypes import DWORD;
 
-def fuGetExitCodeForProcessHandle(hProcess):
-  assert isinstance(hProcess, HANDLE), \
-      "%s is not a HANDLE" % repr(hProcess);
-  if fbIsRunningForProcessHandle(hProcess):
+def fuGetExitCodeForProcessHandle(ohProcess):
+  assert isinstance(ohProcess, HANDLE), \
+      "%s is not a HANDLE" % repr(ohProcess);
+  if fbIsRunningForProcessHandle(ohProcess):
     # Still running; no exit code.
     return None;
-  dwExitCode = DWORD();
-  if not KERNEL32.GetExitCodeProcess(hProcess, POINTER(dwExitCode)):
-    fThrowLastError("GetExitCodeProcess(0x%08X, 0x%X)" % (hProcess.value, fuAddressOf(dwExitCode)));
-  return dwExitCode.value;
+  odwExitCode = DWORD();
+  if not oKernel32.GetExitCodeProcess(ohProcess, odwExitCode.foCreatePointer()):
+    fThrowLastError("GetExitCodeProcess(0x%08X, 0x%X)" % (ohProcess.value, odwExitCode.fuGetAddress()));
+  return odwExitCode.value;

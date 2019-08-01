@@ -1,11 +1,9 @@
+from mWindowsSDK import *;
+from .mDLLs import oKernel32;
 from .cPipe import cPipe;
 from .cProcess import cProcess;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
-from .mDefines import *;
-from .mDLLs import KERNEL32;
-from .mFunctions import *;
-from .mTypes import *;
 
 class cConsoleProcess(cProcess):
   @staticmethod
@@ -39,44 +37,44 @@ class cConsoleProcess(cProcess):
             (s and (s[0] == '"' or s.find(" ") == -1)) and s or '"%s"' % s.replace('"', '\\"')
             for s in [sBinaryPath] + asArguments
           ]);
-          dwCreationFlags = DWORD(sum([
+          odwCreationFlags = DWORD(sum([
             bSuspended and CREATE_SUSPENDED or 0,
             bDebug and DEBUG_PROCESS or 0,
           ]));
           oStartupInfo = STARTUPINFOW();
-          oStartupInfo.cb = fuSizeOf(oStartupInfo);
+          oStartupInfo.cb = oStartupInfo.fuGetSize();
           oStartupInfo.lpDesktop = NULL;
           oStartupInfo.lpDesktop = NULL;
           oStartupInfo.dwFlags = STARTF_USESTDHANDLES;
-          oStartupInfo.hStdInput = oStdInPipe and oStdInPipe.hOutput or KERNEL32.GetStdHandle(STD_INPUT_HANDLE);
-          oStartupInfo.hStdOutput = oStdOutPipe and oStdOutPipe.hInput or KERNEL32.GetStdHandle(STD_OUTPUT_HANDLE);
-          oStartupInfo.hStdError = oStdErrPipe and oStdErrPipe.hInput or KERNEL32.GetStdHandle(STD_ERROR_HANDLE);
+          oStartupInfo.hStdInput = oStdInPipe.ohOutput if oStdInPipe else oKernel32.GetStdHandle(STD_INPUT_HANDLE);
+          oStartupInfo.hStdOutput = oStdOutPipe.ohInput if oStdOutPipe else oKernel32.GetStdHandle(STD_OUTPUT_HANDLE);
+          oStartupInfo.hStdError = oStdErrPipe.ohInput if oStdErrPipe else oKernel32.GetStdHandle(STD_ERROR_HANDLE);
           oProcessInformation = PROCESS_INFORMATION();
-          if not KERNEL32.CreateProcessW(
-            sBinaryPath, # lpApplicationName
-            sCommandLine, # lpCommandLine
+          if not oKernel32.CreateProcessW(
+            foCreateBuffer(sBinaryPath, bUnicode = True).foCreatePointer(PCWSTR), # lpApplicationName
+            foCreateBuffer(sCommandLine, bUnicode = True).foCreatePointer(PCWSTR), # lpCommandLine
             NULL, # lpProcessAttributes
             NULL, # lpThreadAttributes
             TRUE, # bInheritHandles
-            dwCreationFlags, # dwCreationFlags
+            odwCreationFlags, # dwCreationFlags
             NULL, # lpEnvironment
-            sWorkingDirectory, # lpCurrentDirectory
-            POINTER(oStartupInfo), # lpStartupInfo
-            POINTER(oProcessInformation), # lpProcessInformation
+            foCreateBuffer(sWorkingDirectory, bUnicode = True).foCreatePointer(PCWSTR) if sWorkingDirectory else NULL, # lpCurrentDirectory
+            oStartupInfo.foCreatePointer(), # lpStartupInfo
+            oProcessInformation.foCreatePointer(), # lpProcessInformation
           ):
             if not fbLastErrorIs(ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME):
               fThrowLastError("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
-                  (repr(sBinaryPath), repr(sCommandLine), dwCreationFlags.value, repr(sWorkingDirectory)));
+                  (repr(sBinaryPath), repr(sCommandLine), odwCreationFlags.value, repr(sWorkingDirectory)));
             return None;
           # Close all handles that we no longer need:
-          if not KERNEL32.CloseHandle(oProcessInformation.hThread):
+          if not oKernel32.CloseHandle(oProcessInformation.hThread):
             fThrowLastError("CloseHandle(0x%X)" % (oProcessInformation.hThread.value,));
           # Close the ends of the stdin/out/err pipes that we do not use; the child will keep them open until it dies
           # at which point they can be cleaned up because we are not keeping them open ourselves.
           oStdInPipe and oStdInPipe.fClose(bOutput = True); 
           oStdOutPipe and oStdOutPipe.fClose(bInput = True);
           oStdErrPipe and oStdErrPipe.fClose(bInput = True);
-          return cConsoleProcess(oProcessInformation.dwProcessId, oStdInPipe, oStdOutPipe, oStdErrPipe, hProcess = HANDLE(oProcessInformation.hProcess));
+          return cConsoleProcess(oProcessInformation.dwProcessId.value, oStdInPipe, oStdOutPipe, oStdErrPipe, ohProcess = oProcessInformation.hProcess);
         except:
           oStdErrPipe and oStdErrPipe.fClose();
           raise;
@@ -87,8 +85,8 @@ class cConsoleProcess(cProcess):
       oStdInPipe and oStdInPipe.fClose();
       raise;
   
-  def __init__(oSelf, uId, oStdInPipe, oStdOutPipe, oStdErrPipe, hProcess = None):
-    cProcess.__init__(oSelf, uId, hProcess = hProcess);
+  def __init__(oSelf, uId, oStdInPipe, oStdOutPipe, oStdErrPipe, ohProcess = None):
+    cProcess.__init__(oSelf, uId, ohProcess = ohProcess);
     oSelf.oStdInPipe = oStdInPipe;
     oSelf.oStdOutPipe = oStdOutPipe;
     oSelf.oStdErrPipe = oStdErrPipe;

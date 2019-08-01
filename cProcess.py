@@ -1,10 +1,13 @@
 import os;
 
+from mWindowsSDK import *;
+from .mDLLs import oKernel32, oNTDLL;
 from .fbIsRunningForProcessHandle import fbIsRunningForProcessHandle;
+from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fbTerminateForProcessHandle import fbTerminateForProcessHandle;
 from .fbWaitForTerminationForProcessHandle import fbWaitForTerminationForProcessHandle;
-from .fhOpenForProcessIdAndDesiredAccess import fhOpenForProcessIdAndDesiredAccess;
+from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fuCreateThreadForProcessIdAndAddress import fuCreateThreadForProcessIdAndAddress;
 from .fsGetPythonISA import fsGetPythonISA;
 from .fsGetISAForProcessHandle import fsGetISAForProcessHandle;
@@ -16,25 +19,24 @@ from .fuGetIntegrityLevelForProcessId import fuGetIntegrityLevelForProcessId;
 from .fuGetMemoryUsageForProcessId import fuGetMemoryUsageForProcessId;
 from .cThread import cThread;
 from .cVirtualAllocation import cVirtualAllocation;
-from .mDefines import *;
-from .mDLLs import KERNEL32, NTDLL;
-from .mFunctions import *;
-from .mTypes import *;
+from .mDLLs import oKernel32, oNTDLL;
 
 class cProcess(object):
-  def __init__(oSelf, uId, hProcess = None):
+  def __init__(oSelf, uId, ohProcess = None):
+    assert isinstance(uId, (int, long)), \
+        "uId must be an integer not %s" % repr(uId);
     oSelf.uId = uId;
-    assert hProcess is None or isinstance(hProcess, HANDLE), \
-        "hProcess (%s) is not a valid handle" % repr(hProcess);
-    if hProcess is None:
+    assert ohProcess is None or isinstance(ohProcess, HANDLE), \
+        "ohProcess (%s) is not a valid handle" % repr(ohProcess);
+    if ohProcess is None:
       # Try to open the process if no handle is provided...
-      hProcess = fhOpenForProcessIdAndDesiredAccess(uId, PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ);
-    oSelf.__hProcess = hProcess;
+      ohProcess = fohOpenForProcessIdAndDesiredAccess(uId, PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ);
+    oSelf.__ohProcess = ohProcess;
     # If we are running in 64-bit Python, NtQueryInformationProcess will return a pointer to the 64-bit PEB of
     # another process in the PROCESS_BASIC_INFORMATION struct. If we are running in 32-bit Python, we cannot get
     # information on a 64-bit process unless we start doing some dirty hacks, which I'd rather not. To find out if
     # the PEB is 32- or 64-bit, we will need to find out the bitness of Python, the OS and the target process:
-    oSelf.sISA = fsGetISAForProcessHandle(oSelf.__hProcess);
+    oSelf.sISA = fsGetISAForProcessHandle(oSelf.__ohProcess);
     assert oSelf.sISA == "x86" or fsGetPythonISA() == "x64", \
         "You cannot get information on a 64-bit process from 32-bit Python";
     oSelf.uPointerSize = {"x86": 4, "x64": 8}[oSelf.sISA];
@@ -50,27 +52,28 @@ class cProcess(object):
     if oSelf.__oPEB is None:
       # The type of PROCESS_BASIC_INFORMATION returned by NtQueryInformationProcess depends on the ISA of the process
       # calling it, in this case it's the Python process we're running in:
-      cProcessBasicInformation = {"x86": PROCESS_BASIC_INFORMATION_32, "x64": PROCESS_BASIC_INFORMATION_64}[fsGetPythonISA()];
+      cProcessBasicInformation = {"x86": PROCESS_BASIC_INFORMATION32, "x64": PROCESS_BASIC_INFORMATION64}[fsGetPythonISA()];
       oProcessBasicInformation = cProcessBasicInformation();
-      uReturnLength = ULONG();
-      oNTStatus = NTDLL.NtQueryInformationProcess(
-        oSelf.__hProcess,# ProcessHandle
+      ouReturnLength = ULONG();
+      oNTStatus = oNTDLL.NtQueryInformationProcess(
+        oSelf.__ohProcess,# ProcessHandle
         ProcessBasicInformation, # ProcessInformationClass
-        fxCast(PVOID, POINTER(oProcessBasicInformation)), # ProcessInformation
-        fuSizeOf(oProcessBasicInformation), # ProcessInformationLength
-        POINTER(uReturnLength), # ReturnLength
+        oProcessBasicInformation.foCreatePointer(PVOID), # ProcessInformation
+        oProcessBasicInformation.fuGetSize(), # ProcessInformationLength
+        ouReturnLength.foCreatePointer(), # ReturnLength
       );
-      if not SUCCEEDED(oNTStatus):
-        fThrowError("NtQueryInformationProcess(0x%X, ProcessBasicInformation, ..., 0x%X, ...)" % \
-              (oSelf.__hProcess.value, fuSizeOf(oProcessBasicInformation)), oNTStatus.value);
-      assert uReturnLength.value == fuSizeOf(oProcessBasicInformation), \
+      if NT_ERROR(oNTStatus):
+        fThrowError("NtQueryInformationProcess(ProcessHandle=0x%X, ProcessInformationClass=0x%X, ProcessInformation=0x%X, ProcessInformationLength=0x%X, ReturnLength=0x%X)" % \
+              (oSelf.__ohProcess.value, ProcessBasicInformation, oProcessBasicInformation.fuGetAddress(),
+              oProcessBasicInformation.fuGetSize(), ouReturnLength.fuGetAddress()), oNTStatus.value);
+      assert ouReturnLength.value == oProcessBasicInformation.fuGetSize(), \
           "NtQueryInformationProcess(0x%X, 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % \
-          (oSelf.__hProcess.value, ProcessBasicInformation, fuSizeOf(oProcessBasicInformation), uReturnLength.value);
+          (oSelf.__ohProcess.value, ProcessBasicInformation, oProcessBasicInformation.fuGetSize(), ouReturnLength.value);
       # Read PEB
-      uPEBAddress = fuPointerValue(oProcessBasicInformation.PebBaseAddress);
+      uPEBAddress = oProcessBasicInformation.PebBaseAddress.value;
       # The type of PEB (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
-      cPEB = {"x86": PEB_32, "x64": PEB_64}[fsGetPythonISA()];
-      oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uPEBAddress, fuSizeOf(cPEB), "PEB");
+      cPEB = oProcessBasicInformation.PebBaseAddress.cTargetType;
+      oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uPEBAddress, cPEB.fuGetSize(), "PEB");
       oSelf.__oPEB = oVirtualAllocation.foReadStructureForOffset(
         cStructure = cPEB,
         uOffset = uPEBAddress - oVirtualAllocation.uStartAddress,
@@ -79,16 +82,16 @@ class cProcess(object):
   
   @property
   def uBinaryStartAddress(oSelf):
-    return fuPointerValue(oSelf.oPEB.ImageBaseAddress);
+    return oSelf.oPEB.ImageBaseAddress.value;
   
   @property
   def oProcessParameters(oSelf):
     if oSelf.__oProcessParameters is None:
       # Read Process Parameters
-      uProcessParametersAddress = fuPointerValue(oSelf.oPEB.ProcessParameters);
+      uProcessParametersAddress = oSelf.oPEB.ProcessParameters.value;
       # The type of RTL_USER_PROCESS_PARAMETERS (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
-      cRtlUserProcessParameters = {"x86": RTL_USER_PROCESS_PARAMETERS_32, "x64": RTL_USER_PROCESS_PARAMETERS_64}[fsGetPythonISA()];
-      oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uProcessParametersAddress, fuSizeOf(cRtlUserProcessParameters), "Process Parameters");
+      cRtlUserProcessParameters = {"x86": RTL_USER_PROCESS_PARAMETERS32, "x64": RTL_USER_PROCESS_PARAMETERS64}[fsGetPythonISA()];
+      oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uProcessParametersAddress, cRtlUserProcessParameters.fuGetSize(), "Process Parameters");
       oSelf.__oProcessParameters = oVirtualAllocation.foReadStructureForOffset(
         cStructure = cRtlUserProcessParameters,
         uOffset = uProcessParametersAddress - oVirtualAllocation.uStartAddress,
@@ -99,8 +102,8 @@ class cProcess(object):
   def sBinaryPath(oSelf):
     if oSelf.__sBinaryPath is None:
       # Read Image Path Name
-      uImagePathNameAddress = fuPointerValue(oSelf.oProcessParameters.ImagePathName.Buffer);
-      uImagePathNameSize = oSelf.oProcessParameters.ImagePathName.Length;
+      uImagePathNameAddress = oSelf.oProcessParameters.ImagePathName.Buffer.value;
+      uImagePathNameSize = oSelf.oProcessParameters.ImagePathName.Length.value;
       oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uImagePathNameAddress, uImagePathNameSize, "Image Path Name");
       oSelf.__sBinaryPath = oVirtualAllocation.fsReadStringForOffsetAndSize(
         uOffset = uImagePathNameAddress - oVirtualAllocation.uStartAddress,
@@ -117,8 +120,8 @@ class cProcess(object):
   def sCommandLine(oSelf):
     if oSelf.__sCommandLine is None:
       # Read Command Line
-      uCommandLineAddress = fuPointerValue(oSelf.oProcessParameters.CommandLine.Buffer);
-      uCommandLineSize = oSelf.oProcessParameters.CommandLine.Length;
+      uCommandLineAddress = oSelf.oProcessParameters.CommandLine.Buffer.value;
+      uCommandLineSize = oSelf.oProcessParameters.CommandLine.Length.value;
       oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uCommandLineAddress, uCommandLineSize, "Command Line");
       oSelf.__sCommandLine = oVirtualAllocation.fsReadStringForOffsetAndSize(
         uOffset = uCommandLineAddress - oVirtualAllocation.uStartAddress,
@@ -129,21 +132,21 @@ class cProcess(object):
   
   def __del__(oSelf):
     try:
-      hProcess = oSelf.__hProcess;
+      ohProcess = oSelf.__ohProcess;
     except AttributeError:
       return;
-    if not KERNEL32.CloseHandle(hProcess):
-      fThrowLastError("CloseHandle(0x%X)" % (hProcess.value,));
+    if not oKernel32.CloseHandle(ohProcess):
+      fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
   
   @property
   def bIsRunning(oSelf):
-    return fbIsRunningForProcessHandle(oSelf.__hProcess);
+    return fbIsRunningForProcessHandle(oSelf.__ohProcess);
   
   def fbTerminate(oSelf, uTimeout = None):
-    return fbTerminateForProcessHandle(oSelf.__hProcess, uTimeout);
+    return fbTerminateForProcessHandle(oSelf.__ohProcess, uTimeout);
   
   def fbWait(oSelf, uTimeout = None):
-    return fbWaitForTerminationForProcessHandle(oSelf.__hProcess, uTimeout);
+    return fbWaitForTerminationForProcessHandle(oSelf.__ohProcess, uTimeout);
   
   def fSuspend(oSelf):
     return fSuspendForProcessId(oSelf.uId);
@@ -154,7 +157,7 @@ class cProcess(object):
   
   @property
   def uExitCode(oSelf):
-    return fuGetExitCodeForProcessHandle(oSelf.__hProcess);
+    return fuGetExitCodeForProcessHandle(oSelf.__ohProcess);
   
   def foCreateVirtualAllocation(oSelf, uSize, uAddress = None, bReserved = False, uProtection = None):
     return cVirtualAllocation.foCreateForProcessId(
@@ -243,24 +246,25 @@ class cProcess(object):
     return fuGetMemoryUsageForProcessId(oSelf.uId);
   
   def faoGetThreads(oSelf):
-    hThreadsSnapshot = KERNEL32.CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-    if not fbIsValidHandle(hThreadsSnapshot):
+    ohThreadsSnapshot = oKernel32.CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    if not fbIsValidHandle(ohThreadsSnapshot):
       fThrowLastError("CreateToolhelp32Snapshot(0x%08X, 0)", TH32CS_SNAPTHREAD);
     
     oThreadEntry32 = THREADENTRY32();
-    oThreadEntry32.dwSize = fuSizeOf(oThreadEntry32);
-    bGotThread = KERNEL32.Thread32First(hThreadsSnapshot, POINTER(oThreadEntry32))
+    oThreadEntry32.dwSize = oThreadEntry32.fuGetSize();
+    opoThreadEntry32 = oThreadEntry32.foCreatePointer();
+    bGotThread = oKernel32.Thread32First(ohThreadsSnapshot, opoThreadEntry32)
     bFirstThread = True;
     aoThreads = [];
     while bGotThread:
       bFirstThread = False;
-      if oThreadEntry32.th32OwnerProcessID == oSelf.uId:
-        aoThreads.append(cThread(oSelf, oThreadEntry32.th32ThreadID));
-      bGotThread = KERNEL32.Thread32Next(hThreadsSnapshot, POINTER(oThreadEntry32));
+      if oThreadEntry32.th32OwnerProcessID.value == oSelf.uId:
+        aoThreads.append(cThread(oSelf, oThreadEntry32.th32ThreadID.value));
+      bGotThread = oKernel32.Thread32Next(ohThreadsSnapshot, opoThreadEntry32);
     if not fbLastErrorIs(ERROR_NO_MORE_FILES):
-      fThrowLastError("Thread32%s(0x%08X, ...)" % (bFirstThread and "First" or "Next", hThreadsSnapshot.value,));
-    if not KERNEL32.CloseHandle(hThreadsSnapshot):
-      fThrowLastError("CloseHandle(0x%08X)" % (hThreadsSnapshot.value,));
+      fThrowLastError("Thread32%s(0x%08X, ...)" % (bFirstThread and "First" or "Next", ohThreadsSnapshot.value,));
+    if not oKernel32.CloseHandle(ohThreadsSnapshot):
+      fThrowLastError("CloseHandle(0x%08X)" % (ohThreadsSnapshot.value,));
     return aoThreads;
   
   def foGetThreadForId(oSelf, uId):

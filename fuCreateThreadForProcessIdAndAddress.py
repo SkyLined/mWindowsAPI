@@ -1,9 +1,9 @@
+from .mDLLs import oKernel32;
 from .fThrowLastError import fThrowLastError;
-from .fthuCreateThreadForProcessIdAndAddress import fthuCreateThreadForProcessIdAndAddress;
-from .mDLLs import KERNEL32;
+from .ftohuCreateThreadForProcessIdAndAddress import ftohuCreateThreadForProcessIdAndAddress;
 
 def fuCreateThreadForProcessIdAndAddress(uProcessId, uAddress, **dxArguments):
-  (hThread, uThreadId) = fthuCreateThreadForProcessIdAndAddress(uProcessId, uAddress, **dxArguments);
-  if not KERNEL32.CloseHandle(hThread):
-    fThrowLastError("CloseHandle(0x%08X)" % (hThread.value,));
+  (ohThread, uThreadId) = ftohuCreateThreadForProcessIdAndAddress(uProcessId, uAddress, **dxArguments);
+  if not oKernel32.CloseHandle(ohThread):
+    fThrowLastError("CloseHandle(0x%08X)" % (ohThread.value,));
   return uThreadId;

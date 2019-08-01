@@ -1,9 +1,7 @@
+from mWindowsSDK import *;
+from ..mDLLs import oDbgHelp, oKernel32;
 from ..fbLastErrorIs import fbLastErrorIs;
 from ..fThrowLastError import fThrowLastError;
-from ..mDefines import *;
-from ..mDLLs import DBGHELP, KERNEL32;
-from ..mFunctions import *;
-from ..mTypes import *;
 
 def fsUndecorateSymbolName(sDecoratedSymbolName, bNameOnly = False):
   if sDecoratedSymbolName.startswith(".?AV"):
@@ -20,16 +18,17 @@ def fsUndecorateSymbolName(sDecoratedSymbolName, bNameOnly = False):
   uLastReturnValue = 0;
   uFlags = bNameOnly and UNDNAME_NAME_ONLY or UNDNAME_COMPLETE;
   while uSymbolNameBufferLengthInChars < 0x10000: # Just a random sane upper limit.
-    sBuffer = STR(uSymbolNameBufferLengthInChars);
-    dwSymbolNameLengthInCharsExcludingNullTerminator = DBGHELP.UnDecorateSymbolName(
-      sDecoratedSymbolName,
-      sBuffer,
+    oBuffer = foCreateBuffer(uSymbolNameBufferLengthInChars);
+    odwSymbolNameLengthInCharsExcludingNullTerminator = oDbgHelp.UnDecorateSymbolName(
+      foCreateBuffer(sDecoratedSymbolName).foCreatePointer(PCSTR),
+      oBuffer.foCreatePointer(PSTR),
       uSymbolNameBufferLengthInChars,
       uFlags,
     );
-    if dwSymbolNameLengthInCharsExcludingNullTerminator.value > 0:
-      if uLastReturnValue == dwSymbolNameLengthInCharsExcludingNullTerminator.value:
-        sSymbolName = sBuffer[:dwSymbolNameLengthInCharsExcludingNullTerminator.value];
+    uSymbolNameLength = odwSymbolNameLengthInCharsExcludingNullTerminator.value;
+    if uSymbolNameLength > 0:
+      if uLastReturnValue == uSymbolNameLength:
+        sSymbolName = oBuffer.fsGetString(uLength = uSymbolNameLength);
         # Only return a value if the function returned something different; it can return its input unaltered if it does
         # not know how to demangle it.
         return sSymbolName != sDecoratedSymbolName and sSymbolName or None;
@@ -39,7 +38,7 @@ def fsUndecorateSymbolName(sDecoratedSymbolName, bNameOnly = False):
           (sDecoratedSymbolName, uSymbolNameBufferLengthInChars, uFlags,));
       # This error is returned if the buffer is too small; try again with a buffer twice the size:
     uSymbolNameBufferLengthInChars *= 2;
-    uLastReturnValue = dwSymbolNameLengthInCharsExcludingNullTerminator.value;
+    uLastReturnValue = odwSymbolNameLengthInCharsExcludingNullTerminator.value;
   return None; # The symbol name was too large to start with, or the undecorated symbol name would be too large.
 
 

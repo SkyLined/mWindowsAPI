@@ -1,5 +1,4 @@
 import _winreg;
-
 # There are more imports at the end that need to be there and not here to prevent import loops.
 
 gduType_by_sName = {

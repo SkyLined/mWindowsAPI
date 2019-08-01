@@ -1,6 +1,6 @@
+from .mDLLs import oKernel32;
 from .fThrowLastError import fThrowLastError;
-from .mDLLs import KERNEL32;
 
-def fSuspendForThreadHandle(hThread):
-  if KERNEL32.SuspendThread(hThread) == -1:
-    fThrowLastError("SuspendThread(0x%08X)" % (hThread.value,));
+def fSuspendForThreadHandle(ohThread):
+  if oKernel32.SuspendThread(ohThread) == -1:
+    fThrowLastError("SuspendThread(0x%08X)" % (ohThread.value,));

@@ -1,18 +1,16 @@
-from .fhOpenForProcessIdAndDesiredAccess import fhOpenForProcessIdAndDesiredAccess;
+from mWindowsSDK import *;
+from .mDLLs import oKernel32, oNTDLL;
+from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fThrowError import fThrowError;
 from .fThrowLastError import fThrowLastError;
-from .mDefines import *;
-from .mDLLs import KERNEL32, NTDLL;
-from .mFunctions import *;
-from .mTypes import *;
 
 def fResumeForProcessId(uProcessId):
-  hProcess = fhOpenForProcessIdAndDesiredAccess(uProcessId, THREAD_SUSPEND_RESUME);
-  hResult = NTDLL.NtResumeProcess(hProcess); # NOT RELIABLE!
-  if not SUCCEEDED(hResult):
+  ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, THREAD_SUSPEND_RESUME);
+  ohResult = oNTDLL.NtResumeProcess(ohProcess); # NOT RELIABLE!
+  if FAILED(ohResult):
     # Save the last error because want to close the process handle, which may fail and modify it.
-    dwLastError = KERNEL32.GetLastError();
-    KERNEL32.CloseHandle(hProcess);
-    fThrowError("NtResumeProcess(0x%08X) == %08X" % (hProcess.value, hResult.value,), dwLastError.value);
-  if not KERNEL32.CloseHandle(hProcess):
-    fThrowLastError("CloseHandle(0x%X)" % (hProcess.value,));
+    odwLastError = oKernel32.GetLastError();
+    oKernel32.CloseHandle(ohProcess);
+    fThrowError("NtResumeProcess(0x%08X) == %08X" % (ohProcess.value, ohResult.value,), odwLastError.value);
+  if not oKernel32.CloseHandle(ohProcess):
+    fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));

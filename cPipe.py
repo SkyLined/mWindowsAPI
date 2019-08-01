@@ -1,10 +1,9 @@
 import time;
+from mWindowsSDK import *;
+from .mDLLs import oKernel32;
+from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
-from .mDefines import *;
-from .mFunctions import *;
-from .mTypes import *;
-from .mDLLs import KERNEL32;
 
 guBufferSize = 1;
 gnDefaultConnectTimeoutInSeconds = 1;
@@ -14,7 +13,7 @@ class cPipe(object):
   @staticmethod
   def __foSecurityAttributes():
     oSecurityAttributes = SECURITY_ATTRIBUTES();
-    oSecurityAttributes.nLength = fuSizeOf(oSecurityAttributes);
+    oSecurityAttributes.nLength = oSecurityAttributes.fuGetSize();
     oSecurityAttributes.lpSecurityDescriptor = NULL;
     oSecurityAttributes.bInheritHandle = True;
     return oSecurityAttributes;
@@ -28,45 +27,46 @@ class cPipe(object):
     assert bReadableInput or bWritableOutput, \
         "A pipe must be readable or writable";
   
-    dwOpenMode = DWORD(
+    odwOpenMode = DWORD(
       PIPE_ACCESS_INBOUND if bReadableInput else 0
       | PIPE_ACCESS_OUTBOUND if bWritableOutput else 0
       | FILE_FLAG_FIRST_PIPE_INSTANCE
       | FILE_FLAG_WRITE_THROUGH # No caching
     );
-    dwPipeMode = DWORD(
+    odwPipeMode = DWORD(
       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE
       | PIPE_WAIT # Blocking connect/read/write
       | PIPE_REJECT_REMOTE_CLIENTS # Local connections only for now.
     );
     nDefaultTimeout = long(1000 * (nConnectTimeoutInSeconds if nConnectTimeoutInSeconds is not None else gnDefaultConnectTimeoutInSeconds));
-    hHandle = KERNEL32.CreateNamedPipeW(
+    ohHandle = oKernel32.CreateNamedPipeW(
       gsPipeNameHeader + sName, # lpName
-      dwOpenMode,
-      dwPipeMode,
+      odwOpenMode,
+      odwPipeMode,
       PIPE_UNLIMITED_INSTANCES, # nMaxInstances
       guBufferSize, # nOutBufferSize
       guBufferSize, # nInBufferSize
       nDefaultTimeout, # nDefaultTimeOut
-      POINTER(cPipe.__foSecurityAttributes()), # lpPipeAttributes
+      cPipe.__foSecurityAttributes().foCreatePointer(), # lpPipeAttributes
     );
-    if not fbIsValidHandle(hHandle):
+    if not fbIsValidHandle(ohHandle):
       fThrowLastError("CreateNamedPipeW(%s, 0x%08X, 0x%08X, PIPE_UNLIMITED_INSTANCES, %d, %d, %d, ...)" % \
-          (repr(gsPipeNameHeader + sName), dwOpenMode, dwPipeMode, guBufferSize, guBufferSize, nDefaultTimeout));
+          (repr(gsPipeNameHeader + sName), odwOpenMode.value, odwPipeMode.value, guBufferSize, guBufferSize, nDefaultTimeout));
     bSuccess = False;
     try:
       if not bInheritable:
         uFlags = HANDLE_FLAG_INHERIT;
-        if not KERNEL32.SetHandleInformation(hHandle, uFlags, FALSE):
-          fThrowLastError("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % (hInput.value, uFlags,));
-      if not KERNEL32.ConnectNamedPipe(hHandle, NULL):
+        if not oKernel32.SetHandleInformation(ohHandle, uFlags, FALSE):
+          fThrowLastError("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % (ohHandle.value, uFlags,));
+      if not oKernel32.ConnectNamedPipe(ohHandle, NULL):
         if not fbLastErrorIs(ERROR_PIPE_CONNECTED):
-          fThrowLastError("ConnectNamedPipe(0x%08X, NULL)" % (hHandle.value,));
+          fThrowLastError("ConnectNamedPipe(0x%08X, NULL)" % (ohHandle.value,));
       bSuccess = True;
     finally:
-      if not bSuccess:
-        KERNEL32.CloseHandle(hHandle);
-    return cPipe(sName, hHandle, hHandle);
+      # Only throw an exception if one isn't already being thrown:
+      if not oKernel32.CloseHandle(ohProcess) and bSuccess:
+        fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+    return cPipe(sName, ohHandle, ohHandle);
   
   @classmethod
   def foConnectNamed(cPipe, sName, bReadableInput = True, bWritableOutput = True, bInheritable = True, nConnectTimeoutInSeconds = None):
@@ -76,45 +76,45 @@ class cPipe(object):
         "The name should not contain backslashes!";
     assert bReadableInput or bWritableOutput, \
         "A pipe must be readable or writable";
-    dwDesiredAccess = DWORD(
+    odwDesiredAccess = DWORD(
       GENERIC_READ if bReadableInput else 0
       | GENERIC_WRITE if bWritableOutput else 0
     );
     nEndTimeStamp = time.clock() + (nConnectTimeoutInSeconds if nConnectTimeoutInSeconds is not None else gnDefaultConnectTimeoutInSeconds);
     while 1:
-      hHandle = KERNEL32.CreateFileW(
+      ohHandle = oKernel32.CreateFileW(
         gsPipeNameHeader + sName, # lpName
-        dwDesiredAccess,
+        odwDesiredAccess,
         0, # dwShareMode
-        POINTER(cPipe.__foSecurityAttributes()), # lpPipeAttributes
-        DWORD(OPEN_EXISTING), # dwCreationDisposition
+        cPipe.__foSecurityAttributes().foCreatePointer(), # lpPipeAttributes
+        OPEN_EXISTING, # dwCreationDisposition
         0, # dwFlagsAndAttributes
         NULL, # hTemplateFile
       );
-      if hHandle is not INVALID_HANDLE_VALUE:
+      if fbIsValidHandle(ohHandle):
         break;
       if not fbLastErrorIs(ERROR_PIPE_BUSY):
-        fThrowLastError("CreateFileW(%s, 0x%08X, 0, ..., OPEN_EXISTING, 0, NULL)" % (repr(gsPipeNameHeader + sName), dwDesiredAccess));
+        fThrowLastError("CreateFileW(%s, 0x%08X, 0, ..., OPEN_EXISTING, 0, NULL)" % (repr(gsPipeNameHeader + sName), odwDesiredAccess));
       if time.clock() >= nEndTimeStamp:
         return None;
-    dwMode = DWORD(PIPE_READMODE_BYTE | PIPE_WAIT);
-    if not KERNEL32.SetNamedPipeHandleState(
-      hHandle, # hNamedPipe
-      POINTER(dwMode), # lpMode
+    odwMode = DWORD(PIPE_READMODE_BYTE | PIPE_WAIT);
+    if not oKernel32.SetNamedPipeHandleState(
+      ohHandle, # hNamedPipe
+      odwMode.foCreatePointer(), # lpMode
       NULL, # lpMaxCollectionCount
       NULL, # lpCollectDataTimeout 
     ):
-      fThrowLastError("SetNamedPipeHandleState(%s, 0x%08x, NULL, NULL)" % (hHandle.value, lpMode));
-    return cPipe(sName, hHandle, hHandle);
+      fThrowLastError("SetNamedPipeHandleState(%s, 0x%08x, NULL, NULL)" % (ohHandle.value, lpMode));
+    return cPipe(sName, ohHandle, ohHandle);
   
   @classmethod
   def foCreate(cPipe, sDescription = None, bInheritableInput = True, bInheritableOutput = True):
-    hInput = HANDLE(); # We write to the pipe's input handle
-    hOutput = HANDLE(); # We read from the pipe's output handle
-    if not KERNEL32.CreatePipe(
-      POINTER(hOutput), # hReadPipe
-      POINTER(hInput), # hWritePipe
-      POINTER(cPipe.__foSecurityAttributes()), # lpPipeAttributes
+    ohInput = HANDLE(); # We write to the pipe's input handle
+    ohOutput = HANDLE(); # We read from the pipe's output handle
+    if not oKernel32.CreatePipe(
+      ohOutput.foCreatePointer(), # hReadPipe
+      ohInput.foCreatePointer(), # hWritePipe
+      cPipe.__foSecurityAttributes().foCreatePointer(), # lpPipeAttributes
       0, # nSize
     ):
       fThrowLastError("CreatePipe(..., ..., ..., 0)");
@@ -122,29 +122,29 @@ class cPipe(object):
     try:
       uFlags = HANDLE_FLAG_INHERIT;
       if not bInheritableInput:
-        if not KERNEL32.SetHandleInformation(hInput, uFlags, FALSE):
-          fThrowLastError("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % (hInput.value, uFlags));
+        if not oKernel32.SetHandleInformation(ohInput, uFlags, FALSE):
+          fThrowLastError("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % (ohInput.value, uFlags));
       if not bInheritableOutput:
-        if not KERNEL32.SetHandleInformation(hOutput, uFlags, FALSE):
-          fThrowLastError("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % (hOutput.value, uFlags));
+        if not oKernel32.SetHandleInformation(ohOutput, uFlags, FALSE):
+          fThrowLastError("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % (ohOutput.value, uFlags));
       bSuccess = True;
     finally:
       if not bSuccess:
-        KERNEL32.CloseHandle(hInput);
-        KERNEL32.CloseHandle(hOutput);
-    return cPipe(sDescription, hInput, hOutput);
+        oKernel32.CloseHandle(ohInput);
+        oKernel32.CloseHandle(ohOutput);
+    return cPipe(sDescription, ohInput, ohOutput);
   
-  def __init__(oSelf, sDescription, hInput, hOutput):
+  def __init__(oSelf, sDescription, ohInput, ohOutput):
     oSelf.sDescription = sDescription; # Just something you can use to remind you of what this pipe does.
-    oSelf.__hInput = hInput; # We write to the pipe's input handle
-    oSelf.__hOutput = hOutput; # We read from the pipe's output handle
+    oSelf.__ohInput = ohInput; # We write to the pipe's input handle
+    oSelf.__ohOutput = ohOutput; # We read from the pipe's output handle
   
   @property
-  def hInput(oSelf):
-    return oSelf.__hInput;
+  def ohInput(oSelf):
+    return oSelf.__ohInput;
   @property
-  def hOutput(oSelf):
-    return oSelf.__hOutput;
+  def ohOutput(oSelf):
+    return oSelf.__ohOutput;
   
   def fClose(oSelf, bInput = None, bOutput = None):
     if bInput is None and bOutput is None:
@@ -154,36 +154,37 @@ class cPipe(object):
     try:
       if bInput:
         # Named pipes do not have separate input and output handles, so we cannot close them individually.
-        assert bOutput or (oSelf.__hInput != oSelf.__hOutput), \
+        assert bOutput or (oSelf.__ohInput != oSelf.__ohOutput), \
             "Cannot close only input on a named pipe!";
-        if not KERNEL32.CloseHandle(oSelf.__hInput):
+        if not oKernel32.CloseHandle(oSelf.__ohInput):
           # It is OK if we cannot close this HANDLE because it is already closed, otherwise we throw an exception.
           if not fbLastErrorIs(ERROR_INVALID_HANDLE):
-            fThrowLastError("CloseHandle(0x%08X)" % (oSelf.__hInput.value,));
+            fThrowLastError("CloseHandle(0x%08X)" % (oSelf.__ohInput.value,));
     finally:
       # Named pipes do not have separate input and output handles, so we do nnot need to close them individually.
-      if bOutput and (not bInput or oSelf.__hInput != oSelf.__hOutput):
-        if not KERNEL32.CloseHandle(oSelf.__hOutput):
+      if bOutput and (not bInput or oSelf.__ohInput != oSelf.__ohOutput):
+        if not oKernel32.CloseHandle(oSelf.__ohOutput):
           if not fbLastErrorIs(ERROR_INVALID_HANDLE):
-            fThrowLastError("CloseHandle(0x%08X)" % (oSelf.__hOutput.value,));
+            fThrowLastError("CloseHandle(0x%08X)" % (oSelf.__ohOutput.value,));
   
   def fuReadByte(oSelf):
     oByte = BYTE();
-    dwBytesRead = DWORD();
+    odwBytesRead = DWORD();
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365467(v=vs.85).aspx
-    if not KERNEL32.ReadFile(
-      oSelf.__hOutput, # hFile # We read from the pipe's output handle
-      POINTER(oByte), # lpBuffer
-      fuSizeOf(oByte), # nNumberOfBytesToRead
-      POINTER(dwBytesRead), # lpNumberOfBytesRead
+    if not oKernel32.ReadFile(
+      oSelf.__ohOutput, # hFile # We read from the pipe's output handle
+      oByte.foCreatePointer(), # lpBuffer
+      oByte.fuGetSize(), # nNumberOfBytesToRead
+      odwBytesRead.foCreatePointer(), # lpNumberOfBytesRead
       NULL, # lpOverlapped
     ):
       if not fbLastErrorIs(ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE):
-        fThrowLastError("ReadFile(0x%08X, ..., 0x%X, ..., NULL)" % (oSelf.__hOutput.value, fuSizeOf(oByte),));
+        fThrowLastError("ReadFile(hFile=0x%X, lpBuffer=0x%X, nNumberOfBytesToRead=0x%X, lpNumberOfBytesRead=0x%X, lpOverlapped=NULL)" % \
+            (oSelf.__ohOutput.value, oByte.fuGetAddress(), oByte.fuGetSize(), odwBytesRead.fuGetAddress()));
       raise IOError("Pipe closed");
-    assert dwBytesRead.value == 1, \
-        "ReadFile(0x%08X, ..., 0x%X, ..., NULL) => read 0x%X bytes" % \
-        (oSelf.__hOutput.value, fuSizeOf(oByte), dwBytesRead.value);
+    assert odwBytesRead.value == 1, \
+        "ReadFile(hFile=0x%X, lpBuffer=0x%X, nNumberOfBytesToRead=0x%X, lpNumberOfBytesRead=0x%X, lpOverlapped=NULL) => read 0x%X bytes" % \
+        (oSelf.__ohOutput.value, oByte.fuGetAddress(), oByte.fuGetSize(), odwBytesRead.fuGetAddress(), odwBytesRead.value);
     return oByte.value;
 
   def fsReadLine(oSelf):
@@ -212,23 +213,23 @@ class cPipe(object):
     return sData;
   
   def fWriteBytes(oSelf, sData):
-    oBuffer = STR(sData); 
-    dwBytesWritten = DWORD(0);
+    odwBytesWritten = DWORD(0);
+    oBuffer = foCreateBuffer(sData);
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365747(v=vs.85).aspx
-    if not KERNEL32.WriteFile(
-      oSelf.__hInput, # hFile # We write to the pipe's input handle
-      POINTER(oBuffer), # lpBuffer
+    if not oKernel32.WriteFile(
+      oSelf.__ohInput, # hFile # We write to the pipe's input handle
+      oBuffer.foCreatePointer(LPVOID), # lpBuffer
       len(sData), # nNumberOfBytesToWrite (without trailing '\0')
-      POINTER(dwBytesWritten), # lpNumberOfBytesWritten
+      odwBytesWritten.foCreatePointer(), # lpNumberOfBytesWritten
       NULL, # lpOverlapped
     ):
       if not fbLastErrorIs(ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE):
-        fThrowLastError("WriteFile(0x%08X, ..., 0x%X, ..., NULL)" % (oSelf.__hInput.value, fuSizeOf(oBuffer)));
+        fThrowLastError("WriteFile(0x%08X, ..., 0x%X, ..., NULL)" % (oSelf.__ohInput.value, len(sData)));
       # The pipe had been closed; throw an IOError.
       raise IOError("Pipe closed");
-    assert dwBytesWritten.value == len(sData), \
+    assert odwBytesWritten.value == len(sData), \
         "WriteFile(0x%08X, ..., 0x%X, ..., NULL) => wrote 0x%X bytes" % \
-        (oSelf.__hInput.value, fuSizeOf(oBuffer), dwBytesWritten.value);
+        (oSelf.__ohInput.value, len(sData), odwBytesWritten.value);
 
   def fWriteLine(oSelf, sData):
     assert "\n" not in sData, \

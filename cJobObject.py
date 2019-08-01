@@ -1,74 +1,76 @@
+from mWindowsSDK import *;
+from .mDLLs import oKernel32;
+from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
-from .fhOpenForProcessIdAndDesiredAccess import fhOpenForProcessIdAndDesiredAccess;
+from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fsGetPythonISA import fsGetPythonISA;
 from .fThrowLastError import fThrowLastError;
-from .mDefines import *;
-from .mDLLs import KERNEL32;
-from .mFunctions import *;
-from .mTypes import *;
 from .oSystemInfo import oSystemInfo;
 
 JOBOBJECT_EXTENDED_LIMIT_INFORMATION = {
-  "x86": JOBOBJECT_EXTENDED_LIMIT_INFORMATION_32,
-  "x64": JOBOBJECT_EXTENDED_LIMIT_INFORMATION_64,
+  "x86": JOBOBJECT_EXTENDED_LIMIT_INFORMATION32,
+  "x64": JOBOBJECT_EXTENDED_LIMIT_INFORMATION64,
 }[fsGetPythonISA()];
 
 class cJobObject(object):
   def __init__(oSelf, *auProcessIds):
-    oSelf.__hJob = KERNEL32.CreateJobObjectW(NULL, NULL);
-    if not fbIsValidHandle(oSelf.__hJob):
+    oSelf.__ohJob = oKernel32.CreateJobObjectW(NULL, NULL);
+    if not fbIsValidHandle(oSelf.__ohJob):
       fThrowLastError("CreateJobObject(NULL, NULL)");
     for uProcessId in auProcessIds:
       assert oSelf.fbAddProcessForId(uProcessId, bThrowAllErrors = True), \
           "Yeah, well, you know, that's just like ehh.. your opinion, man.";
   
   def fbAddProcessForId(oSelf, uProcessId, bThrowAllErrors = False):
-    hProcess = fhOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_SET_QUOTA | PROCESS_TERMINATE);
+    ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_SET_QUOTA | PROCESS_TERMINATE);
     try:
-      if KERNEL32.AssignProcessToJobObject(oSelf.__hJob, hProcess):
+      if oKernel32.AssignProcessToJobObject(oSelf.__ohJob, ohProcess):
         return True;
       if bThrowAllErrors or not fbLastErrorIs(ERROR_ACCESS_DENIED):
-        fThrowLastError("AssignProcessToJobObject(0x%08X, 0x%08X)" % (oSelf.__hJob.value, hProcess.value,));
+        fThrowLastError("AssignProcessToJobObject(0x%08X, 0x%08X)" % (oSelf.__ohJob.value, ohProcess.value,));
     finally:
-      if not KERNEL32.CloseHandle(hProcess):
-        fThrowLastError("CloseHandle(0x%X)" % (hProcess.value,));
+      if not oKernel32.CloseHandle(ohProcess):
+        fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
     # We cannot add the process to the job, but maybe it is already added?
-    hProcess = fhOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_QUERY_LIMITED_INFORMATION);
+    ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_QUERY_LIMITED_INFORMATION);
     try:
-      bProcessInJob = BOOL();
-      if not KERNEL32.IsProcessInJob(hProcess, oSelf.__hJob, POINTER(bProcessInJob)):
-        fThrowLastError("IsProcessInJob(0x%X, ..., ...)" % (hProcess,));
-      return bProcessInJob.value == TRUE;
+      obProcessInJob = BOOLEAN();
+      if not oKernel32.IsProcessInJob(ohProcess, oSelf.__ohJob, obProcessInJob.foCreatePointer()):
+        fThrowLastError("IsProcessInJob(0x%X, ..., ...)" % (ohProcess,));
+      return obProcessInJob.value != 0;
     finally:
-      if not KERNEL32.CloseHandle(hProcess):
-        fThrowLastError("CloseHandle(0x%X)" % (hProcess,));
+      if not oKernel32.CloseHandle(ohProcess):
+        fThrowLastError("CloseHandle(0x%X)" % (ohProcess,));
   
   def __foQueryExtendedLimitInformation(oSelf):
     oExtendedLimitInformation = JOBOBJECT_EXTENDED_LIMIT_INFORMATION();
-    dwReturnLength = DWORD();
-    if not KERNEL32.QueryInformationJobObject(
-      oSelf.__hJob, # hJob
+    odwReturnLength = DWORD();
+    if not oKernel32.QueryInformationJobObject(
+      oSelf.__ohJob, # hJob
       JobObjectExtendedLimitInformation, # JobObjectInfoClass
-      fxCast(LPVOID, POINTER(oExtendedLimitInformation)), # lpJobObjectInfo
-      fuSizeOf(oExtendedLimitInformation), # cbJobObjectInfoLength,
-      POINTER(dwReturnLength), # lpReturnLength
+      oExtendedLimitInformation.foCreatePointer(LPVOID), # lpJobObjectInfo
+      oExtendedLimitInformation.fuGetSize(), # cbJobObjectInfoLength,
+      odwReturnLength.foCreatePointer(), # lpReturnLength
     ):
-      fThrowLastError("QueryInformationJobObject(..., 0x%08X, ..., 0x%X, *dwReturnLength=0x%X)" % \
-          (JobObjectExtendedLimitInformation, fuSizeOf(oExtendedLimitInformation), dwReturnLength.value));
-    assert dwReturnLength.value == fuSizeOf(oExtendedLimitInformation), \
-        "QueryInformationJobObject(..., 0x%08X, ..., 0x%X, ...) => wrote 0x%X bytes" % \
-        (JobObjectExtendedLimitInformation, fuSizeOf(oExtendedLimitInformation), dwReturnLength.value);
+      fThrowLastError("QueryInformationJobObject(hJob=0x%X, JobObjectInfoClass=0x%X, lpJobObjectInfo=0x%X, cbJobObjectInfoLength=0x%X, lpReturnLength=0x%X)" % \
+          (oSelf.__ohJob.value, JobObjectExtendedLimitInformation, oExtendedLimitInformation.fuGetAddress(),
+          oExtendedLimitInformation.fuGetSize(), odwReturnLength.fuGetAddress()));
+    assert odwReturnLength.value == oExtendedLimitInformation.fuGetSize(), \
+        "QueryInformationJobObject(hJob=0x%X, JobObjectInfoClass=0x%X, lpJobObjectInfo=0x%X, cbJobObjectInfoLength=0x%X, lpReturnLength=0x%X) => wrote 0x%X bytes" % \
+        (oSelf.__ohJob.value, JobObjectExtendedLimitInformation, oExtendedLimitInformation.fuGetAddress(),
+          oExtendedLimitInformation.fuGetSize(), odwReturnLength.fuGetAddress(), odwReturnLength.value);
     return oExtendedLimitInformation;
   
   def __fSetExtendedLimitInformation(oSelf, oExtendedLimitInformation):
-    if not KERNEL32.SetInformationJobObject(
-      oSelf.__hJob, # hJob
+    if not oKernel32.SetInformationJobObject(
+      oSelf.__ohJob, # hJob
       JobObjectExtendedLimitInformation, # JobObjectInfoClass
-      fxCast(LPVOID, POINTER(oExtendedLimitInformation)), # lpJobObjectInfo
-      fuSizeOf(oExtendedLimitInformation), # cbJobObjectInfoLength,
+      oExtendedLimitInformation.foCreatePointer(LPVOID), # lpJobObjectInfo
+      oExtendedLimitInformation.fuGetSize(), # cbJobObjectInfoLength,
     ):
-      fThrowLastError("SetInformationJobObject(..., JobObjectExtendedLimitInformation, ..., 0x%X)" % \
-          (fuSizeOf(oExtendedLimitInformation),));
+      fThrowLastError("SetInformationJobObject(hJob=0x%X, JobObjectInfoClass=0x%X, lpJobObjectInfo=0x%X, cbJobObjectInfoLength=0x%X)" % \
+          (oSelf.__ohJob, JobObjectExtendedLimitInformation, oExtendedLimitInformation.fuGetAddress(),
+          oExtendedLimitInformation.fuGetSize()));
   
   def fSetMaxProcessMemoryUse(oSelf, uMemoryUseInBytes):
     oExtendedLimitInformation = oSelf.__foQueryExtendedLimitInformation();

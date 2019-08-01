@@ -1,4 +1,4 @@
 from .fbWaitForSingleObject import fbWaitForSingleObject;
 
-def fbWaitForTerminationForThreadHandle(hThread, nTimeoutInSeconds = None):
-  return fbWaitForSingleObject(hThread, nTimeoutInSeconds);
+def fbWaitForTerminationForThreadHandle(ohThread, nTimeoutInSeconds = None):
+  return fbWaitForSingleObject(ohThread, nTimeoutInSeconds);

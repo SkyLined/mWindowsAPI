@@ -1,17 +1,15 @@
+from mWindowsSDK import *;
+from .mDLLs import oKernel32;
 from .fThrowLastError import fThrowLastError;
-from .mDefines import *;
-from .mDLLs import KERNEL32;
-from .mFunctions import *;
-from .mTypes import *;
 from .oSystemInfo import oSystemInfo;
 
 if oSystemInfo.sOSISA == "x86":
-  def fsGetISAForProcessHandle(hProcess):
+  def fsGetISAForProcessHandle(ohProcess):
     return "x86"; # Not other option
 else:
-  def fsGetISAForProcessHandle(hProcess):
-    bIsWow64Process = BOOL();
-    if not KERNEL32.IsWow64Process(hProcess, POINTER(bIsWow64Process)):
-      fThrowLastError("IsWow64Process(0x%X, ...)" % (hProcess.value,));
-    return bIsWow64Process and "x86" or "x64";
+  def fsGetISAForProcessHandle(ohProcess):
+    obIsWow64Process = BOOLEAN();
+    if not oKernel32.IsWow64Process(ohProcess, obIsWow64Process.foCreatePointer()):
+      fThrowLastError("IsWow64Process(0x%X, ...)" % (ohProcess.value,));
+    return "x64" if obIsWow64Process.value == 0 else "x86";
 

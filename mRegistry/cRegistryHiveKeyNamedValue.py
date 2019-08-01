@@ -1,4 +1,3 @@
-
 # There are imports at the end that need to be there and not here to prevent import loops.
 
 class cRegistryHiveKeyNamedValue(object):

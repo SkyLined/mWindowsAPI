@@ -1,8 +1,6 @@
 import _winreg;
-
+from mWindowsSDK import *
 from ..fbErrorIs import fbErrorIs;
-from ..mDefines import *;
-from ..mFunctions import *;
 # There are more imports at the end that need to be there and not here to prevent import loops.
 
 class cRegistryHiveKey(object):
