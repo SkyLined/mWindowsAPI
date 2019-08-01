@@ -25,16 +25,16 @@ IF ERRORLEVEL 1 (
   EXIT /B 1
 )
 
-CALL PYTHON "%~dp0\%~n0\%~n0.py" %*
+CALL PYTHON "%~dpn0\%~n0.py" %*
 IF ERRORLEVEL 1 GOTO :ERROR
 ENDLOCAL & EXIT /B 0
 
 :TEST_BOTH_ISAS
   ECHO * Running tests in x86 build of Python...
-  CALL PYTHON_X86 "%~dp0\%~n0.py" %*
+  CALL PYTHON_X86 "%~dpn0\%~n0.py" %*
   IF ERRORLEVEL 1 GOTO :ERROR
   ECHO * Running tests in x64 build of Python...
-  CALL PYTHON_X64 "%~dp0\%~n0.py" %*
+  CALL PYTHON_X64 "%~dpn0\%~n0.py" %*
   IF ERRORLEVEL 1 GOTO :ERROR
   ENDLOCAL & EXIT /B 0
 
