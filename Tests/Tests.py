@@ -161,7 +161,8 @@ if __name__ == "__main__":
     dsProcessesExecutableName_by_uId = fdsProcessesExecutableName_by_uId();
     sProcessesExecutableName = dsProcessesExecutableName_by_uId.get(oProcess.uId);
     assert sProcessesExecutableName, \
-        "Test process id %d/0x%X not found in process list!" % (oProcess.uId, oProcess.uId);
+        "Test process id %d/0x%X not found in process list (%s)!" % \
+        (oProcess.uId, oProcess.uId, ", ".join(["0x%X" % uId for uId in dsProcessesExecutableName_by_uId]));
     assert sProcessesExecutableName.lower() == os.path.basename(sTestApplicationPath).lower(), \
         "Text process %d/0x%X is reported to run %s" % (oProcess.uId, sProcessesExecutableName);
     # fuGetIntegrityLevelForProcessId
