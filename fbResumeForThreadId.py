@@ -1,5 +1,4 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fbResumeForThreadHandle import fbResumeForThreadHandle;
 from .fohOpenForThreadIdAndDesiredAccess import fohOpenForThreadIdAndDesiredAccess;
 from .fThrowError import fThrowError;
@@ -16,6 +15,7 @@ def fbResumeForThreadId(uThreadId):
     bSuccess = True;
   finally:
     # Only throw an exception if one isn't already being thrown:
+    oKernel32 = foLoadKernel32DLL();
     if not oKernel32.CloseHandle(ohThread) and bSuccess:
       fThrowLastError("CloseHandle(0x%X)" % (ohThread.value,));
   return bResult;

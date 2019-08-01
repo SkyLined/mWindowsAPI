@@ -1,5 +1,4 @@
 ﻿from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fbWaitForTerminationForThreadHandle import fbWaitForTerminationForThreadHandle;
 from .fThrowLastError import fThrowLastError;
@@ -7,6 +6,7 @@ from .fThrowLastError import fThrowLastError;
 def fbTerminateForThreadHandle(ohThread, nTimeoutInSeconds = None, bWait = True):
   assert bWait or nTimeoutInSeconds is None, \
       "Invalid arguments nTimeoutInSeconds = %f and bWait = %s" % (nTimeoutInSeconds, bWait);
+  oKernel32 = foLoadKernel32DLL();
   bTerminated = oKernel32.TerminateThread(ohThread, 0);
   if not bTerminated:
     # ERROR_ACCESS_DENIED may indicate the thread is already terminating/terminated.

@@ -1,7 +1,6 @@
 import os;
 
 from mWindowsSDK import *;
-from .mDLLs import oKernel32, oNTDLL;
 from .fbIsRunningForProcessHandle import fbIsRunningForProcessHandle;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
@@ -19,7 +18,6 @@ from .fuGetIntegrityLevelForProcessId import fuGetIntegrityLevelForProcessId;
 from .fuGetMemoryUsageForProcessId import fuGetMemoryUsageForProcessId;
 from .cThread import cThread;
 from .cVirtualAllocation import cVirtualAllocation;
-from .mDLLs import oKernel32, oNTDLL;
 
 class cProcess(object):
   def __init__(oSelf, uId, ohProcess = None):
@@ -55,6 +53,7 @@ class cProcess(object):
       cProcessBasicInformation = {"x86": PROCESS_BASIC_INFORMATION32, "x64": PROCESS_BASIC_INFORMATION64}[fsGetPythonISA()];
       oProcessBasicInformation = cProcessBasicInformation();
       ouReturnLength = ULONG();
+      oNTDLL = foLoadNTDLL();
       oNTStatus = oNTDLL.NtQueryInformationProcess(
         oSelf.__ohProcess,# ProcessHandle
         ProcessBasicInformation, # ProcessInformationClass
@@ -135,6 +134,7 @@ class cProcess(object):
       ohProcess = oSelf.__ohProcess;
     except AttributeError:
       return;
+    oKernel32 = foLoadKernel32DLL();
     if not oKernel32.CloseHandle(ohProcess):
       fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
   
@@ -246,6 +246,7 @@ class cProcess(object):
     return fuGetMemoryUsageForProcessId(oSelf.uId);
   
   def faoGetThreads(oSelf):
+    oKernel32 = foLoadKernel32DLL();
     ohThreadsSnapshot = oKernel32.CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
     if not fbIsValidHandle(ohThreadsSnapshot):
       fThrowLastError("CreateToolhelp32Snapshot(0x%08X, 0)", TH32CS_SNAPTHREAD);

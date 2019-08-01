@@ -1,5 +1,4 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fThrowLastError import fThrowLastError;
 from .mRegistry import cRegistryValue;
 
@@ -22,6 +21,7 @@ def fuHKLMValue(sKeyName, sValueName, bRequired = True):
 
 class cSystemInfo(object):
   def __init__(oSelf):
+    oKernel32 = foLoadKernel32DLL();
     oSystemInfo = SYSTEM_INFO();
     oKernel32.GetNativeSystemInfo(oSystemInfo.foCreatePointer());
     oSelf.sOSISA = {
@@ -95,6 +95,7 @@ class cSystemInfo(object):
   @property
   def sOSPath(oSelf):
     if oSelf.__sOSPath is None:
+      oKernel32 = foLoadKernel32DLL();
       oBuffer = foCreateBuffer(MAX_PATH);
       oPathSize = oKernel32.GetWindowsDirectoryW(
         oBuffer.foCreatePointer(LPWSTR),

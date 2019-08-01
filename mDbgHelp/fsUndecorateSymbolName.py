@@ -1,9 +1,10 @@
 from mWindowsSDK import *;
-from ..mDLLs import oDbgHelp, oKernel32;
 from ..fbLastErrorIs import fbLastErrorIs;
 from ..fThrowLastError import fThrowLastError;
 
 def fsUndecorateSymbolName(sDecoratedSymbolName, bNameOnly = False):
+  oKernel32 = foLoadKernel32DLL();
+  oDbgHelp = foLoadDbgHelpDLL();
   if sDecoratedSymbolName.startswith(".?AV"):
     # This is a prefix for class names that for some reason does not get handled well, so we'll fix that here:
     sDecoratedSymbolName = "?" + sDecoratedSymbolName[4:]; # Replace ".?AV" with "?"

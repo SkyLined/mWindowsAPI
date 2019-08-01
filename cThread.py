@@ -1,6 +1,5 @@
 import re;
 from mWindowsSDK import *;
-from .mDLLs import oKernel32, oNTDLL;
 from .cVirtualAllocation import cVirtualAllocation;
 from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
 from .fbResumeForThreadHandle import fbResumeForThreadHandle;
@@ -274,6 +273,7 @@ class cThread(object):
       ohThread = oSelf.__ohThread;
     except AttributeError:
       return;
+    oKernel32 = foLoadKernel32DLL();
     if ohThread and not oKernel32.CloseHandle(ohThread):
       fThrowLastError("CloseHandle(0x%X)" % (ohThread.value,));
   
@@ -310,6 +310,7 @@ class cThread(object):
       oThreadBasicInformation = cThreadBasicInformation();
       ouReturnLength = ULONG();
       ohThread = oSelf.fohOpenWithFlags(THREAD_QUERY_INFORMATION);
+      oNTDLL = foLoadNTDLL();
       oNTStatus = oNTDLL.NtQueryInformationThread(
         ohThread,# ThreadHandle
         ThreadBasicInformation, # ThreadInformationClass
@@ -363,6 +364,7 @@ class cThread(object):
     oThreadContext = cThreadContext();
     ohThread = oSelf.fohOpenWithFlags(THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION);
     oThreadContext.ContextFlags = CONTEXT_ALL;
+    oKernel32 = foLoadKernel32DLL();
     fbGetThreadContext = getattr(oKernel32, sGetThreadContextFunctionName);
     if not fbGetThreadContext(
       ohThread, # hThread
@@ -477,6 +479,7 @@ class cThread(object):
       sSetThreadContextFunctionName = "Wow64SetThreadContext";
     else:
       sSetThreadContextFunctionName = "SetThreadContext";
+    oKernel32 = foLoadKernel32DLL();
     fbSetThreadContext = getattr(oKernel32, sSetThreadContextFunctionName);
     if not fbSetThreadContext(
       ohThread,# hThread

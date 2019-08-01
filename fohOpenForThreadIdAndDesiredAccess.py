@@ -1,9 +1,9 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fThrowError import fThrowError;
 
 def fohOpenForThreadIdAndDesiredAccess(uThreadId, uDesiredAccess, bInheritHandle = False, bMustExist = True):
+  oKernel32 = foLoadKernel32DLL();
   ohThread = oKernel32.OpenThread(DWORD(uDesiredAccess), BOOLEAN(bInheritHandle), DWORD(uThreadId));
   if not fbIsValidHandle(ohThread):
     # Save the last error because want to check if the thread exists, which may fail and modify it.

@@ -1,11 +1,12 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32, oAdvAPI32;
 from .fbLastErrorFailed import fbLastErrorFailed;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowError import fThrowError;
 from .fThrowLastError import fThrowLastError;
 
 def fuGetIntegrityLevelForProcessHandle(ohProcess):
+  oKernel32 = foLoadKernel32DLL();
+  oAdvAPI32 = foLoadAdvAPI32DLL();
   assert isinstance(ohProcess, HANDLE), \
       "%s is not a HANDLE" % repr(ohProcess);
   odwDesiredAccess = DWORD(TOKEN_QUERY);

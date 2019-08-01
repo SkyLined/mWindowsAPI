@@ -1,10 +1,10 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fThrowError import fThrowError;
 from .fThrowLastError import fThrowLastError;
 
 def fDebugBreakForProcessId(uProcessId):
+  oKernel32 = foLoadKernel32DLL();
   ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_ALL_ACCESS);
   if not oKernel32.DebugBreakProcess(ohProcess):
     # Save the last error because want to close the process handle, which may fail and modify it.

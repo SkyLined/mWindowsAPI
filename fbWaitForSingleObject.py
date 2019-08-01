@@ -1,11 +1,11 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fThrowLastError import fThrowLastError;
 
 def fbWaitForSingleObject(ohSubject, nTimeoutInSeconds = None):
   assert isinstance(ohSubject, HANDLE), \
       "%s is not a HANDLE" % repr(ohSubject);
   odwMilliseconds = DWORD(INFINITE if nTimeoutInSeconds is None else long(nTimeoutInSeconds * 1000));
+  oKernel32 = foLoadKernel32DLL();
   odwResult = oKernel32.WaitForSingleObject(ohSubject, odwMilliseconds);
   if odwResult.value == WAIT_TIMEOUT:
     return False; # Timeout waiting for object.

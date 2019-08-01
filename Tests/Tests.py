@@ -10,7 +10,7 @@ asOriginalModuleNames = sys.modules.keys();
 
 from mWindowsAPI import *;
 from mWindowsSDK import *;
-from mWindowsAPI.mDLLs import *;
+oKernel32 = foLoadKernel32DLL();
 from mWindowsAPI.mRegistry import *;
 from mWindowsAPI import mDbgHelp;
 

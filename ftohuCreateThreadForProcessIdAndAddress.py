@@ -1,5 +1,4 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fThrowLastError import fThrowLastError;
@@ -7,6 +6,7 @@ from .fThrowLastError import fThrowLastError;
 def ftohuCreateThreadForProcessIdAndAddress(uProcessId, uAddress, uParameterAddress = 0, bSuspended = False):
   ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ);
   bSuccess = False;
+  oKernel32 = foLoadKernel32DLL();
   try:
     odwThreadId = DWORD();
     odwCreationFlags = DWORD(CREATE_SUSPENDED if bSuspended else 0);

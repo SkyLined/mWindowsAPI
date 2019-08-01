@@ -1,5 +1,4 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fsGetPythonISA import fsGetPythonISA;
@@ -71,6 +70,7 @@ class cVirtualAllocation(object):
     bReserved = False,
     uProtection = None,
   ):
+    oKernel32 = foLoadKernel32DLL();
     if uProtection is None:
       uProtection = PAGE_NOACCESS;
     else:
@@ -101,6 +101,7 @@ class cVirtualAllocation(object):
     oSelf.__fUpdate(uAddress);
   
   def __fUpdate(oSelf, uAddress = None):
+    oKernel32 = foLoadKernel32DLL();
     # Address is only supplied the first time (by __init__). After that, we know the start address and use that:
     if uAddress is None:
       uAddress = oSelf.__uStartAddress;
@@ -243,6 +244,7 @@ class cVirtualAllocation(object):
   
   @uProtection.setter
   def uProtection(oSelf, uNewProtection):
+    oKernel32 = foLoadKernel32DLL();
     assert oSelf.bAllocated, \
         "Cannot modify protection on a virtual allocation that is not allocated";
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_OPERATION);
@@ -312,6 +314,7 @@ class cVirtualAllocation(object):
     # Read ASCII string.
     return oSelf.fsReadStringForOffsetAndSize(uOffset, uSize);
   def fsReadStringForOffsetAndSize(oSelf, uOffset, uSize, bUnicode = False):
+    oKernel32 = foLoadKernel32DLL();
     # Sanity checks
     assert oSelf.bAllocated, \
         "Cannot read data from a virtual allocation that is not allocated";
@@ -404,6 +407,7 @@ class cVirtualAllocation(object):
   def fWriteBytesForOffset(oSelf, sBytes, uOffset):
     return oSelf.fWriteStringForOffset(sBytes, uOffset);
   def fWriteStringForOffset(oSelf, sString, uOffset, bUnicode = False):
+    oKernel32 = foLoadKernel32DLL();
     # Sanity checks
     assert oSelf.bAllocated, \
         "Cannot write memory that is not allocated!";
@@ -463,6 +467,7 @@ class cVirtualAllocation(object):
     ];
   
   def fAllocate(oSelf, uProtection = None):
+    oKernel32 = foLoadKernel32DLL();
     # Commit this virtual allocation if it is reserved
     assert oSelf.bReserved, \
         "You can only allocate a reserved virtual allocation";
@@ -495,6 +500,7 @@ class cVirtualAllocation(object):
         oSelf.__fUpdate();
   
   def fReserve(oSelf):
+    oKernel32 = foLoadKernel32DLL();
     # Decommit this virtual allocation if it is committed
     assert oSelf.bAllocated, \
         "You can only reserve an allocated virtual allocation";
@@ -516,6 +522,7 @@ class cVirtualAllocation(object):
         oSelf.__fUpdate();
   
   def fFree(oSelf):
+    oKernel32 = foLoadKernel32DLL();
     # Free this virtual allocation if it is reserved or committed
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_OPERATION);
     try:

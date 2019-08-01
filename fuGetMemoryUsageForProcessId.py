@@ -1,10 +1,10 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fThrowLastError import fThrowLastError;
 
 def fuGetMemoryUsageForProcessId(uProcessId):
   # Try to open the process...
+  oKernel32 = foLoadKernel32DLL();
   ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ);
   bSuccess = False;
   try:

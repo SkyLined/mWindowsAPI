@@ -1,6 +1,6 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 
 def fbLastErrorFailed():
+  oKernel32 = foLoadKernel32DLL();
   odwLastError = oKernel32.GetLastError();
   return odwLastError.value != 0;

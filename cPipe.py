@@ -1,6 +1,5 @@
 import time;
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
@@ -39,6 +38,7 @@ class cPipe(object):
       | PIPE_REJECT_REMOTE_CLIENTS # Local connections only for now.
     );
     nDefaultTimeout = long(1000 * (nConnectTimeoutInSeconds if nConnectTimeoutInSeconds is not None else gnDefaultConnectTimeoutInSeconds));
+    oKernel32 = foLoadKernel32DLL();
     ohHandle = oKernel32.CreateNamedPipeW(
       gsPipeNameHeader + sName, # lpName
       odwOpenMode,
@@ -81,6 +81,7 @@ class cPipe(object):
       | GENERIC_WRITE if bWritableOutput else 0
     );
     nEndTimeStamp = time.clock() + (nConnectTimeoutInSeconds if nConnectTimeoutInSeconds is not None else gnDefaultConnectTimeoutInSeconds);
+    oKernel32 = foLoadKernel32DLL();
     while 1:
       ohHandle = oKernel32.CreateFileW(
         gsPipeNameHeader + sName, # lpName
@@ -111,6 +112,7 @@ class cPipe(object):
   def foCreate(cPipe, sDescription = None, bInheritableInput = True, bInheritableOutput = True):
     ohInput = HANDLE(); # We write to the pipe's input handle
     ohOutput = HANDLE(); # We read from the pipe's output handle
+    oKernel32 = foLoadKernel32DLL();
     if not oKernel32.CreatePipe(
       ohOutput.foCreatePointer(), # hReadPipe
       ohInput.foCreatePointer(), # hWritePipe
@@ -151,6 +153,7 @@ class cPipe(object):
       # If nothing is specified, close both. Otherwise close only those for which the value is True-ish.
       bInput = True;
       bOutput = True;
+    oKernel32 = foLoadKernel32DLL();
     try:
       if bInput:
         # Named pipes do not have separate input and output handles, so we cannot close them individually.
@@ -171,6 +174,7 @@ class cPipe(object):
     oByte = BYTE();
     odwBytesRead = DWORD();
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365467(v=vs.85).aspx
+    oKernel32 = foLoadKernel32DLL();
     if not oKernel32.ReadFile(
       oSelf.__ohOutput, # hFile # We read from the pipe's output handle
       oByte.foCreatePointer(), # lpBuffer
@@ -216,6 +220,7 @@ class cPipe(object):
     odwBytesWritten = DWORD(0);
     oBuffer = foCreateBuffer(sData);
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365747(v=vs.85).aspx
+    oKernel32 = foLoadKernel32DLL();
     if not oKernel32.WriteFile(
       oSelf.__ohInput, # hFile # We write to the pipe's input handle
       oBuffer.foCreatePointer(LPVOID), # lpBuffer

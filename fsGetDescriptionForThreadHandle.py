@@ -1,10 +1,10 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
 from .fThrowLastError import fThrowLastError;
 
 def fsGetDescriptionForThreadHandle(ohThread):
   psDescription = PWSTR();
+  oKernel32 = foLoadKernel32DLL();
   if not oKernel32.GetThreadDescription(ohThread, psDescription.foCreatePointer()):
     fThrowLastError("GetThreadDescription(0x%X, ...)" % (ohThread.value,));
   uThreadDescriptionAddress = psDescription.value;

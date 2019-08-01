@@ -1,10 +1,10 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fThrowLastError import fThrowLastError;
 from .fuGetExitCodeForProcessHandle import fuGetExitCodeForProcessHandle;
 
 def fuGetExitCodeForProcessId(uProcessId):
+  oKernel32 = foLoadKernel32DLL();
   ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_QUERY_LIMITED_INFORMATION);
   bSuccess = False;
   try:

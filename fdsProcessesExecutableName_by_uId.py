@@ -1,11 +1,11 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
 
 def fdsProcessesExecutableName_by_uId():
   dsProcessExecutableName_by_uIds = {};
+  oKernel32 = foLoadKernel32DLL();
   ohProcessesSnapshot = oKernel32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
   if not fbIsValidHandle(ohProcessesSnapshot):
     fThrowLastError("CreateToolhelp32Snapshot(0x%08X, 0)", TH32CS_SNAPPROCESS);

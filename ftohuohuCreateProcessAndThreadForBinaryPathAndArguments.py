@@ -1,5 +1,4 @@
 from mWindowsSDK import *;
-from .mDLLs import oKernel32;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
 
@@ -14,6 +13,7 @@ def ftohuohuCreateProcessAndThreadForBinaryPathAndArguments(sBinaryPath, asArgum
   oStartupInfo.lpDesktop = NULL;
   oStartupInfo.dwFlags = 0;
   oProcessInformation = PROCESS_INFORMATION();
+  oKernel32 = foLoadKernel32DLL();
   if not oKernel32.CreateProcessW(
     sBinaryPath, # lpApplicationName
     sCommandLine, # lpCommandLine
