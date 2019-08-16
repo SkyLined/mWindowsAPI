@@ -16,7 +16,7 @@ def fdsProcessesExecutableName_by_uId():
   bFirstProcess = True;
   while obGotProcess.value:
     bFirstProcess = False;
-    dsProcessExecutableName_by_uIds[oProcessEntry32.th32ProcessID] = oProcessEntry32.szExeFile;
+    dsProcessExecutableName_by_uIds[oProcessEntry32.th32ProcessID.value] = oProcessEntry32.szExeFile;
     obGotProcess = oKernel32.Process32NextW(ohProcessesSnapshot, opoProcessEntry32);
   if not fbLastErrorIs(ERROR_NO_MORE_FILES):
     fThrowLastError("Process32%sW(0x%08X, ...)" % (bFirstProcess and "First" or "Next", ohProcessesSnapshot.value,), uLastError);
