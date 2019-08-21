@@ -1,6 +1,6 @@
 from mWindowsSDK import *;
 from .fThrowLastError import fThrowLastError;
-from .mRegistry import cRegistryValue;
+from mRegistry import cRegistryValue;
 
 def fxHKLMValue(sKeyName, sValueName, sTypeName, bRequired = True):
   oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyName = sKeyName, sValueName = sValueName);

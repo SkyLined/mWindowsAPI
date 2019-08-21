@@ -32,7 +32,6 @@ from .fuGetIntegrityLevelForProcessId import fuGetIntegrityLevelForProcessId;
 from .fuGetMemoryUsageForProcessId import fuGetMemoryUsageForProcessId;
 from .oSystemInfo import oSystemInfo;
 import mDbgHelp;
-import mRegistry;
 all = [
   "cConsoleProcess",
   "cJobObject",
@@ -68,5 +67,4 @@ all = [
   "fuGetMemoryUsageForProcessId",
   "oSystemInfo",
   "mDbgHelp",
-  "mRegistry",
 ];

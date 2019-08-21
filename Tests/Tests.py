@@ -34,26 +34,6 @@ sys.path = asOriginalSysPath;
 from mWindowsAPI.fThrowLastError import fThrowLastError;
 
 if __name__ == "__main__":
-  # Test registry access
-  print "* Testing Registry access...";sys.stdout.flush();
-  oTestRegistryValue = cRegistryValue(
-    sTypeName = "SZ",
-    xValue = "Test value",
-  );
-  oRegistryHiveKeyNamedValue = cRegistryHiveKeyNamedValue(
-    sHiveName = "HKCU",
-    sKeyName = r"Software\SkyLined\mWindowsAPI",
-    sValueName = "Test value name",
-  );
-  assert oRegistryHiveKeyNamedValue.foSet(oTestRegistryValue), \
-      "Could not set named registry value!";
-  assert oRegistryHiveKeyNamedValue.foGet() == oTestRegistryValue, \
-      "Could not get named registry value!";
-  assert oRegistryHiveKeyNamedValue.fbDelete(), \
-      "Could not delete named registry value";
-  assert oRegistryHiveKeyNamedValue.foGet() is None, \
-      "Deleting named registry value failed!";
-  
   # Test system info
   print "* Testing system info...";sys.stdout.flush();
   print "  * fsGetPythonISA() = %s" % fsGetPythonISA();sys.stdout.flush();

@@ -1,5 +1,6 @@
 {
   "asDependentOnProductNames": [
+    "mRegistry",
     "mWindowsSDK"
   ], 
   "oProductVersion": "2019-08-16 14:49", 
