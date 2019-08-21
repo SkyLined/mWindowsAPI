@@ -11,7 +11,6 @@ asOriginalModuleNames = sys.modules.keys();
 from mWindowsAPI import *;
 from mWindowsSDK import *;
 oKernel32 = foLoadKernel32DLL();
-from mWindowsAPI.mRegistry import *;
 from mWindowsAPI import mDbgHelp;
 
 # Sub-packages should load all modules relative, or they will end up in the global namespace, which means they may get
