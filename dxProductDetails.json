@@ -1,9 +1,9 @@
 {
   "asDependentOnProductNames": [
-    "mRegistry",
+    "mRegistry", 
     "mWindowsSDK"
   ], 
-  "oProductVersion": "2019-08-16 14:49", 
+  "oProductVersion": "2019-08-21 12:12", 
   "oRepository": {
     "sBranch": "master", 
     "sRepositoryName": "mWindowsAPI", 
