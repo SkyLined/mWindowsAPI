@@ -3,7 +3,7 @@
     "mRegistry", 
     "mWindowsSDK"
   ], 
-  "oProductVersion": "2019-08-21 12:12", 
+  "oProductVersion": "2019-10-01 10:44", 
   "oRepository": {
     "sBranch": "master", 
     "sRepositoryName": "mWindowsAPI", 
