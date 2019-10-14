@@ -1,5 +1,6 @@
 from .fThrowError import fThrowError;
 from .ftohuohuCreateProcessAndThreadForBinaryPathAndArguments import ftohuohuCreateProcessAndThreadForBinaryPathAndArguments;
+from mWindowsSDK import foLoadKernel32DLL;
 
 def ftohuCreateProcessForBinaryPathAndArguments(*txArguments, **dxArguments):
   (ohProcess, uProcessId, ohThread, uThreadId) = ftohuohuCreateProcessAndThreadForBinaryPathAndArguments(*txArguments, **dxArguments);
