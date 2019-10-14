@@ -15,14 +15,14 @@ def ftohuohuCreateProcessAndThreadForBinaryPathAndArguments(sBinaryPath, asArgum
   oProcessInformation = PROCESS_INFORMATION();
   oKernel32 = foLoadKernel32DLL();
   if not oKernel32.CreateProcessW(
-    sBinaryPath, # lpApplicationName
-    sCommandLine, # lpCommandLine
+    foCreateBuffer(sBinaryPath, bUnicode = True).foCreatePointer(PCWSTR), # lpApplicationName
+    foCreateBuffer(sCommandLine, bUnicode = True).foCreatePointer(PWSTR), # lpCommandLine
     NULL, # lpProcessAttributes
     NULL, # lpThreadAttributes
     FALSE, # bInheritHandles
     bSuspended and CREATE_SUSPENDED or 0, # dwCreationFlags
     NULL, # lpEnvironment
-    sWorkingDirectory, # lpCurrentDirectory
+    foCreateBuffer(sWorkingDirectory, bUnicode = True).foCreatePointer(PCWSTR) if sWorkingDirectory else NULL, # lpCurrentDirectory
     oStartupInfo.foCreatePointer(), # lpStartupInfo
     oProcessInformation.foCreatePointer(), # lpProcessInformation
   ):
@@ -31,8 +31,8 @@ def ftohuohuCreateProcessAndThreadForBinaryPathAndArguments(sBinaryPath, asArgum
           (repr(sBinaryPath), repr(sCommandLine), uFlags, repr(sWorkingDirectory)));
     return (None, None, None, None);
   return (
-    oProcessInformation.ohProcess,
-    oProcessInformation.odwProcessId.value,
-    oProcessInformation.ohThread,
-    oProcessInformation.odwThreadId.value
+    oProcessInformation.hProcess,
+    oProcessInformation.dwProcessId.value,
+    oProcessInformation.hThread,
+    oProcessInformation.dwThreadId.value
   );
