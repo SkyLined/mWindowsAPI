@@ -52,7 +52,7 @@ class cConsoleProcess(cProcess):
           oProcessInformation = PROCESS_INFORMATION();
           if not oKernel32.CreateProcessW(
             foCreateBuffer(sBinaryPath, bUnicode = True).foCreatePointer(PCWSTR), # lpApplicationName
-            foCreateBuffer(sCommandLine, bUnicode = True).foCreatePointer(PCWSTR), # lpCommandLine
+            foCreateBuffer(sCommandLine, bUnicode = True).foCreatePointer(PWSTR), # lpCommandLine
             NULL, # lpProcessAttributes
             NULL, # lpThreadAttributes
             TRUE, # bInheritHandles
