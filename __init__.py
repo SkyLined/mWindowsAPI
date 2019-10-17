@@ -2,6 +2,7 @@ from .cConsoleProcess import cConsoleProcess;
 from .cJobObject import cJobObject;
 from .cPipe import cPipe;
 from .cProcess import cProcess;
+from .cUWPApplication import cUWPApplication;
 from .cVirtualAllocation import cVirtualAllocation;
 from .fauProcessesIdsForExecutableName import fauProcessesIdsForExecutableName;
 from .fauProcessesIdsForExecutableNames import fauProcessesIdsForExecutableNames;
@@ -37,6 +38,7 @@ all = [
   "cJobObject",
   "cPipe",
   "cProcess",
+  "cUWPApplication",
   "cVirtualAllocation",
   "fauProcessesIdsForExecutableName",
   "fauProcessesIdsForExecutableNames",
