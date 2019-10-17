@@ -18,7 +18,7 @@ def fasRunApplication(*asCommandLine):
   return asStdOut;
 
 class cUWPApplication(object):
-  def __init__(oSelf, sPackageName, sApplicationId):
+  def __init__(oSelf, sPackageName, sApplicationId = None):
     oSelf.sPackageName = sPackageName;
     
     # Find the package full name and family name
