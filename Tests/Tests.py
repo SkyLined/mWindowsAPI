@@ -329,6 +329,18 @@ if __name__ == "__main__":
           "mDbgHelp.fsUndecorateSymbolName(%s) => %s instead of %s" % \
           (repr(sDecoratedSymbolName), repr(sUndecoratedSymbolName), repr(sExpectedSymbolName));
       print "    + %s => %s / %s" % (sDecoratedSymbolName, sUndecoratedSymbolName, sUndecoratedFullSymbolName);sys.stdout.flush();
+    print "* Texting cUWPApplication...";sys.stdout.flush();
+    oCalc = cUWPApplication("Microsoft.WindowsCalculator");
+    assert oCalc.bPackageExists, \
+        "UWP application package %s does not exist!?" % oCalc.sPackageName;
+    assert oCalc.sApplicationId is not None, \
+        "UWP application package %s does not have a single application id!?" % oCalc.sPackageName;
+    oInvalid = cUWPApplication("XXXXXXXXXXXXX");
+    assert not oInvalid.bPackageExists, \
+        "UWP application package %s exist!?" % oInvalid.sPackageName;
+    oInvalid = cUWPApplication("Microsoft.WindowsCalculator!XXXXXXXXXXXXX");
+    assert not oInvalid.bIdExists, \
+        "UWP application package %s has an application with id %s!?" % (oInvalid.sPackageName, oInvalid.sApplicationId);
   except:
     oTestProcess.terminate();
     oTestProcess.wait();
