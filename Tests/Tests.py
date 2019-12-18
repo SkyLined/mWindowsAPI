@@ -99,8 +99,8 @@ if __name__ == "__main__":
     print "    + Command line = %s" % repr(oProcess.sCommandLine);sys.stdout.flush();
     print "  * Testing cProcess.fSuspend()...";sys.stdout.flush();
     oProcess.fSuspend();
-    print "  * Testing cProcess.oPEB...";sys.stdout.flush();
-    for sLine in oProcess.oPEB.fasDump("Process %d/0x%X PEB" % (oProcess.uId, oProcess.uId)):
+    print "  * Testing cProcess.foGetPEB()...";sys.stdout.flush();
+    for sLine in oProcess.foGetPEB().fasDump("Process %d/0x%X PEB" % (oProcess.uId, oProcess.uId)):
       print "    | " + sLine;sys.stdout.flush();
     # Threads
     print "  * Testing cProcess.fuCreateThreadForAddress...";sys.stdout.flush();
@@ -271,6 +271,29 @@ if __name__ == "__main__":
     print "  * Testing cPipe with non-inheritable handles...";sys.stdout.flush();
     fTestPipe(cPipe.foCreate(bInheritableInput = False, bInheritableOutput = False));
     # cConsoleProcess, fSuspendForProcessId
+    print "* Testing cProcess...";sys.stdout.flush();
+    sComSpec = os.environ.get("ComSpec");
+    uExitCode = 1234;
+    oProcess = cProcess.foCreateForBinaryPathAndArguments(
+      sComSpec,
+      ["/K", "EXIT %d" % uExitCode],
+    );
+    oProcess.foGetPEB();
+    oProcess.uBinaryStartAddress;
+    oProcess.foGetProcessParameters();
+    assert oProcess.sBinaryPath == sComSpec, \
+        "Expected binary path %s, got %s" % (sComSpec, oProcess.sBinaryPath);
+    assert oProcess.sBinaryName == os.path.basename(sComSpec), \
+        "Expected binary name %s, got %s" % (os.path.basename(sComSpec), oProcess.sBinaryName);
+    oProcess.sCommandLine;
+    oProcess.bIsRunning;
+    assert oProcess.uIntegrityLevel == SECURITY_MANDATORY_MEDIUM_RID, \
+        "Expected process integrity level 0, got %d" % oProcess.uIntegrityLevel;
+    oProcess.uMemoryUsage;
+    oProcess.faoGetThreads();
+    oProcess.fbWait();
+    assert oProcess.uExitCode == uExitCode, \
+        "Expected exit code %d, got %d" % (uExitCode, oProcess.uExitCode);
     print "* Testing cConsoleProcess...";sys.stdout.flush();
     sExpectedOutput = "Test";
     oConsoleProcess = cConsoleProcess.foCreateForBinaryPathAndArguments(
