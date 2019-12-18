@@ -39,70 +39,65 @@ class cProcess(object):
         "You cannot get information on a 64-bit process from 32-bit Python";
     oSelf.uPointerSize = {"x86": 4, "x64": 8}[oSelf.sISA];
     # Cahce for dynamically retreieved properties:
-    oSelf.__oPEB = None;
-    oSelf.__oProcessParameters = None;
     oSelf.__sBinaryPath = None;
     oSelf.__sCommandLine = None;
     oSelf.__doThread_by_uId = {};
   
-  @property
-  def oPEB(oSelf):
-    if oSelf.__oPEB is None:
-      # The type of PROCESS_BASIC_INFORMATION returned by NtQueryInformationProcess depends on the ISA of the process
-      # calling it, in this case it's the Python process we're running in:
-      cProcessBasicInformation = {"x86": PROCESS_BASIC_INFORMATION32, "x64": PROCESS_BASIC_INFORMATION64}[fsGetPythonISA()];
-      oProcessBasicInformation = cProcessBasicInformation();
-      ouReturnLength = ULONG();
-      oNTDLL = foLoadNTDLL();
-      oNTStatus = oNTDLL.NtQueryInformationProcess(
-        oSelf.__ohProcess,# ProcessHandle
-        ProcessBasicInformation, # ProcessInformationClass
-        oProcessBasicInformation.foCreatePointer(PVOID), # ProcessInformation
-        oProcessBasicInformation.fuGetSize(), # ProcessInformationLength
-        ouReturnLength.foCreatePointer(), # ReturnLength
-      );
-      if NT_ERROR(oNTStatus):
-        fThrowError("NtQueryInformationProcess(ProcessHandle=0x%X, ProcessInformationClass=0x%X, ProcessInformation=0x%X, ProcessInformationLength=0x%X, ReturnLength=0x%X)" % \
-              (oSelf.__ohProcess.value, ProcessBasicInformation, oProcessBasicInformation.fuGetAddress(),
-              oProcessBasicInformation.fuGetSize(), ouReturnLength.fuGetAddress()), oNTStatus.value);
-      assert ouReturnLength.value == oProcessBasicInformation.fuGetSize(), \
-          "NtQueryInformationProcess(0x%X, 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % \
-          (oSelf.__ohProcess.value, ProcessBasicInformation, oProcessBasicInformation.fuGetSize(), ouReturnLength.value);
-      # Read PEB
-      uPEBAddress = oProcessBasicInformation.PebBaseAddress.value;
-      # The type of PEB (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
-      cPEB = oProcessBasicInformation.PebBaseAddress.cTargetType;
-      oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uPEBAddress, cPEB.fuGetSize(), "PEB");
-      oSelf.__oPEB = oVirtualAllocation.foReadStructureForOffset(
-        cStructure = cPEB,
-        uOffset = uPEBAddress - oVirtualAllocation.uStartAddress,
-      );
-    return oSelf.__oPEB;
+  def foGetPEB(oSelf):
+    # The type of PROCESS_BASIC_INFORMATION returned by NtQueryInformationProcess depends on the ISA of the process
+    # calling it, in this case it's the Python process we're running in:
+    cProcessBasicInformation = {"x86": PROCESS_BASIC_INFORMATION32, "x64": PROCESS_BASIC_INFORMATION64}[fsGetPythonISA()];
+    oProcessBasicInformation = cProcessBasicInformation();
+    ouReturnLength = ULONG();
+    oNTDLL = foLoadNTDLL();
+    oNTStatus = oNTDLL.NtQueryInformationProcess(
+      oSelf.__ohProcess,# ProcessHandle
+      ProcessBasicInformation, # ProcessInformationClass
+      oProcessBasicInformation.foCreatePointer(PVOID), # ProcessInformation
+      oProcessBasicInformation.fuGetSize(), # ProcessInformationLength
+      ouReturnLength.foCreatePointer(), # ReturnLength
+    );
+    if NT_ERROR(oNTStatus):
+      fThrowError("NtQueryInformationProcess(ProcessHandle=0x%X, ProcessInformationClass=0x%X, ProcessInformation=0x%X, ProcessInformationLength=0x%X, ReturnLength=0x%X)" % \
+            (oSelf.__ohProcess.value, ProcessBasicInformation, oProcessBasicInformation.fuGetAddress(),
+            oProcessBasicInformation.fuGetSize(), ouReturnLength.fuGetAddress()), oNTStatus.value);
+    assert ouReturnLength.value == oProcessBasicInformation.fuGetSize(), \
+        "NtQueryInformationProcess(0x%X, 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % \
+        (oSelf.__ohProcess.value, ProcessBasicInformation, oProcessBasicInformation.fuGetSize(), ouReturnLength.value);
+    # Read PEB
+    uPEBAddress = oProcessBasicInformation.PebBaseAddress.value;
+    # The type of PEB (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
+    cPEB = oProcessBasicInformation.PebBaseAddress.cTargetType;
+    oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uPEBAddress, cPEB.fuGetSize(), "PEB");
+    oPEB = oVirtualAllocation.foReadStructureForOffset(
+      cStructure = cPEB,
+      uOffset = uPEBAddress - oVirtualAllocation.uStartAddress,
+    );
+    return oPEB;
   
   @property
   def uBinaryStartAddress(oSelf):
-    return oSelf.oPEB.ImageBaseAddress.value;
+    return oSelf.foGetPEB().ImageBaseAddress.value;
   
-  @property
-  def oProcessParameters(oSelf):
-    if oSelf.__oProcessParameters is None:
-      # Read Process Parameters
-      uProcessParametersAddress = oSelf.oPEB.ProcessParameters.value;
-      # The type of RTL_USER_PROCESS_PARAMETERS (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
-      cRtlUserProcessParameters = {"x86": RTL_USER_PROCESS_PARAMETERS32, "x64": RTL_USER_PROCESS_PARAMETERS64}[fsGetPythonISA()];
-      oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uProcessParametersAddress, cRtlUserProcessParameters.fuGetSize(), "Process Parameters");
-      oSelf.__oProcessParameters = oVirtualAllocation.foReadStructureForOffset(
-        cStructure = cRtlUserProcessParameters,
-        uOffset = uProcessParametersAddress - oVirtualAllocation.uStartAddress,
-      );
-    return oSelf.__oProcessParameters;
+  def foGetProcessParameters(oSelf):
+    # Read Process Parameters
+    uProcessParametersAddress = oSelf.foGetPEB().ProcessParameters.value;
+    # The type of RTL_USER_PROCESS_PARAMETERS (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
+    cRtlUserProcessParameters = {"x86": RTL_USER_PROCESS_PARAMETERS32, "x64": RTL_USER_PROCESS_PARAMETERS64}[fsGetPythonISA()];
+    oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uProcessParametersAddress, cRtlUserProcessParameters.fuGetSize(), "Process Parameters");
+    oProcessParameters = oVirtualAllocation.foReadStructureForOffset(
+      cStructure = cRtlUserProcessParameters,
+      uOffset = uProcessParametersAddress - oVirtualAllocation.uStartAddress,
+    );
+    return oProcessParameters;
   
   @property
   def sBinaryPath(oSelf):
     if oSelf.__sBinaryPath is None:
       # Read Image Path Name
-      uImagePathNameAddress = oSelf.oProcessParameters.ImagePathName.Buffer.value;
-      uImagePathNameSize = oSelf.oProcessParameters.ImagePathName.Length.value;
+      oProcessParameters = oSelf.foGetProcessParameters();
+      uImagePathNameAddress = oProcessParameters.ImagePathName.Buffer.value;
+      uImagePathNameSize = oProcessParameters.ImagePathName.Length.value;
       oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uImagePathNameAddress, uImagePathNameSize, "Image Path Name");
       oSelf.__sBinaryPath = oVirtualAllocation.fsReadStringForOffsetAndSize(
         uOffset = uImagePathNameAddress - oVirtualAllocation.uStartAddress,
@@ -119,9 +114,14 @@ class cProcess(object):
   def sCommandLine(oSelf):
     if oSelf.__sCommandLine is None:
       # Read Command Line
-      uCommandLineAddress = oSelf.oProcessParameters.CommandLine.Buffer.value;
-      uCommandLineSize = oSelf.oProcessParameters.CommandLine.Length.value;
-      oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(uCommandLineAddress, uCommandLineSize, "Command Line");
+      oProcessParameters = oSelf.foGetProcessParameters();
+      uCommandLineAddress = oProcessParameters.CommandLine.Buffer.value;
+      uCommandLineSize = oProcessParameters.CommandLine.Length.value;
+      oVirtualAllocation = oSelf.foGetAllocatedVirtualAllocationWithSizeCheck(
+        uCommandLineAddress,
+        uCommandLineSize,
+        "Command Line"
+      );
       oSelf.__sCommandLine = oVirtualAllocation.fsReadStringForOffsetAndSize(
         uOffset = uCommandLineAddress - oVirtualAllocation.uStartAddress,
         uSize = uCommandLineSize,
