@@ -20,6 +20,59 @@ from .cThread import cThread;
 from .cVirtualAllocation import cVirtualAllocation;
 
 class cProcess(object):
+  @staticmethod
+  def foCreateForBinaryPathAndArguments(
+    sBinaryPath,
+    asArguments,
+    sWorkingDirectory = None,
+    bSuspended = False,
+    bDebug = False,
+  ):
+    # The output of oStdInPipe is inherited so the application can read from it when we write to the input.
+    # The output of oStdInPipe is closed by us after the application is started, as we do not use it and
+    # want Windows to clean it up when the application terminates.
+    # The input of oStdOutPipe and oStdErrPipe are inherited so the the application can write to them.
+    # The input of oStdOutPipe and oStdErrPipe are closed by us after the application is started, as we do
+    # not use them and want Windows to clean them up when the application terminates.
+    oKernel32 = foLoadKernel32DLL();
+    sCommandLine = " ".join([
+      (s and (s[0] == '"' or s.find(" ") == -1)) and s or '"%s"' % s.replace('"', '\\"')
+      for s in [sBinaryPath] + asArguments
+    ]);
+    odwCreationFlags = DWORD(sum([
+      bSuspended and CREATE_SUSPENDED or 0,
+      bDebug and DEBUG_PROCESS or 0,
+    ]));
+    oStartupInfo = STARTUPINFOW();
+    oStartupInfo.cb = oStartupInfo.fuGetSize();
+    oStartupInfo.lpDesktop = NULL;
+    oStartupInfo.lpDesktop = NULL;
+    oStartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    oStartupInfo.hStdInput = oKernel32.GetStdHandle(STD_INPUT_HANDLE);
+    oStartupInfo.hStdOutput = oKernel32.GetStdHandle(STD_OUTPUT_HANDLE);
+    oStartupInfo.hStdError = oKernel32.GetStdHandle(STD_ERROR_HANDLE);
+    oProcessInformation = PROCESS_INFORMATION();
+    if not oKernel32.CreateProcessW(
+      foCreateBuffer(sBinaryPath, bUnicode = True).foCreatePointer(PCWSTR), # lpApplicationName
+      foCreateBuffer(sCommandLine, bUnicode = True).foCreatePointer(PWSTR), # lpCommandLine
+      NULL, # lpProcessAttributes
+      NULL, # lpThreadAttributes
+      TRUE, # bInheritHandles
+      odwCreationFlags, # dwCreationFlags
+      NULL, # lpEnvironment
+      foCreateBuffer(sWorkingDirectory, bUnicode = True).foCreatePointer(PCWSTR) if sWorkingDirectory else NULL, # lpCurrentDirectory
+      oStartupInfo.foCreatePointer(), # lpStartupInfo
+      oProcessInformation.foCreatePointer(), # lpProcessInformation
+    ):
+      if not fbLastErrorIs(ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME):
+        fThrowLastError("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
+            (repr(sBinaryPath), repr(sCommandLine), odwCreationFlags.value, repr(sWorkingDirectory)));
+      return None;
+    # Close all handles that we no longer need:
+    if not oKernel32.CloseHandle(oProcessInformation.hThread):
+      fThrowLastError("CloseHandle(0x%X)" % (oProcessInformation.hThread.value,));
+    return cProcess(oProcessInformation.dwProcessId.value, ohProcess = oProcessInformation.hProcess);
+  
   def __init__(oSelf, uId, ohProcess = None):
     assert isinstance(uId, (int, long)), \
         "uId must be an integer not %s" % repr(uId);
