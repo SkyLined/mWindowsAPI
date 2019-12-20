@@ -218,7 +218,7 @@ class cVirtualAllocation(object):
     return oSelf.uState == MEM_FREE;
   @property
   def bInvalid(oSelf):
-    return oSelf.uState == None;
+    return oSelf.uState is None;
   
   # Protection
   @property
