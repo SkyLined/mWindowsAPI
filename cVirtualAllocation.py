@@ -349,8 +349,8 @@ class cVirtualAllocation(object):
         uSize, # nSize
         ouBytesRead.foCreatePointer(), # lpNumberOfBytesRead
       ):
-        fThrowLastError("ReadProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...)" % \
-            (ohProcess.value, oSelf.__uStartAddress + uOffset, uSize,));
+        fThrowLastError("ReadProcessMemory(0x%08X, 0x%08X+0x%X, %sbuffer, 0x%X, &(0x%X))" % \
+            (ohProcess.value, oSelf.__uStartAddress, uOffset, "unicode" if bUnicode else "byte", uSize, ouBytesRead.value));
       assert ouBytesRead.value == uSize, \
           "ReadProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...) => 0x%X bytes read" % \
           (ohProcess.value, oSelf.__uStartAddress + uOffset, uSize, ouBytesRead.value);
