@@ -95,12 +95,12 @@ class cConsoleProcess(cProcess):
     # Make sure all pipes are closed, so as not to cause a handle leak
     try:
       oSelf.fClose();
-    except:
+    except Exception:
       pass;
   
   def fClose(oSelf):
     # This will attemp to close all pipes, even if an exception is thrown when closing one of them. If multiple pipes
-    # throw exceptions, all but one are ignored.
+    # throw exceptions, all but the last one are ignored.
     try:
       oSelf.oStdInPipe and oSelf.oStdInPipe.fClose();
     finally:
