@@ -13,7 +13,5 @@ def fbTerminateForThreadHandle(ohThread, nTimeoutInSeconds = None, bWait = True)
     # Other errors are unexpected.
     if not fbLastErrorIs(ERROR_ACCESS_DENIED):
       fThrowLastError("TerminateThread(0x%08X, 0)" % (ohThread.value,));
-  sTerminateThreadResult = "TerminateThread(0x%08X, 0) %s" % \
-      (ohThread.value, bTerminated and " = TRUE" or " => ERROR_ACCESS_DENIED");
   # Wait for the thread to die.
   return fbWaitForTerminationForThreadHandle(ohThread, nTimeoutInSeconds if bWait else 0);
