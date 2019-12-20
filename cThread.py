@@ -254,14 +254,19 @@ class cThread(object):
     oSelf.__oThreadContext = None;
   
   def fohOpenWithFlags(oSelf, uRequiredFlags):
-    # See if we have an open handle with the required flags, and keep track of all the flags we've used before.
-    uExistingFlags = 0;
+    # See if we have an open handle
     if oSelf.__ohThread:
+      # if it already has the required flags, return it:
       if oSelf.__uThreadHandleFlags & uRequiredFlags == uRequiredFlags:
         return oSelf.__ohThread;
-    # The open handle does not have the required flags, create one with the required flags and all other flags we've
-    # used before. This makes sense because we already have that access and by combining the flags increases the
-    # change of having a handle that matches the required flags during the next call to this function.
+      # If it does not have the required flags, close it:
+      oKernel32 = foLoadKernel32DLL();
+      if not oKernel32.CloseHandle(oSelf.__ohThread):
+        fThrowLastError("CloseHandle(0x%X)" % (oSelf.__ohThread.value,));
+      oSelf.__ohThread = None;
+    # Open a new handle with the required flags and all other flags we've used before.
+    # This allows the new handle to be used for anything it was used for before as well
+    # as anything new the caller wants to do:
     uFlags = oSelf.__uThreadHandleFlags | uRequiredFlags;
     ohThread = fohOpenForThreadIdAndDesiredAccess(oSelf.uId, uFlags);
     oSelf.__ohThread = ohThread;
