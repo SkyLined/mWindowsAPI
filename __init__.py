@@ -33,7 +33,7 @@ from .fuGetIntegrityLevelForProcessId import fuGetIntegrityLevelForProcessId;
 from .fuGetMemoryUsageForProcessId import fuGetMemoryUsageForProcessId;
 from .oSystemInfo import oSystemInfo;
 import mDbgHelp;
-all = [
+__all__ = [
   "cConsoleProcess",
   "cJobObject",
   "cPipe",
