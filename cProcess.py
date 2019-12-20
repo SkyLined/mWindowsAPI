@@ -195,6 +195,10 @@ class cProcess(object):
   def bIsRunning(oSelf):
     return fbIsRunningForProcessHandle(oSelf.__ohProcess);
   
+  @property
+  def bIsTerminated(oSelf):
+    return not oSelf.bIsRunning;
+  
   def fbTerminate(oSelf, uTimeout = None):
     return fbTerminateForProcessHandle(oSelf.__ohProcess, uTimeout);
   
