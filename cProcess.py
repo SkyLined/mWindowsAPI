@@ -20,8 +20,12 @@ from .cThread import cThread;
 from .cVirtualAllocation import cVirtualAllocation;
 
 class cProcess(object):
-  @staticmethod
+  @classmethod
+  def foCreateForBinaryPath(cClass, sBinaryPath, **dxArguments):
+    return cClass.foCreateForBinaryPathAndArguments(sBinaryPath, [], **dxArguments);
+  @classmethod
   def foCreateForBinaryPathAndArguments(
+    cClass,
     sBinaryPath,
     asArguments,
     sWorkingDirectory = None,
@@ -71,7 +75,7 @@ class cProcess(object):
     # Close all handles that we no longer need:
     if not oKernel32.CloseHandle(oProcessInformation.hThread):
       fThrowLastError("CloseHandle(0x%X)" % (oProcessInformation.hThread.value,));
-    return cProcess(oProcessInformation.dwProcessId.value, ohProcess = oProcessInformation.hProcess);
+    return cClass(oProcessInformation.dwProcessId.value, ohProcess = oProcessInformation.hProcess);
   
   def __init__(oSelf, uId, ohProcess = None):
     assert isinstance(uId, (int, long)), \
