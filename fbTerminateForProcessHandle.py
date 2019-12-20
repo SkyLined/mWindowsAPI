@@ -17,7 +17,5 @@ def fbTerminateForProcessHandle(ohProcess, nTimeoutInSeconds = None, bWait = Tru
     # Other errors are unexpected.
     if not fbLastErrorIs(ERROR_ACCESS_DENIED):
       fThrowLastError("TerminateProcess(0x%08X, 0)" % (ohProcess.value,));
-  sTerminateProcessResult = "TerminateProcess(0x%08X, 0) %s" % \
-      (ohProcess.value, bTerminated and " = TRUE" or " => ERROR_ACCESS_DENIED");
   # Wait for the process to die.
   return fbWaitForTerminationForProcessHandle(ohProcess, nTimeoutInSeconds if bWait else 0);
