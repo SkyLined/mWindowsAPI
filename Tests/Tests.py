@@ -1,90 +1,77 @@
-import json, os, sys;
+from fTestDependencies import fTestDependencies;
+fTestDependencies();
 
-# Augment the search path to make the test subject a package and have access to its modules folder.
-sTestsFolderPath = os.path.dirname(os.path.abspath(__file__));
-sMainFolderPath = os.path.dirname(sTestsFolderPath);
-sParentFolderPath = os.path.dirname(sMainFolderPath);
-sModulesFolderPath = os.path.join(sMainFolderPath, "modules");
-asOriginalSysPath = sys.path[:];
-sys.path = [sParentFolderPath, sModulesFolderPath] + asOriginalSysPath;
-# Load product details
-oProductDetailsFile = open(os.path.join(sMainFolderPath, "dxProductDetails.json"), "rb");
 try:
-  dxProductDetails = json.load(oProductDetailsFile);
-finally:
-  oProductDetailsFile.close();
-# Save the list of names of loaded modules:
-asOriginalModuleNames = sys.modules.keys();
-
-__import__(dxProductDetails["sProductName"], globals(), locals(), [], -1);
-
-# Sub-packages should load all modules relative, or they will end up in the global namespace, which means they may get
-# loaded by the script importing it if it tries to load a differnt module with the same name. Obviously, that script
-# will probably not function when the wrong module is loaded, so we need to check that we did this correctly.
-asUnexpectedModules = list(set([
-  sModuleName.lstrip("_").split(".", 1)[0] for sModuleName in sys.modules.keys()
-  if not (
-    sModuleName in asOriginalModuleNames # This was loaded before
-    or sModuleName.lstrip("_").split(".", 1)[0] in (
-      [dxProductDetails["sProductName"]] +
-      dxProductDetails["asDependentOnProductNames"] +
-      [
-        # These built-in modules are expected:
-        "collections", "ctypes", "gc", "heapq", "itertools", "keyword",
-        "msvcrt", "platform", "string", "strop", "subprocess", "thread",
-        "threading", "time", "winreg"
-      ]
-    )
-  )
-]));
-assert len(asUnexpectedModules) == 0, \
-      "Module(s) %s was/were unexpectedly loaded!" % ", ".join(sorted(asUnexpectedModules));
-
-#Import the test subject
-from mWindowsAPI import *;
-from mWindowsSDK import *;
-oKernel32 = foLoadKernel32DLL();
-from mWindowsAPI import mDbgHelp;
-from mWindowsAPI.fThrowLastError import fThrowLastError;
-
-# Restore the search path
-sys.path = asOriginalSysPath;
-
-from fTestProcess import fTestProcess;
-
-if __name__ == "__main__":
+  import mDebugOutput;
+except:
+  mDebugOutput = None;
+try:
+  try:
+    from oConsole import oConsole;
+  except:
+    import sys, threading;
+    oConsoleLock = threading.Lock();
+    class oConsole(object):
+      @staticmethod
+      def fOutput(*txArguments, **dxArguments):
+        sOutput = "";
+        for x in txArguments:
+          if isinstance(x, (str, unicode)):
+            sOutput += x;
+        sPadding = dxArguments.get("sPadding");
+        if sPadding:
+          sOutput.ljust(120, sPadding);
+        oConsoleLock.acquire();
+        print sOutput;
+        sys.stdout.flush();
+        oConsoleLock.release();
+      fPrint = fOutput;
+      @staticmethod
+      def fStatus(*txArguments, **dxArguments):
+        pass;
+  
+  import os;
+  
+  #Import the test subject
+  from mWindowsAPI import *;
+  from mWindowsSDK import *;
+  oKernel32 = foLoadKernel32DLL();
+  from mWindowsAPI import mDbgHelp;
+  from mWindowsAPI.fThrowLastError import fThrowLastError;
+  from fTestProcess import fTestProcess;
+  
   # Test system info
-  print "* Testing system info...";sys.stdout.flush();
-  print "  * fsGetPythonISA() = %s" % fsGetPythonISA();sys.stdout.flush();
-  print "  * oSystemInfo...";sys.stdout.flush();
-  print "    | OS:                      %s" %  oSystemInfo.sOSFullDetails;sys.stdout.flush();
-  print "    | Processors:              %d" % oSystemInfo.uNumberOfProcessors;sys.stdout.flush();
-  print "    | Address range:           0x%08X - 0x%08X" % (oSystemInfo.uMinimumApplicationAddress, oSystemInfo.uMaximumApplicationAddress);sys.stdout.flush();
-  print "    | Page size:               0x%X" % oSystemInfo.uPageSize;sys.stdout.flush();
-  print "    | Allocation granularity:  0x%X" % oSystemInfo.uAllocationAddressGranularity;sys.stdout.flush();
-  print "    | System name:             %s" % oSystemInfo.sSystemName;sys.stdout.flush();
-  print "    | System id:               %s" % oSystemInfo.sUniqueSystemId;sys.stdout.flush();
+  oConsole.fOutput("* Testing system info...");
+  oConsole.fOutput("  * fsGetPythonISA() = %s" % fsGetPythonISA());
+  oConsole.fOutput("  * oSystemInfo...");
+  oConsole.fOutput("    | OS:                      %s" %  oSystemInfo.sOSFullDetails);
+  oConsole.fOutput("    | Processors:              %d" % oSystemInfo.uNumberOfProcessors);
+  oConsole.fOutput("    | Address range:           0x%08X - 0x%08X" % (oSystemInfo.uMinimumApplicationAddress, oSystemInfo.uMaximumApplicationAddress));
+  oConsole.fOutput("    | Page size:               0x%X" % oSystemInfo.uPageSize);
+  oConsole.fOutput("    | Allocation granularity:  0x%X" % oSystemInfo.uAllocationAddressGranularity);
+  oConsole.fOutput("    | System name:             %s" % oSystemInfo.sSystemName);
+  oConsole.fOutput("    | System id:               %s" % oSystemInfo.sUniqueSystemId);
   
   # Test console functions
-  print "* Testing oKernel32 console functions...";sys.stdout.flush();
+  oConsole.fOutput("* Testing oKernel32 console functions...");
   ohStdOut = oKernel32.GetStdHandle(STD_OUTPUT_HANDLE);
   oConsoleScreenBufferInfo = CONSOLE_SCREEN_BUFFER_INFO();
   if not oKernel32.GetConsoleScreenBufferInfo(ohStdOut, oConsoleScreenBufferInfo.foCreatePointer()):
     fThrowLastError("GetConsoleScreenBufferInfo(0x%08X, 0x%X)" % (ohStdOut.value, oConsoleScreenBufferInfo.fuGetAddress()));
-  print "  Console buffer size (WxH): %d x %d" % (oConsoleScreenBufferInfo.dwSize.X, oConsoleScreenBufferInfo.dwSize.Y);sys.stdout.flush();
-  print "  Console window size (WxH): %d x %d" % (oConsoleScreenBufferInfo.dwMaximumWindowSize.X, oConsoleScreenBufferInfo.dwMaximumWindowSize.Y);sys.stdout.flush();
+  oConsole.fOutput("  Console buffer size (WxH): %d x %d" % (oConsoleScreenBufferInfo.dwSize.X, oConsoleScreenBufferInfo.dwSize.Y));
+  oConsole.fOutput("  Console window size (WxH): %d x %d" % (oConsoleScreenBufferInfo.dwMaximumWindowSize.X, oConsoleScreenBufferInfo.dwMaximumWindowSize.Y));
   uOriginalColor = oConsoleScreenBufferInfo.wAttributes & 0xFF;
   uTestColor = (uOriginalColor & 0xF0) | 0x0A; # Bright green foreground, keep same background.
   if not oKernel32.SetConsoleTextAttribute(ohStdOut, uTestColor):
     fThrowLastError("SetConsoleTextAttribute(0x%08X, 0x%02X)" % (ohStdOut.value, uTestColor));
-  print "  * This should be green.";sys.stdout.flush();
+  oConsole.fOutput("  * This should be green.");
   if not oKernel32.SetConsoleTextAttribute(ohStdOut, uOriginalColor):
     fThrowLastError("SetConsoleTextAttribute(0x%08X, 0x%02X)" % (ohStdOut.value, uOriginalColor));
   
-  print "* Testing process functions...";sys.stdout.flush();
+  oConsole.fOutput("* Testing process functions...");
   
   # cPipe
-  print "* Testing cPipe...";sys.stdout.flush();
+  oConsole.fOutput("* Testing cPipe...");
   def fTestPipe(oPipe):
     sWrittenBytes = "test\0test\x7f\x80\xff";
     oPipe.fWriteBytes(sWrittenBytes + "\n");
@@ -114,7 +101,7 @@ if __name__ == "__main__":
     else:
       raise AssertionError("Should not be able to write to a closed pipe!");
   fTestPipe(cPipe.foCreate());
-  print "  * Testing cPipe with non-inheritable handles...";sys.stdout.flush();
+  oConsole.fOutput("  * Testing cPipe with non-inheritable handles...");
   fTestPipe(cPipe.foCreate(bInheritableInput = False, bInheritableOutput = False));
   
   # Test process functions
@@ -128,8 +115,8 @@ if __name__ == "__main__":
     fTestProcess(sComSpec, fsGetPythonISA());
   
   # mDbgHelp.fsUndecorateSymbolName
-  print "* Testing mDbgHelp...";sys.stdout.flush();
-  print "  * fsUndecorateSymbolName...";sys.stdout.flush();
+  oConsole.fOutput("* Testing mDbgHelp...");
+  oConsole.fOutput("  * fsUndecorateSymbolName...");
   for (sDecoratedSymbolName, tsExpectedResults) in {
     "?function@@YAHD@Z":                    ["int __cdecl function(char)", "function"],
     "?function@namespace@@AAGXM@Z":         ["private: void __stdcall namespace::function(float)", "namespace::function"],
@@ -146,8 +133,8 @@ if __name__ == "__main__":
     assert sUndecoratedSymbolName == sExpectedSymbolName, \
         "mDbgHelp.fsUndecorateSymbolName(%s) => %s instead of %s" % \
         (repr(sDecoratedSymbolName), repr(sUndecoratedSymbolName), repr(sExpectedSymbolName));
-    print "    + %s => %s / %s" % (sDecoratedSymbolName, sUndecoratedSymbolName, sUndecoratedFullSymbolName);sys.stdout.flush();
-  print "* Texting cUWPApplication...";sys.stdout.flush();
+    oConsole.fOutput("    + %s => %s / %s" % (sDecoratedSymbolName, sUndecoratedSymbolName, sUndecoratedFullSymbolName));
+  oConsole.fOutput("* Texting cUWPApplication...");
   oCalc = cUWPApplication("Microsoft.WindowsCalculator");
   assert oCalc.bPackageExists, \
       "UWP application package %s does not exist!?" % oCalc.sPackageName;
@@ -159,3 +146,10 @@ if __name__ == "__main__":
   oInvalid = cUWPApplication("Microsoft.WindowsCalculator!XXXXXXXXXXXXX");
   assert not oInvalid.bIdExists, \
       "UWP application package %s has an application with id %s!?" % (oInvalid.sPackageName, oInvalid.sApplicationId);
+  
+  oConsole.fOutput("+ Done.");
+  
+except Exception as oException:
+  if mDebugOutput:
+    mDebugOutput.fTerminateWithException(oException, bShowStacksForAllThread = True);
+  raise;
