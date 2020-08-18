@@ -218,6 +218,8 @@ class cProcess(object):
   def fbTerminate(oSelf, uTimeout = None):
     return fbTerminateForProcessHandle(oSelf.__ohProcess, uTimeout);
   
+  def fWait(oSelf):
+    oSelf.fbWait();
   def fbWait(oSelf, uTimeout = None):
     return fbWaitForTerminationForProcessHandle(oSelf.__ohProcess, uTimeout);
   
