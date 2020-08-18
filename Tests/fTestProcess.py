@@ -5,7 +5,7 @@ from mWindowsSDK import SECURITY_MANDATORY_MEDIUM_RID;
 def fTestProcess(sComSpec, sExpectedISA = None):
   uExitCode = 1234;
   # Start cmd.exe and have it exit with a specific error code.
-  oTestProcess = cProcess.foCreateForBinaryPathAndArguments(sComSpec, ["/K", "EXIT %s" % uExitCode]);
+  oTestProcess = cProcess.foCreateForBinaryPathAndArguments(sComSpec, ["/K", "EXIT %s" % uExitCode], bHidden = True);
   try:
     oTestProcess.fbWait();
     assert not oTestProcess.bIsRunning, \
@@ -13,7 +13,7 @@ def fTestProcess(sComSpec, sExpectedISA = None):
     assert oTestProcess.uExitCode == uExitCode, \
         "Expected exit code %d, got %d" % (uExitCode, oTestProcess.uExitCode);
     # Restart cmd.exe and let it wait for input.
-    oTestProcess = cProcess.foCreateForBinaryPath(sComSpec);
+    oTestProcess = cProcess.foCreateForBinaryPath(sComSpec, bMinimized = True);
     time.sleep(1); # Allow process to start
     print "  + Started test process %d..." % oTestProcess.uId;sys.stdout.flush();
     # cProcess

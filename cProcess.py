@@ -31,7 +31,18 @@ class cProcess(object):
     sWorkingDirectory = None,
     bSuspended = False,
     bDebug = False,
+    bHidden = False,
+    bMinimized = False,
+    bMaximized = False,
   ):
+    bUseShowWindow = bHidden or bMinimized or bMaximized;
+    if bUseShowWindow:
+      assert not bHidden or not bMinimized, \
+          "Cannot set bHidden = True and bMinimized = True at the same time!";
+      assert not bHidden or not bMaximized, \
+          "Cannot set bHidden = True and bMaximized = True at the same time!";
+      assert not bMinimized or not bMaximized, \
+          "Cannot set bMinimized = True and bMaximized = True at the same time!";
     # The output of oStdInPipe is inherited so the application can read from it when we write to the input.
     # The output of oStdInPipe is closed by us after the application is started, as we do not use it and
     # want Windows to clean it up when the application terminates.
@@ -51,7 +62,8 @@ class cProcess(object):
     oStartupInfo.cb = oStartupInfo.fuGetSize();
     oStartupInfo.lpDesktop = NULL;
     oStartupInfo.lpDesktop = NULL;
-    oStartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    oStartupInfo.dwFlags = STARTF_USESTDHANDLES | (STARTF_USESHOWWINDOW if bUseShowWindow else 0);
+    oStartupInfo.wShowWindow = SW_HIDE if bHidden else SW_SHOWMINNOACTIVE if bMinimized else SW_SHOWMAXIMIZED if bMaximized else 0;
     oStartupInfo.hStdInput = oKernel32.GetStdHandle(STD_INPUT_HANDLE);
     oStartupInfo.hStdOutput = oKernel32.GetStdHandle(STD_OUTPUT_HANDLE);
     oStartupInfo.hStdError = oKernel32.GetStdHandle(STD_ERROR_HANDLE);
