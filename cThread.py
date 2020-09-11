@@ -404,20 +404,23 @@ class cThread(object):
         oSelf.__o0StackVirtualAllocation = cVirtualAllocation(oSelf.oProcess.uId, u0StackBottomAddress);
     return oSelf.__o0StackVirtualAllocation;
   
-  def __foGetThreadContext(oSelf):
+  def __fo0GetThreadContext(oSelf):
     # The type of CONTEXT we want to get and the function we need to use to do so depend on the ISA of both the target
-    # process and the calling process (the Python process we're running in):
-    if fsGetPythonISA() == "x86":
-      cThreadContext = CONTEXT32;
-      sGetThreadContextFunctionName = "GetThreadContext";
-    elif oSelf.oProcess.sISA == "x86":
-      cThreadContext = CONTEXT32;
-      sGetThreadContextFunctionName = "Wow64GetThreadContext";
-    else:
-      cThreadContext = CONTEXT64;
-      sGetThreadContextFunctionName = "GetThreadContext";
+    # process and the calling process (the Python process we're running in). We assume Python and the target are both
+    # 32-bit, but change these settings if this is not the case:
+    cThreadContext = CONTEXT32;
+    sGetThreadContextFunctionName = "GetThreadContext";
+    uRequiredAccessRightFlags = THREAD_GET_CONTEXT;
+    uErrorWhenThreadIsTerminated = ERROR_GEN_FAILURE;
+    if fsGetPythonISA() == "x64":
+      if oSelf.oProcess.sISA == "x64":
+        cThreadContext = CONTEXT64;
+      else:
+        sGetThreadContextFunctionName = "Wow64GetThreadContext";
+        uRequiredAccessRightFlags |= THREAD_QUERY_INFORMATION;
+        uErrorWhenThreadIsTerminated = ERROR_ACCESS_DENIED
     oThreadContext = cThreadContext();
-    ohThread = oSelf.fohOpenWithFlags(THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION);
+    ohThread = oSelf.fohOpenWithFlags(THREAD_ALL_ACCESS | uRequiredAccessRightFlags);
     oThreadContext.ContextFlags = CONTEXT_ALL;
     oKernel32 = foLoadKernel32DLL();
     fbGetThreadContext = getattr(oKernel32, sGetThreadContextFunctionName);
@@ -425,7 +428,10 @@ class cThread(object):
       ohThread, # hThread
       oThreadContext.foCreatePointer(), # lpContext
     ):
-      fThrowLastError("%s(0x%X, 0x%X)" % (sGetThreadContextFunctionName, ohThread.value, oThreadContext.fuGetAddress()));
+      if oSelf.bIsTerminated and fbLastErrorIs(uErrorWhenThreadIsTerminated): # This happens when a thread is terminated.
+        return None;
+      fThrowLastError("%s(hThread = 0x%X (%s), lpContext = 0x%X)" % \
+          (sGetThreadContextFunctionName, ohThread.value, oSelf.fs0GetAccessRightsFlagsDescription(), oThreadContext.fuGetAddress()));
     return oThreadContext;
   
   def __fxGetRegisterFromThreadContext(oSelf, oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize):
@@ -488,15 +494,16 @@ class cThread(object):
     else:
       raise NotImplementedError("Really not looking forward to this...");
   
-  def fduGetRegisterValueByName(oSelf):
+  def fd0uGetRegisterValueByName(oSelf):
+    o0ThreadContext = oSelf.__fo0GetThreadContext();
+    if o0ThreadContext is None: return None;
     # Actual valid registers depend on the ISA of the target process:
     dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName = \
         gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
     duRegisterValues_by_sName = {};
-    oThreadContext = oSelf.__foGetThreadContext();
     for (sRegisterName, (sThreadContextMemberName, uBitSize, uBitOffset)) in \
         dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName.items():
-      uRegisterValue = oSelf.__fxGetRegisterFromThreadContext(oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize);
+      uRegisterValue = oSelf.__fxGetRegisterFromThreadContext(o0ThreadContext, sThreadContextMemberName, uBitOffset, uBitSize);
       duRegisterValues_by_sName[sRegisterName] = uRegisterValue;
     return duRegisterValues_by_sName;
   
@@ -508,17 +515,17 @@ class cThread(object):
         "Register %s is not available in the context of %s process %d" % (sRegisterName, oSelf.oProcess.sISA, oSelf.oProcess.uId);
     (sThreadContextMemberName, uBitSize, uBitOffset) = \
         dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName[sRegisterName];
-    oThreadContext = oSelf.__foGetThreadContext();
-    return oSelf.__fxGetRegisterFromThreadContext(oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize);
+    return oSelf.__fxGetRegisterFromThreadContext(o0ThreadContext, sThreadContextMemberName, uBitOffset, uBitSize);
   
-  def fSetRegister(oSelf, sRegisterName, uRegisterValue):
-    return oSelf.fSetRegisters({sRegisterName: uRegisterValue});
+  def fbSetRegister(oSelf, sRegisterName, uRegisterValue):
+    return oSelf.fbSetRegisters({sRegisterName: uRegisterValue});
   
-  def fSetRegisters(oSelf, duRegisterValue_by_sName):
+  def fbSetRegisters(oSelf, duRegisterValue_by_sName):
+    o0ThreadContext = oSelf.__fo0GetThreadContext();
+    if o0ThreadContext is None: return False;
     # Actual valid registers depend on the ISA of the target process:
     dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName = \
         gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
-    oThreadContext = oSelf.__foGetThreadContext();
     for (sRegisterName, uRegisterValue) in duRegisterValue_by_sName.items():
       assert sRegisterName in dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName, \
           "Register %s is not available in the context of %s process %d" % (sRegisterName, oSelf.oProcess.sISA, oSelf.oProcess.uId);
@@ -526,7 +533,7 @@ class cThread(object):
           dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName[sRegisterName];
       assert uRegisterValue & ((1 << uBitSize) - 1) == uRegisterValue, \
           "value 0x%X cannot be stored in %d bit" % (uRegisterValue, uBitSize);
-      oSelf.__fSetRegisterInThreadContext(oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize, uRegisterValue);
+      oSelf.__fSetRegisterInThreadContext(o0ThreadContext, sThreadContextMemberName, uBitOffset, uBitSize, uRegisterValue);
     ohThread = oSelf.fohOpenWithFlags(THREAD_SET_CONTEXT);
     # The function we need to use to set the context depends on the ISA of both the target process and the calling
     # process (the Python process we're running in):
@@ -538,7 +545,8 @@ class cThread(object):
     fbSetThreadContext = getattr(oKernel32, sSetThreadContextFunctionName);
     if not fbSetThreadContext(
       ohThread,# hThread
-      oThreadContext.foCreatePointer(), # lpContext
+      o0ThreadContext.foCreatePointer(), # lpContext
     ):
       fThrowLastError("%s(0x%08X, ...)" % (sSetThreadContextFunctionName, ohThread.value));
+    return True;
 
