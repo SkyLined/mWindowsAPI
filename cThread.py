@@ -9,6 +9,7 @@ from .fohOpenForThreadIdAndDesiredAccess import fohOpenForThreadIdAndDesiredAcce
 from .fsGetDescriptionForThreadHandle import fsGetDescriptionForThreadHandle;
 from .fsGetPythonISA import fsGetPythonISA;
 from .fSuspendForThreadHandle import fSuspendForThreadHandle;
+from .fsGetThreadAccessRightsFlagsDescription import fsGetThreadAccessRightsFlagsDescription;
 from .fThrowError import fThrowError;
 from .fThrowLastError import fThrowLastError;
 from .fuGetExitCodeForThreadHandle import fuGetExitCodeForThreadHandle;
@@ -273,6 +274,11 @@ class cThread(object):
     oSelf.__uThreadHandleFlags = uFlags;
     return ohThread;
   
+  def fs0GetAccessRightsFlagsDescription(oSelf):
+    return fsGetThreadAccessRightsFlagsDescription(oSelf.__uThreadHandleFlags) \
+        if oSelf.__ohThread is not None else None;
+    
+
   def __del__(oSelf):
     try:
       ohThread = oSelf.__ohThread;
