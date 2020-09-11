@@ -251,9 +251,9 @@ class cThread(object):
     else:
       oSelf.__ohThread = None;
       oSelf.__uThreadHandleFlags = 0;
-    oSelf.__oTEB = None;
-    oSelf.__oStackVirtualAllocation = None;
-    oSelf.__oThreadContext = None;
+    oSelf.__o0TEB = None;
+    oSelf.__u0TEBAddress = None;
+    oSelf.__o0StackVirtualAllocation = None;
   
   def foh0OpenWithFlags(oSelf, uRequiredFlags):
     return oSelf.__foh0OpenWithFlags(uRequiredFlags, bThrowErrors = False);
@@ -327,53 +327,82 @@ class cThread(object):
   def sDescription(oSelf):
     return fsGetDescriptionForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
   
+  def fo0GetTEB(oSelf):
+    # Get TEB without caching
+    oSelf.__o0TEB = None;
+    oSelf.__u0TEBAddress = None;
+    return oSelf.o0TEB;
   @property
-  def oTEB(oSelf):
-    if oSelf.__oTEB is None:
+  def o0TEB(oSelf):
+    # Get TEB with caching
+    if oSelf.__o0TEB is None:
       # The type of THREAD_BASIC_INFORMATION returned by NtQueryInformationThread depends on the ISA of the calling
       # process (the Python process we're running in):
       cThreadBasicInformation = {"x86": THREAD_BASIC_INFORMATION32, "x64": THREAD_BASIC_INFORMATION64}[fsGetPythonISA()];
       oThreadBasicInformation = cThreadBasicInformation();
       ouReturnLength = ULONG();
-      ohThread = oSelf.fohOpenWithFlags(THREAD_QUERY_INFORMATION);
       oNTDLL = foLoadNTDLL();
       oNTStatus = oNTDLL.NtQueryInformationThread(
-        ohThread,# ThreadHandle
+        oSelf.fohOpenWithFlags(THREAD_QUERY_INFORMATION),# ThreadHandle
         ThreadBasicInformation, # ThreadInformationClass
         oThreadBasicInformation.foCreatePointer(PVOID), # ThreadInformation
         oThreadBasicInformation.fuGetSize(), # ThreadInformationLength
         ouReturnLength.foCreatePointer(), # ReturnLength
       );
       if NT_ERROR(oNTStatus):
-        fThrowError("NtQueryInformationThread(0x%X, 0x%X, ..., 0x%X, ...)" % \
-              (ohThread.value, ThreadBasicInformation, oThreadBasicInformation.fuGetSize()), oNTStatus.value);
-      assert ouReturnLength.value == oThreadBasicInformation.fuGetSize(), \
-          "NtQueryInformationThread(0x%X, 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % \
-          (ohThread, ThreadBasicInformation, oThreadBasicInformation.fuGetSize(), ouReturnLength.value);
-      # Read TEB
-      uTEBAddress = oThreadBasicInformation.TebBaseAddress.value;
-      # The type of TEB (32- or 64-bit) depends on the type of THREAD_BASIC_INFORMATION (see above)
-      cTEB = {"x86": TEB32, "x64": TEB64}[fsGetPythonISA()];
-      oVirtualAllocation = oSelf.oProcess.foGetAllocatedVirtualAllocationWithSizeCheck(uTEBAddress, cTEB.fuGetSize(), "TEB");
-      oSelf.__oTEB = oVirtualAllocation.foReadStructureForOffset(
-        cStructure = cTEB,
-        uOffset = uTEBAddress - oVirtualAllocation.uStartAddress,
-      );
-    return oSelf.__oTEB;
+        fThrowError(
+          "NtQueryInformationThread(0x%X (%s), 0x%X, ..., 0x%X, ...)" % (
+            oSelf.__ohThread.value, oSelf.fs0GetAccessRightsFlagsDescription(),
+            ThreadBasicInformation,
+            oThreadBasicInformation.fuGetSize()
+          ),
+          oNTStatus.value
+        );
+      # In practise I found that this function succeeds without providing any
+      # data on a newly started, suspended thread. I am not sure why this is
+      # but I have to work around it I guess.
+      if ouReturnLength.value != 0:
+        assert ouReturnLength.value == oThreadBasicInformation.fuGetSize(), \
+            "NtQueryInformationThread(0x%X (%s), 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % (
+              oSelf.__ohThread.value, oSelf.fs0GetAccessRightsFlagsDescription(),
+              ThreadBasicInformation,
+              oThreadBasicInformation.fuGetSize(),
+              ouReturnLength.value
+            );
+        # Terminated threads have TEB address set to 0, indicating no TEB exists.
+        uTEBAddress = oThreadBasicInformation.TebBaseAddress.value;
+        if uTEBAddress != 0:
+          # Read TEB. The type of TEB (32- or 64-bit) depends on the type of THREAD_BASIC_INFORMATION (see above)
+          cTEB = {"x86": TEB32, "x64": TEB64}[fsGetPythonISA()];
+          oVirtualAllocation = oSelf.oProcess.foGetAllocatedVirtualAllocationWithSizeCheck(
+            uTEBAddress,
+            cTEB.fuGetSize(),
+            "TEB"
+          );
+          oSelf.__o0TEB = oVirtualAllocation.foReadStructureForOffset(
+            cStructure = cTEB,
+            uOffset = uTEBAddress - oVirtualAllocation.uStartAddress,
+          );
+          oSelf.__u0TEBAddress = uTEBAddress;
+    return oSelf.__o0TEB;
   
   @property
-  def uStackBottomAddress(oSelf):
-    return oSelf.oTEB.NtTib.StackBase.value;
+  def u0StackBottomAddress(oSelf):
+    o0TEB = oSelf.o0TEB;
+    return o0TEB.NtTib.StackBase.value if o0TEB else None;
   
   @property
-  def uStackTopAddress(oSelf):
-    return oSelf.oTEB.NtTib.StackLimit.value;
+  def u0StackTopAddress(oSelf):
+    o0TEB = oSelf.o0TEB;
+    return o0TEB.NtTib.StackLimit.value if o0TEB else None;
   
   @property
-  def oStackVirtualAllocation(oSelf):
-    if oSelf.__oStackVirtualAllocation is None:
-      oSelf.__oStackVirtualAllocation = cVirtualAllocation(oSelf.oProcess.uId, oSelf.uStackBottomAddress);
-    return oSelf.__oStackVirtualAllocation;
+  def o0StackVirtualAllocation(oSelf):
+    if oSelf.__o0StackVirtualAllocation is None:
+      u0StackBottomAddress = oSelf.u0StackBottomAddress;
+      if u0StackBottomAddress is not None:
+        oSelf.__o0StackVirtualAllocation = cVirtualAllocation(oSelf.oProcess.uId, u0StackBottomAddress);
+    return oSelf.__o0StackVirtualAllocation;
   
   def __foGetThreadContext(oSelf):
     # The type of CONTEXT we want to get and the function we need to use to do so depend on the ISA of both the target
