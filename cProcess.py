@@ -141,6 +141,15 @@ class cProcess(object):
         fThrowLastError("CloseHandle(0x%X)" % (oSelf.__ohProcess.value,));
     return ohProcess;
   
+  def fs0GetAccessRightsFlagsDescription(oSelf):
+    if oSelf.__ohProcess is None or oSelf.__ohProcess.value == INVALID_HANDLE_VALUE:
+      return None;
+    if oSelf.__uProcessHandleFlags == PROCESS_ALL_ACCESS:
+      return "PROCESS_ALL_ACCESS";
+    return " | ".join([s for s in [
+      sFlagName if oSelf.__uProcessHandleFlags & uFlag != 0 else None
+      for (uFlag, sFlagName) in dsProcessAccessRightName_by_uFlag.items()
+    ] if s]);
   
   def foGetPEB(oSelf):
     # The type of PROCESS_BASIC_INFORMATION returned by NtQueryInformationProcess depends on the ISA of the process
