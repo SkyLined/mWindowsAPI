@@ -90,7 +90,14 @@ class cConsoleProcess(cProcess):
           oStdInPipe and oStdInPipe.fClose(bOutput = True); 
           oStdOutPipe and oStdOutPipe.fClose(bInput = True);
           oStdErrPipe and oStdErrPipe.fClose(bInput = True);
-          return cConsoleProcess(oProcessInformation.dwProcessId.value, oStdInPipe, oStdOutPipe, oStdErrPipe, ohProcess = oProcessInformation.hProcess);
+          return cConsoleProcess(
+            uId = oProcessInformation.dwProcessId.value,
+            oStdInPipe = oStdInPipe,
+            oStdOutPipe = oStdOutPipe,
+            oStdErrPipe = oStdErrPipe,
+            ohProcess = oProcessInformation.hProcess,
+            uProcessHandleFlags = PROCESS_ALL_ACCESS,
+          );
         except:
           oStdErrPipe and oStdErrPipe.fClose();
           raise;
@@ -101,8 +108,8 @@ class cConsoleProcess(cProcess):
       oStdInPipe and oStdInPipe.fClose();
       raise;
   
-  def __init__(oSelf, uId, oStdInPipe, oStdOutPipe, oStdErrPipe, ohProcess = None):
-    cProcess.__init__(oSelf, uId, ohProcess = ohProcess);
+  def __init__(oSelf, uId, oStdInPipe, oStdOutPipe, oStdErrPipe, ohProcess = None, uProcessHandleFlags = None):
+    cProcess.__init__(oSelf, uId, ohProcess = ohProcess, uProcessHandleFlags = uProcessHandleFlags);
     oSelf.oStdInPipe = oStdInPipe;
     oSelf.oStdOutPipe = oStdOutPipe;
     oSelf.oStdErrPipe = oStdErrPipe;
