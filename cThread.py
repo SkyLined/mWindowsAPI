@@ -300,10 +300,10 @@ class cThread(object):
   def fbTerminate(oSelf, uTimeout = None):
     return fbTerminateForThreadHandle(oSelf.fohOpenWithFlags(THREAD_TERMINATE), uTimeout);
   
-  def fSuspend(oSelf):
-    return fSuspendForThreadHandle(oSelf.fohOpenWithFlags(THREAD_SUSPEND_RESUME));
+  def fbSuspend(oSelf): # Returns true if the thread was running but is now suspended.
+    return fbSuspendForThreadHandle(oSelf.fohOpenWithFlags(THREAD_SUSPEND_RESUME));
   
-  def fbResume(oSelf):
+  def fbResume(oSelf): # Returns true if the thread was suspended but is now running.
     return fbResumeForThreadHandle(oSelf.fohOpenWithFlags(THREAD_SUSPEND_RESUME));
   
   def fbWait(oSelf, uTimeout = None):
