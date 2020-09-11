@@ -507,7 +507,9 @@ class cThread(object):
       duRegisterValues_by_sName[sRegisterName] = uRegisterValue;
     return duRegisterValues_by_sName;
   
-  def fuGetRegister(oSelf, sRegisterName):
+  def fu0GetRegister(oSelf, sRegisterName):
+    o0ThreadContext = oSelf.__fo0GetThreadContext();
+    if o0ThreadContext is None: return None;
     # Actual valid registers depend on the ISA of the target process:
     dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName = \
         gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
