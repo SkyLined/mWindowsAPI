@@ -291,14 +291,14 @@ class cThread(object):
   
   @property
   def bIsRunning(oSelf):
-    return fbIsRunningForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
+    return fbIsRunningForThreadHandle(oSelf.fohOpenWithFlags(SYNCHRONIZE));
   
   @property
   def bIsTerminated(oSelf):
     return not oSelf.bIsRunning;
   
   def fbTerminate(oSelf, uTimeout = None):
-    return fbTerminateForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION), uTimeout);
+    return fbTerminateForThreadHandle(oSelf.fohOpenWithFlags(THREAD_TERMINATE), uTimeout);
   
   def fSuspend(oSelf):
     return fSuspendForThreadHandle(oSelf.fohOpenWithFlags(THREAD_SUSPEND_RESUME));
@@ -307,7 +307,7 @@ class cThread(object):
     return fbResumeForThreadHandle(oSelf.fohOpenWithFlags(THREAD_SUSPEND_RESUME));
   
   def fbWait(oSelf, uTimeout = None):
-    return fbWaitForTerminationForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION), uTimeout);
+    return fbWaitForTerminationForThreadHandle(oSelf.fohOpenWithFlags(SYNCHRONIZE), uTimeout);
   
   @property
   def uExitCode(oSelf):
