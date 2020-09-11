@@ -254,25 +254,34 @@ class cThread(object):
     oSelf.__oStackVirtualAllocation = None;
     oSelf.__oThreadContext = None;
   
+  def foh0OpenWithFlags(oSelf, uRequiredFlags):
+    return oSelf.__foh0OpenWithFlags(uRequiredFlags, bThrowErrors = False);
   def fohOpenWithFlags(oSelf, uRequiredFlags):
+    return oSelf.__foh0OpenWithFlags(uRequiredFlags, bThrowErrors = True);
+  def __foh0OpenWithFlags(oSelf, uRequiredFlags, bThrowErrors):
     # See if we have an open handle
     if oSelf.__ohThread:
       # if it already has the required flags, return it:
       if oSelf.__uThreadHandleFlags & uRequiredFlags == uRequiredFlags:
         return oSelf.__ohThread;
-      # If it does not have the required flags, close it:
-      oKernel32 = foLoadKernel32DLL();
-      if not oKernel32.CloseHandle(oSelf.__ohThread):
-        fThrowLastError("CloseHandle(0x%X)" % (oSelf.__ohThread.value,));
-      oSelf.__ohThread = None;
+    ohOldThread = oSelf.__ohThread;
     # Open a new handle with the required flags and all other flags we've used before.
     # This allows the new handle to be used for anything it was used for before as well
     # as anything new the caller wants to do:
     uFlags = oSelf.__uThreadHandleFlags | uRequiredFlags;
     ohThread = fohOpenForThreadIdAndDesiredAccess(oSelf.uId, uFlags);
+    if ohThread.value == INVALID_HANDLE_VALUE:
+      if bThrowErrors:
+        fThrowLastError("fohOpenForThreadIdAndDesiredAccess(0x%X, 0x%X)" % (oSelf.uId, uFlags));
+      return None;
+    if ohOldThread:
+      # If it does not have the required flags, close it:
+      oKernel32 = foLoadKernel32DLL();
+      if not oKernel32.CloseHandle(oSelf.__ohThread):
+        fThrowLastError("CloseHandle(0x%X)" % (oSelf.__ohThread.value,));
     oSelf.__ohThread = ohThread;
     oSelf.__uThreadHandleFlags = uFlags;
-    return ohThread;
+    return oSelf.__ohThread;
   
   def fs0GetAccessRightsFlagsDescription(oSelf):
     return fsGetThreadAccessRightsFlagsDescription(oSelf.__uThreadHandleFlags) \
