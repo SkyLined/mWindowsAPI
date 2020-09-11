@@ -293,6 +293,10 @@ class cThread(object):
   def bIsRunning(oSelf):
     return fbIsRunningForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
   
+  @property
+  def bIsTerminated(oSelf):
+    return not oSelf.bIsRunning;
+  
   def fbTerminate(oSelf, uTimeout = None):
     return fbTerminateForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION), uTimeout);
   
