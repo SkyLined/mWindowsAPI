@@ -135,7 +135,6 @@ class cProcess(object):
     # Cache for dynamically retreieved properties:
     oSelf.__sBinaryPath = None;
     oSelf.__sCommandLine = None;
-    oSelf.__doThread_by_uId = {};
   
   def fohOpenWithFlags(oSelf, uRequiredFlags):
     # See if we have an open handle
