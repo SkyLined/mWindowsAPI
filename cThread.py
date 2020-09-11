@@ -8,8 +8,9 @@ from .fbWaitForTerminationForThreadHandle import fbWaitForTerminationForThreadHa
 from .fohOpenForThreadIdAndDesiredAccess import fohOpenForThreadIdAndDesiredAccess;
 from .fsGetDescriptionForThreadHandle import fsGetDescriptionForThreadHandle;
 from .fsGetPythonISA import fsGetPythonISA;
-from .fSuspendForThreadHandle import fSuspendForThreadHandle;
 from .fsGetThreadAccessRightsFlagsDescription import fsGetThreadAccessRightsFlagsDescription;
+from .fbLastErrorIs import fbLastErrorIs;
+from .fbSuspendForThreadHandle import fbSuspendForThreadHandle;
 from .fThrowError import fThrowError;
 from .fThrowLastError import fThrowLastError;
 from .fuGetExitCodeForThreadHandle import fuGetExitCodeForThreadHandle;
