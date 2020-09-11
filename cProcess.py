@@ -87,30 +87,60 @@ class cProcess(object):
     # Close all handles that we no longer need:
     if not oKernel32.CloseHandle(oProcessInformation.hThread):
       fThrowLastError("CloseHandle(0x%X)" % (oProcessInformation.hThread.value,));
-    return cClass(oProcessInformation.dwProcessId.value, ohProcess = oProcessInformation.hProcess);
+    return cClass(oProcessInformation.dwProcessId.value, ohProcess = oProcessInformation.hProcess, uProcessHandleFlags = PROCESS_ALL_ACCESS);
   
-  def __init__(oSelf, uId, ohProcess = None):
+  def __init__(oSelf, uId, ohProcess = None, uProcessHandleFlags = None):
     assert isinstance(uId, (int, long)), \
         "uId must be an integer not %s" % repr(uId);
     oSelf.uId = uId;
-    assert ohProcess is None or isinstance(ohProcess, HANDLE), \
-        "ohProcess (%s) is not a valid handle" % repr(ohProcess);
-    if ohProcess is None:
+    if ohProcess:
+      assert isinstance(ohProcess, HANDLE), \
+          "ohProcess (%s) is not a valid handle" % repr(ohProcess);
+      assert uProcessHandleFlags is not None, \
+          "You must provide uProcessHandleFlags when you provide ohProcess";
       # Try to open the process if no handle is provided...
-      ohProcess = fohOpenForProcessIdAndDesiredAccess(uId, PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ);
-    oSelf.__ohProcess = ohProcess;
+      oSelf.__ohProcess = ohProcess;
+      oSelf.__uProcessHandleFlags = uProcessHandleFlags;
+    else:
+      oSelf.__uProcessHandleFlags = 0;
+      oSelf.__ohProcess = None;
     # If we are running in 64-bit Python, NtQueryInformationProcess will return a pointer to the 64-bit PEB of
     # another process in the PROCESS_BASIC_INFORMATION struct. If we are running in 32-bit Python, we cannot get
     # information on a 64-bit process unless we start doing some dirty hacks, which I'd rather not. To find out if
     # the PEB is 32- or 64-bit, we will need to find out the bitness of Python, the OS and the target process:
-    oSelf.sISA = fsGetISAForProcessHandle(oSelf.__ohProcess);
+    oSelf.sISA = fsGetISAForProcessHandle(oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ));
     assert oSelf.sISA == "x86" or fsGetPythonISA() == "x64", \
         "You cannot get information on a 64-bit process from 32-bit Python";
     oSelf.uPointerSize = {"x86": 4, "x64": 8}[oSelf.sISA];
-    # Cahce for dynamically retreieved properties:
+    # Cache for dynamically retreieved properties:
     oSelf.__sBinaryPath = None;
     oSelf.__sCommandLine = None;
     oSelf.__doThread_by_uId = {};
+  
+  def fohOpenWithFlags(oSelf, uRequiredFlags):
+    # See if we have an open handle
+    if oSelf.__ohProcess and oSelf.__ohProcess.value != INVALID_HANDLE_VALUE:
+      # if it already has the required flags, return it:
+      if oSelf.__uProcessHandleFlags & uRequiredFlags == uRequiredFlags:
+        return oSelf.__ohProcess;
+      ohOldProcessHandle = oSelf.__ohProcess;
+    else:
+      ohOldProcessHandle = None;
+    print "Flags %X + %X" % (oSelf.__uProcessHandleFlags, uRequiredFlags);
+    # Open a new handle with the required flags and all other flags we've used before.
+    # This allows the new handle to be used for anything it was used for before as well
+    # as anything new the caller wants to do:
+    uFlags = oSelf.__uProcessHandleFlags | uRequiredFlags;
+    ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.uId, uFlags);
+    oSelf.__ohProcess = ohProcess;
+    oSelf.__uProcessHandleFlags = uFlags if ohProcess.value != INVALID_HANDLE_VALUE else 0;
+    if ohOldProcessHandle:
+      # If it does not have the required flags, close it:
+      oKernel32 = foLoadKernel32DLL();
+      if not oKernel32.CloseHandle(oSelf.__ohProcess):
+        fThrowLastError("CloseHandle(0x%X)" % (oSelf.__ohProcess.value,));
+    return ohProcess;
+  
   
   def foGetPEB(oSelf):
     # The type of PROCESS_BASIC_INFORMATION returned by NtQueryInformationProcess depends on the ISA of the process
@@ -120,7 +150,7 @@ class cProcess(object):
     ouReturnLength = ULONG();
     oNTDLL = foLoadNTDLL();
     oNTStatus = oNTDLL.NtQueryInformationProcess(
-      oSelf.__ohProcess,# ProcessHandle
+      oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ),# ProcessHandle
       ProcessBasicInformation, # ProcessInformationClass
       oProcessBasicInformation.foCreatePointer(PVOID), # ProcessInformation
       oProcessBasicInformation.fuGetSize(), # ProcessInformationLength
@@ -209,30 +239,33 @@ class cProcess(object):
   
   @property
   def bIsRunning(oSelf):
-    return fbIsRunningForProcessHandle(oSelf.__ohProcess);
+    return fbIsRunningForProcessHandle(oSelf.fohOpenWithFlags(SYNCHRONIZE));
   
   @property
   def bIsTerminated(oSelf):
     return not oSelf.bIsRunning;
   
   def fbTerminate(oSelf, uTimeout = None):
-    return fbTerminateForProcessHandle(oSelf.__ohProcess, uTimeout);
+    return fbTerminateForProcessHandle(oSelf.fohOpenWithFlags(PROCESS_TERMINATE), uTimeout);
   
   def fWait(oSelf):
     oSelf.fbWait();
   def fbWait(oSelf, uTimeout = None):
-    return fbWaitForTerminationForProcessHandle(oSelf.__ohProcess, uTimeout);
+    return fbWaitForTerminationForProcessHandle(oSelf.fohOpenWithFlags(SYNCHRONIZE), uTimeout);
   
-  def fSuspend(oSelf):
-    return fSuspendForProcessId(oSelf.uId);
+  def fSuspend(oSelf): # No return value; undocumented and unreliable: use fbSuspendThreads instead.
+    return fSuspendForProcessHandle(oSelf.fohOpenWithFlags(PROCESS_SUSPEND_RESUME ));
   
-  def fSuspendThreads(oSelf):
+  def fbSuspendThreads(oSelf): # Returns true if any threads were running but are now suspended.
+    bSuspended = False;
     for oThread in oSelf.faoGetThreads():
-      oThread.fSuspend();
+      if oThread.fbSuspend():
+        bSuspended = True;
+    return bSuspended;
   
   @property
   def uExitCode(oSelf):
-    return fuGetExitCodeForProcessHandle(oSelf.__ohProcess);
+    return fuGetExitCodeForProcessHandle(oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION));
   
   def foCreateVirtualAllocation(oSelf, uSize, uAddress = None, bReserved = False, uProtection = None):
     return cVirtualAllocation.foCreateForProcessId(
@@ -348,3 +381,4 @@ class cProcess(object):
   
   def fuCreateThreadForAddress(oSelf, uAddress, **dxArguments):
     return fuCreateThreadForProcessIdAndAddress(oSelf.uId, uAddress, **dxArguments);
+
