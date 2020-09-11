@@ -1,4 +1,4 @@
 from .fbWaitForSingleObject import fbWaitForSingleObject;
 
 def fbIsRunningForThreadHandle(ohThread):
-  return fbWaitForSingleObject(ohThread, 0);
+  return not fbWaitForSingleObject(ohThread, 0);
