@@ -186,6 +186,9 @@ class cVirtualAllocation(object):
 
   # Start/End address and size
   @property
+  def uAddress(oSelf):
+    return oSelf.__uStartAddress;
+  @property
   def uStartAddress(oSelf):
     return oSelf.__uStartAddress;
   @property
