@@ -551,4 +551,26 @@ class cThread(object):
     ):
       fThrowLastError("%s(0x%08X, ...)" % (sSetThreadContextFunctionName, ohThread.value));
     return True;
+  
+  def fasGetDetails(oSelf):
+    # This is done without a property lock, so race-conditions exist and it
+    # approximates the real values.
+    sAccessRightsFlagsDescription = oSelf.fs0GetAccessRightsFlagsDescription();
+    bIsTerminated = oSelf.bIsTerminated;
+    return [s for s in [
+      "tid = 0x%X" % (oSelf.uId,),
+      "pid = 0x%X" % (oSelf.oProcess.uId,),
+      "description = %s" % (oSelf.sDescription,) if oSelf.sDescription else None,
+      "terminated" if bIsTerminated else None,
+      ("access = %s" % (sAccessRightsFlagsDescription,) if sAccessRightsFlagsDescription else "no access") if not bIsTerminated else None,
+      "TEB @ 0x%X" % (oSelf.__u0TEBAddress,) if oSelf.__o0TEB and not bIsTerminated else None,
+      "stack @ 0x%X - 0x%X" % (oSelf.u0StackBottomAddress, oSelf.u0StackTopAddress) if oSelf.u0StackBottomAddress and not bIsTerminated else None,
+    ] if s];
+  
+  def __repr__(oSelf):
+    sModuleName = ".".join(oSelf.__class__.__module__.split(".")[:-1]);
+    return "<%s.%s#%X|%s>" % (sModuleName, oSelf.__class__.__name__, id(oSelf), "|".join(oSelf.fasGetDetails()));
+  
+  def __str__(oSelf):
+    return "%s#%X{%s}" % (oSelf.__class__.__name__, id(oSelf), ", ".join(oSelf.fasGetDetails()));
 
