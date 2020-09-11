@@ -8,4 +8,4 @@ def fbResumeForThreadHandle(ohThread):
   odwSuspendCount = oKernel32.ResumeThread(ohThread);
   if odwSuspendCount == DWORD(-1):
     fThrowLastError("ResumeThread(0x%08X) == -1" % (ohThread.value,));
-  return odwSuspendCount.value == 0;
+  return odwSuspendCount.value == 1;
