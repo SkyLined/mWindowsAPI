@@ -284,9 +284,10 @@ class cThread(object):
       ohThread = oSelf.__ohThread;
     except AttributeError:
       return;
-    oKernel32 = foLoadKernel32DLL();
-    if ohThread and not oKernel32.CloseHandle(ohThread):
-      fThrowLastError("CloseHandle(0x%X)" % (ohThread.value,));
+    if ohThread:
+      oKernel32 = foLoadKernel32DLL();
+      if not oKernel32.CloseHandle(ohThread) and not fbLastErrorIs(ERROR_INVALID_HANDLE):
+        fThrowLastError("CloseHandle(0x%X)" % (ohThread.value,));
   
   @property
   def bIsRunning(oSelf):
