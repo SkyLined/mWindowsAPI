@@ -291,6 +291,13 @@ class cProcess(object):
         bSuspended = True;
     return bSuspended;
   
+  def fbResumeThreads(oSelf): # Returns true if any threads were suspend but are now running.
+    bResumed = False;
+    for oThread in oSelf.faoGetThreads():
+      if oThread.fbResume():
+        bResumed = True;
+    return bResumed;
+  
   @property
   def uExitCode(oSelf):
     return fuGetExitCodeForProcessHandle(oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION));
