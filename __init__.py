@@ -8,6 +8,8 @@ from .fauProcessesIdsForExecutableName import fauProcessesIdsForExecutableName;
 from .fauProcessesIdsForExecutableNames import fauProcessesIdsForExecutableNames;
 from .fbIsRunningForProcessHandle import fbIsRunningForProcessHandle;
 from .fbIsRunningForProcessId import fbIsRunningForProcessId;
+from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
+from .fbIsRunningForThreadId import fbIsRunningForThreadId;
 from .fbResumeForThreadHandle import fbResumeForThreadHandle;
 from .fbResumeForThreadId import fbResumeForThreadId;
 from .fbTerminateForProcessHandle import fbTerminateForProcessHandle;
@@ -15,8 +17,11 @@ from .fbTerminateForProcessId import fbTerminateForProcessId;
 from .fbTerminateForThreadId import fbTerminateForThreadId;
 from .fbWaitForTerminationForProcessHandle import fbWaitForTerminationForProcessHandle;
 from .fbWaitForTerminationForProcessId import fbWaitForTerminationForProcessId;
+from .fbWaitForTerminationForThreadHandle import fbWaitForTerminationForThreadHandle;
+from .fbWaitForTerminationForThreadId import fbWaitForTerminationForThreadId;
 from .fDebugBreakForProcessId import fDebugBreakForProcessId;
 from .fdsProcessesExecutableName_by_uId import fdsProcessesExecutableName_by_uId;
+from .fohOpenForThreadIdAndDesiredAccess import fohOpenForThreadIdAndDesiredAccess;
 from .fResumeForProcessId import fResumeForProcessId;
 from .fSendCtrlCForProcessId import fSendCtrlCForProcessId;
 from .fsGetISAForProcessId import fsGetISAForProcessId;
@@ -44,6 +49,8 @@ __all__ = [
   "fauProcessesIdsForExecutableNames",
   "fbIsRunningForProcessHandle",
   "fbIsRunningForProcessId",
+  "fbIsRunningForThreadHandle",
+  "fbIsRunningForThreadId",
   "fbResumeForThreadHandle",
   "fbResumeForThreadId",
   "fbTerminateForProcessHandle",
@@ -51,8 +58,11 @@ __all__ = [
   "fbTerminateForThreadId",
   "fbWaitForTerminationForProcessHandle",
   "fbWaitForTerminationForProcessId",
+  "fbWaitForTerminationForThreadHandle",
+  "fbWaitForTerminationForThreadId",
   "fDebugBreakForProcessId",
   "fdsProcessesExecutableName_by_uId",
+  "fohOpenForThreadIdAndDesiredAccess",
   "fResumeForProcessId",
   "fSendCtrlCForProcessId",
   "fsGetISAForProcessId",
