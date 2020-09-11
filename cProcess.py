@@ -417,3 +417,23 @@ class cProcess(object):
   def fuCreateThreadForAddress(oSelf, uAddress, **dxArguments):
     return fuCreateThreadForProcessIdAndAddress(oSelf.uId, uAddress, **dxArguments);
 
+  def fasGetDetails(oSelf):
+    # This is done without a property lock, so race-conditions exist and it
+    # approximates the real values.
+    sAccessRightsFlagsDescription = oSelf.fs0GetAccessRightsFlagsDescription();
+    return [s for s in [
+      "pid = 0x%X" % (oSelf.uId,),
+      "ISA = %s" % (oSelf.sISA,),
+      "command = %s" % (oSelf.__sCommandLine,) if oSelf.__sCommandLine else
+        "binary = %s" % (oSelf.__sBinaryPath,) if oSelf.__sBinaryPath else
+        None,
+      "access = %s" % (sAccessRightsFlagsDescription,) if sAccessRightsFlagsDescription else "no access",
+    ] if s];
+  
+  def __repr__(oSelf):
+    sModuleName = ".".join(oSelf.__class__.__module__.split(".")[:-1]);
+    return "<%s.%s#%X|%s>" % (sModuleName, oSelf.__class__.__name__, id(oSelf), "|".join(oSelf.fasGetDetails()));
+  
+  def __str__(oSelf):
+    return "%s#%X{%s}" % (oSelf.__class__.__name__, id(oSelf), ", ".join(oSelf.fasGetDetails()));
+
