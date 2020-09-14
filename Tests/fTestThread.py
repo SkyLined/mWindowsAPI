@@ -124,8 +124,8 @@ def fTestThread(sComSpec, sISA):
       pass;
     else:
       raise AssertionError("Opening a non-existing thread somehow worked!?");
-    ohThread = fohOpenForThreadIdAndDesiredAccess(0, THREAD_ALL_ACCESS, bMustExist = False);
-    assert ohThread.value == INVALID_HANDLE_VALUE, \
+    ohThread = foh0OpenForThreadIdAndDesiredAccess(0, THREAD_ALL_ACCESS, bMustExist = False);
+    assert ohThread is None, \
         "Opening a non-existing thread somehow worked!?";
   finally:
     if oTestProcess.bIsRunning:

@@ -1,13 +1,13 @@
 from mWindowsSDK import *;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbTerminateForThreadHandle import fbTerminateForThreadHandle;
-from .fohOpenForThreadIdAndDesiredAccess import fohOpenForThreadIdAndDesiredAccess;
+from .foh0OpenForThreadIdAndDesiredAccess import foh0OpenForThreadIdAndDesiredAccess;
 from .fThrowError import fThrowError;
 
 def fbTerminateForThreadId(uThreadId, nTimeoutInSeconds = None, bWait = True):
   # Try to open the thread so we can terminate it...
-  ohThread = fohOpenForThreadIdAndDesiredAccess(uThreadId, THREAD_TERMINATE | THREAD_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, bMustExist = False);
-  if not fbIsValidHandle(ohThread):
+  oh0Thread = foh0OpenForThreadIdAndDesiredAccess(uThreadId, THREAD_TERMINATE | THREAD_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, bMustExist = False);
+  if oh0Thread is None:
     return True; # No thread with the given id exists.
   bSuccess = False;
   try:

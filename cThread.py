@@ -5,10 +5,11 @@ from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
 from .fbResumeForThreadHandle import fbResumeForThreadHandle;
 from .fbTerminateForThreadHandle import fbTerminateForThreadHandle;
 from .fbWaitForTerminationForThreadHandle import fbWaitForTerminationForThreadHandle;
-from .fohOpenForThreadIdAndDesiredAccess import fohOpenForThreadIdAndDesiredAccess;
+from .foh0OpenForThreadIdAndDesiredAccess import foh0OpenForThreadIdAndDesiredAccess;
 from .fsGetDescriptionForThreadHandle import fsGetDescriptionForThreadHandle;
 from .fsGetPythonISA import fsGetPythonISA;
 from .fsGetThreadAccessRightsFlagsDescription import fsGetThreadAccessRightsFlagsDescription;
+from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fbSuspendForThreadHandle import fbSuspendForThreadHandle;
 from .fThrowError import fThrowError;
@@ -236,96 +237,115 @@ gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA = {
 };
 
 class cThread(object):
-  def __init__(oSelf, oProcess, uId, ohThread = None, uThreadHandleFlags = None):
+  def __init__(oSelf, oProcess, uId, oh0Thread = None, u0ThreadHandleFlags = None):
     oSelf.oProcess = oProcess;
     assert isinstance(uId, (int, long)), \
         "uId must be an integer not %s" % repr(uId);
     oSelf.uId = uId;
-    if ohThread:
-      assert isinstance(ohThread, HANDLE), \
-          "ohThread (%s) is not a valid handle" % repr(ohThread);
-      assert uThreadHandleFlags is not None, \
-          "You must provide uThreadHandleFlags when you provide ohThread";
-      oSelf.__ohThread = ohThread;
-      oSelf.__uThreadHandleFlags = uThreadHandleFlags;
+    if oh0Thread is not None:
+      assert isinstance(oh0Thread, HANDLE) and oh0Thread.value != INVALID_HANDLE_VALUE, \
+          "oh0Thread (%s) is not a valid handle" % repr(oh0Thread);
+      assert u0ThreadHandleFlags is not None, \
+          "You must provide u0ThreadHandleFlags when you provide oh0Thread";
+      assert isinstance(u0ThreadHandleFlags, (int, long)), \
+          "u0ThreadHandleFlags (%s) is not a valid integer" % repr(u0ThreadHandleFlags);
+      uThreadHandleFlags = u0ThreadHandleFlags;
     else:
-      oSelf.__ohThread = None;
-      oSelf.__uThreadHandleFlags = 0;
+      assert not u0ThreadHandleFlags, \
+          "oh0Thread is None but u0ThreadHandleFlags (%s) is not None" % repr(u0ThreadHandleFlags);
+      uThreadHandleFlags = 0;
+    oSelf.__oh0Thread = oh0Thread;
+    oSelf.__uThreadHandleFlags = uThreadHandleFlags;
     oSelf.__o0TEB = None;
     oSelf.__u0TEBAddress = None;
     oSelf.__o0StackVirtualAllocation = None;
   
-  def foh0OpenWithFlags(oSelf, uRequiredFlags):
-    return oSelf.__foh0OpenWithFlags(uRequiredFlags, bThrowErrors = False);
-  def fohOpenWithFlags(oSelf, uRequiredFlags):
-    return oSelf.__foh0OpenWithFlags(uRequiredFlags, bThrowErrors = True);
-  def __foh0OpenWithFlags(oSelf, uRequiredFlags, bThrowErrors):
+  def fohOpenWithFlagsOrThrowError(oSelf, uRequiredFlags):
+    return oSelf.foh0OpenWithFlags(uRequiredFlags, bMustExist = True, bMustGetAccess = True);
+  def foh0OpenWithFlags(oSelf, uRequiredFlags, bMustExist = True, bMustGetAccess = True):
+    assert uRequiredFlags, \
+        "Cannot open without any flags!";
     # See if we have an open handle
-    if oSelf.__ohThread:
+    if oSelf.__oh0Thread:
       # if it already has the required flags, return it:
       if oSelf.__uThreadHandleFlags & uRequiredFlags == uRequiredFlags:
-        return oSelf.__ohThread;
-    ohOldThread = oSelf.__ohThread;
+        return oSelf.__oh0Thread;
     # Open a new handle with the required flags and all other flags we've used before.
     # This allows the new handle to be used for anything it was used for before as well
     # as anything new the caller wants to do:
     uFlags = oSelf.__uThreadHandleFlags | uRequiredFlags;
-    ohThread = fohOpenForThreadIdAndDesiredAccess(oSelf.uId, uFlags);
-    if ohThread.value == INVALID_HANDLE_VALUE:
-      if bThrowErrors:
-        fThrowLastError("fohOpenForThreadIdAndDesiredAccess(0x%X, 0x%X)" % (oSelf.uId, uFlags));
-      return None;
-    if ohOldThread:
-      # If it does not have the required flags, close it:
+    oh0Thread = foh0OpenForThreadIdAndDesiredAccess(oSelf.uId, uFlags, bMustExist = bMustExist, bMustGetAccess = bMustGetAccess);
+    if not fbIsValidHandle(oh0Thread):
+      return oh0Thread;
+    # We have a new HANDLE with more access rights; close the old one if we have it and replace
+    # it with the new handle. NOTE: rather than `oSelf.__oh0Thread = oh0Thread`, we do
+    # `oSelf.__oh0Thread.value = oh0Thread.value`. This way any code that previously requested a HANDLE
+    # and is not yet done using it can continue to use it, albeit they will be using the new HANDLE.
+    if oSelf.__oh0Thread:
       oKernel32 = foLoadKernel32DLL();
-      if not oKernel32.CloseHandle(oSelf.__ohThread):
-        fThrowLastError("CloseHandle(0x%X)" % (oSelf.__ohThread.value,));
-    oSelf.__ohThread = ohThread;
+      if not oKernel32.CloseHandle(oSelf.__oh0Thread):
+        fThrowLastError("CloseHandle(0x%X)" % (oSelf.__oh0Thread.value,));
+      oSelf.__oh0Thread.value = oh0Thread.value;
+    else:
+      oSelf.__oh0Thread = oh0Thread;
     oSelf.__uThreadHandleFlags = uFlags;
-    return oSelf.__ohThread;
+    return oSelf.__oh0Thread;
   
   def fs0GetAccessRightsFlagsDescription(oSelf):
     return fsGetThreadAccessRightsFlagsDescription(oSelf.__uThreadHandleFlags) \
-        if oSelf.__ohThread is not None else None;
-    
-
+        if oSelf.__oh0Thread is not None else None;
+  
   def __del__(oSelf):
     try:
-      ohThread = oSelf.__ohThread;
+      oh0Thread = oSelf.__oh0Thread;
     except AttributeError:
       return;
-    if ohThread:
+    if oh0Thread:
       oKernel32 = foLoadKernel32DLL();
-      if not oKernel32.CloseHandle(ohThread) and not fbLastErrorIs(ERROR_INVALID_HANDLE):
-        fThrowLastError("CloseHandle(0x%X)" % (ohThread.value,));
+      if not oKernel32.CloseHandle(oh0Thread) and not fbLastErrorIs(ERROR_INVALID_HANDLE):
+        fThrowLastError("CloseHandle(0x%X)" % (oh0Thread.value,));
   
   @property
   def bIsRunning(oSelf):
-    return fbIsRunningForThreadHandle(oSelf.fohOpenWithFlags(SYNCHRONIZE));
+    # If the thread does not exist, opening it will return None => return False
+    oh0Thread = oSelf.foh0OpenWithFlags(SYNCHRONIZE, bMustExist = False, bMustGetAccess = True);
+    if oh0Thread is None:
+      return False;
+    return fbIsRunningForThreadHandle(oh0Thread);
   
   @property
   def bIsTerminated(oSelf):
     return not oSelf.bIsRunning;
   
   def fbTerminate(oSelf, uTimeout = None):
-    return fbTerminateForThreadHandle(oSelf.fohOpenWithFlags(THREAD_TERMINATE), uTimeout);
+    # Try to terminate the thread. Return True if the thread is terminated.
+    # Return False if the thread is still running.
+    # If the thread does not exist, opening it will return None => return False
+    oh0Thread = oSelf.foh0OpenWithFlags(SYNCHRONIZE | THREAD_TERMINATE, bMustExist = False, bMustGetAccess = True);
+    if oh0Thread is None:
+      return False;
+    return fbTerminateForThreadHandle(oh0Thread, uTimeout);
   
   def fbSuspend(oSelf): # Returns true if the thread was running but is now suspended.
-    return fbSuspendForThreadHandle(oSelf.fohOpenWithFlags(THREAD_SUSPEND_RESUME));
+    return fbSuspendForThreadHandle(oSelf.fohOpenWithFlagsOrThrowError(THREAD_SUSPEND_RESUME));
   
   def fbResume(oSelf): # Returns true if the thread was suspended but is now running.
-    return fbResumeForThreadHandle(oSelf.fohOpenWithFlags(THREAD_SUSPEND_RESUME));
+    return fbResumeForThreadHandle(oSelf.fohOpenWithFlagsOrThrowError(THREAD_SUSPEND_RESUME));
   
   def fbWait(oSelf, uTimeout = None):
-    return fbWaitForTerminationForThreadHandle(oSelf.fohOpenWithFlags(SYNCHRONIZE), uTimeout);
+    # Wait for thread to terminate if it is runnning. Return True if the thread is terminated.
+    oh0Thread = oSelf.foh0OpenWithFlags(SYNCHRONIZE, bMustExist = False, bMustGetAccess = True);
+    if oh0Thread is None:
+      return False;
+    return fbWaitForTerminationForThreadHandle(oh0Thread, uTimeout);
   
   @property
   def uExitCode(oSelf):
-    return fuGetExitCodeForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
+    return fuGetExitCodeForThreadHandle(oSelf.fohOpenWithFlagsOrThrowError(THREAD_QUERY_LIMITED_INFORMATION));
   
   @property
   def sDescription(oSelf):
-    return fsGetDescriptionForThreadHandle(oSelf.fohOpenWithFlags(THREAD_QUERY_LIMITED_INFORMATION));
+    return fsGetDescriptionForThreadHandle(oSelf.fohOpenWithFlagsOrThrowError(THREAD_QUERY_LIMITED_INFORMATION));
   
   def fo0GetTEB(oSelf):
     # Get TEB without caching
@@ -336,6 +356,9 @@ class cThread(object):
   def o0TEB(oSelf):
     # Get TEB with caching
     if oSelf.__o0TEB is None:
+      oh0Thread = oSelf.foh0OpenWithFlags(SYNCHRONIZE, bMustExist = False, bMustGetAccess = False);
+      if not fbIsValidHandle(oh0Thread):
+        return None; # If the thread does not exists or is not accessible, return None
       # The type of THREAD_BASIC_INFORMATION returned by NtQueryInformationThread depends on the ISA of the calling
       # process (the Python process we're running in):
       cThreadBasicInformation = {"x86": THREAD_BASIC_INFORMATION32, "x64": THREAD_BASIC_INFORMATION64}[fsGetPythonISA()];
@@ -343,7 +366,7 @@ class cThread(object):
       ouReturnLength = ULONG();
       oNTDLL = foLoadNTDLL();
       oNTStatus = oNTDLL.NtQueryInformationThread(
-        oSelf.fohOpenWithFlags(THREAD_QUERY_INFORMATION),# ThreadHandle
+        oh0Thread,# ThreadHandle
         ThreadBasicInformation, # ThreadInformationClass
         oThreadBasicInformation.foCreatePointer(PVOID), # ThreadInformation
         oThreadBasicInformation.fuGetSize(), # ThreadInformationLength
@@ -352,7 +375,7 @@ class cThread(object):
       if NT_ERROR(oNTStatus):
         fThrowError(
           "NtQueryInformationThread(0x%X (%s), 0x%X, ..., 0x%X, ...)" % (
-            oSelf.__ohThread.value, oSelf.fs0GetAccessRightsFlagsDescription(),
+            oh0Thread.value, oSelf.fs0GetAccessRightsFlagsDescription(),
             ThreadBasicInformation,
             oThreadBasicInformation.fuGetSize()
           ),
@@ -364,7 +387,7 @@ class cThread(object):
       if ouReturnLength.value != 0:
         assert ouReturnLength.value == oThreadBasicInformation.fuGetSize(), \
             "NtQueryInformationThread(0x%X (%s), 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % (
-              oSelf.__ohThread.value, oSelf.fs0GetAccessRightsFlagsDescription(),
+              oh0Thread.value, oSelf.fs0GetAccessRightsFlagsDescription(),
               ThreadBasicInformation,
               oThreadBasicInformation.fuGetSize(),
               ouReturnLength.value
@@ -420,18 +443,24 @@ class cThread(object):
         uRequiredAccessRightFlags |= THREAD_QUERY_INFORMATION;
         uErrorWhenThreadIsTerminated = ERROR_ACCESS_DENIED
     oThreadContext = cThreadContext();
-    ohThread = oSelf.fohOpenWithFlags(THREAD_ALL_ACCESS | uRequiredAccessRightFlags);
+    oh0Thread = oSelf.foh0OpenWithFlags(uRequiredAccessRightFlags, bMustExist = False, bMustGetAccess = False);
+    if fbIsValidHandle(oh0Thread):
+      return None;
     oThreadContext.ContextFlags = CONTEXT_ALL;
     oKernel32 = foLoadKernel32DLL();
     fbGetThreadContext = getattr(oKernel32, sGetThreadContextFunctionName);
     if not fbGetThreadContext(
-      ohThread, # hThread
+      oh0Thread, # hThread
       oThreadContext.foCreatePointer(), # lpContext
     ):
       if oSelf.bIsTerminated and fbLastErrorIs(uErrorWhenThreadIsTerminated): # This happens when a thread is terminated.
         return None;
-      fThrowLastError("%s(hThread = 0x%X (%s), lpContext = 0x%X)" % \
-          (sGetThreadContextFunctionName, ohThread.value, oSelf.fs0GetAccessRightsFlagsDescription(), oThreadContext.fuGetAddress()));
+      fThrowLastError("%s(hThread = 0x%X (%s), lpContext = 0x%X)" % (
+        sGetThreadContextFunctionName,
+        oh0Thread.value,
+        oSelf.fs0GetAccessRightsFlagsDescription(),
+        oThreadContext.fuGetAddress()
+      ));
     return oThreadContext;
   
   def __fxGetRegisterFromThreadContext(oSelf, oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize):
@@ -536,7 +565,9 @@ class cThread(object):
       assert uRegisterValue & ((1 << uBitSize) - 1) == uRegisterValue, \
           "value 0x%X cannot be stored in %d bit" % (uRegisterValue, uBitSize);
       oSelf.__fSetRegisterInThreadContext(o0ThreadContext, sThreadContextMemberName, uBitOffset, uBitSize, uRegisterValue);
-    ohThread = oSelf.fohOpenWithFlags(THREAD_SET_CONTEXT);
+    oh0Thread = oSelf.foh0OpenWithFlags(THREAD_SET_CONTEXT, bMustExist = False, bMustGetAccess = False);
+    if fbIsValidHandle(oh0Thread):
+      return False;
     # The function we need to use to set the context depends on the ISA of both the target process and the calling
     # process (the Python process we're running in):
     if fsGetPythonISA() == "x64" and oSelf.oProcess.sISA == "x86":
@@ -546,25 +577,32 @@ class cThread(object):
     oKernel32 = foLoadKernel32DLL();
     fbSetThreadContext = getattr(oKernel32, sSetThreadContextFunctionName);
     if not fbSetThreadContext(
-      ohThread,# hThread
+      oh0Thread,# hThread
       o0ThreadContext.foCreatePointer(), # lpContext
     ):
-      fThrowLastError("%s(0x%08X, ...)" % (sSetThreadContextFunctionName, ohThread.value));
+      fThrowLastError("%s(0x%08X (%s), ...)" % (
+        sSetThreadContextFunctionName,
+        oSelf.fs0GetAccessRightsFlagsDescription()
+      ));
     return True;
   
   def fasGetDetails(oSelf):
     # This is done without a property lock, so race-conditions exist and it
     # approximates the real values.
-    sAccessRightsFlagsDescription = oSelf.fs0GetAccessRightsFlagsDescription();
     bIsTerminated = oSelf.bIsTerminated;
+    sDescription = oSelf.sDescription;
+    u0TEBAddress = oSelf.__u0TEBAddress if oSelf.__o0TEB and not bIsTerminated else None;
+    u0StackBottomAddress = oSelf.u0StackBottomAddress if not bIsTerminated else None;
+    u0StackTopAddress = oSelf.u0StackTopAddress if u0StackBottomAddress is not None else None;
+    sAccessRightsFlagsDescription = oSelf.fs0GetAccessRightsFlagsDescription() if not bIsTerminated else None;
     return [s for s in [
       "tid = 0x%X" % (oSelf.uId,),
       "pid = 0x%X" % (oSelf.oProcess.uId,),
-      "description = %s" % (oSelf.sDescription,) if oSelf.sDescription else None,
+      "description = %s" % (sDescription,) if sDescription else None,
       "terminated" if bIsTerminated else None,
-      ("access = %s" % (sAccessRightsFlagsDescription,) if sAccessRightsFlagsDescription else "no access") if not bIsTerminated else None,
-      "TEB @ 0x%X" % (oSelf.__u0TEBAddress,) if oSelf.__o0TEB and not bIsTerminated else None,
-      "stack @ 0x%X - 0x%X" % (oSelf.u0StackBottomAddress, oSelf.u0StackTopAddress) if oSelf.u0StackBottomAddress and not bIsTerminated else None,
+      ("access = [%s]" % (sAccessRightsFlagsDescription,) if sAccessRightsFlagsDescription else None),
+      "TEB @ 0x%X" % (u0TEBAddress,) if u0TEBAddress is not None else None,
+      "stack @ 0x%X - 0x%X" % (u0StackBottomAddress, u0StackTopAddress) if u0StackBottomAddress else None,
     ] if s];
   
   def __repr__(oSelf):

@@ -1,13 +1,14 @@
 from mWindowsSDK import *;
 from .fbResumeForThreadHandle import fbResumeForThreadHandle;
-from .fohOpenForThreadIdAndDesiredAccess import fohOpenForThreadIdAndDesiredAccess;
+from .foh0OpenForThreadIdAndDesiredAccess import foh0OpenForThreadIdAndDesiredAccess;
 from .fThrowError import fThrowError;
 
 def fbResumeForThreadId(uThreadId):
   # A thread can be suspended multiple times. This function returns True if the thread is suspended 0 times after
   # returning.
-  # Try to open the thread so we can terminate it...
-  ohThread = fohOpenForThreadIdAndDesiredAccess(uThreadId, THREAD_SUSPEND_RESUME);
+  # Try to open the thread so we can resume it. This will throw an error if the
+  # thread does not exists or cannot be accessed, so it will not return None.
+  ohThread = foh0OpenForThreadIdAndDesiredAccess(uThreadId, THREAD_SUSPEND_RESUME);
   bSuccess = False;
   try:
     # We can open the thread: try to terminate it.
