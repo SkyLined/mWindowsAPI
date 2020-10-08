@@ -9,6 +9,7 @@ def fbTerminateForThreadId(uThreadId, nTimeoutInSeconds = None, bWait = True):
   oh0Thread = foh0OpenForThreadIdAndDesiredAccess(uThreadId, THREAD_TERMINATE | THREAD_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, bMustExist = False);
   if oh0Thread is None:
     return True; # No thread with the given id exists.
+  ohThread = oh0Thread;
   bSuccess = False;
   try:
     # We can open the thread: try to terminate it.
