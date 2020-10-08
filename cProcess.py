@@ -145,7 +145,6 @@ class cProcess(object):
       ohOldProcessHandle = oSelf.__ohProcess;
     else:
       ohOldProcessHandle = None;
-    print "Flags %X + %X" % (oSelf.__uProcessHandleFlags, uRequiredFlags);
     # Open a new handle with the required flags and all other flags we've used before.
     # This allows the new handle to be used for anything it was used for before as well
     # as anything new the caller wants to do:
