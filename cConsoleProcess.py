@@ -133,11 +133,11 @@ class cConsoleProcess(cProcess):
         oSelf.oStdErrPipe and oSelf.oStdErrPipe.fClose();
   
   def fasGetDetails(oSelf):
-    sPiped = " | ".join([
+    sPiped = " | ".join([s for s in [
         "stdin" if oSelf.oStdInPipe else None,
         "stdout" if oSelf.oStdOutPipe else None,
         "stderr" if oSelf.oStdErrPipe else None,
-    ]);
+    ] if s]);
     return cProcess.fasGetDetails(oSelf) + [
       "piped = %s" % sPiped if sPiped else "no I/O piped"
     ];
