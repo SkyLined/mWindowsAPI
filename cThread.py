@@ -444,7 +444,8 @@ class cThread(object):
         uErrorWhenThreadIsTerminated = ERROR_ACCESS_DENIED
     oThreadContext = cThreadContext();
     oh0Thread = oSelf.foh0OpenWithFlags(uRequiredAccessRightFlags, bMustExist = False, bMustGetAccess = False);
-    if fbIsValidHandle(oh0Thread):
+    if not fbIsValidHandle(oh0Thread):
+#      print "oThreadContext = None (oh0Thread = %s)" % (repr(oh0Thread),);
       return None;
     oThreadContext.ContextFlags = CONTEXT_ALL;
     oKernel32 = foLoadKernel32DLL();
@@ -454,6 +455,7 @@ class cThread(object):
       oThreadContext.foCreatePointer(), # lpContext
     ):
       if oSelf.bIsTerminated and fbLastErrorIs(uErrorWhenThreadIsTerminated): # This happens when a thread is terminated.
+#        print "oThreadContext = None (Thread terminated)";
         return None;
       fThrowLastError("%s(hThread = 0x%X (%s), lpContext = 0x%X)" % (
         sGetThreadContextFunctionName,
@@ -461,6 +463,7 @@ class cThread(object):
         oSelf.fs0GetAccessRightsFlagsDescription(),
         oThreadContext.fuGetAddress()
       ));
+#    print "oThreadContext = %s" % repr(oThreadContext);
     return oThreadContext;
   
   def __fxGetRegisterFromThreadContext(oSelf, oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize):
@@ -553,7 +556,9 @@ class cThread(object):
   
   def fbSetRegisters(oSelf, duRegisterValue_by_sName):
     o0ThreadContext = oSelf.__fo0GetThreadContext();
-    if o0ThreadContext is None: return False;
+    if o0ThreadContext is None:
+#      print "fbSetRegisters(%s) => False (o0ThreadContext == None)" % (repr(duRegisterValue_by_sName),);
+      return False;
     # Actual valid registers depend on the ISA of the target process:
     dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName = \
         gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
@@ -566,7 +571,8 @@ class cThread(object):
           "value 0x%X cannot be stored in %d bit" % (uRegisterValue, uBitSize);
       oSelf.__fSetRegisterInThreadContext(o0ThreadContext, sThreadContextMemberName, uBitOffset, uBitSize, uRegisterValue);
     oh0Thread = oSelf.foh0OpenWithFlags(THREAD_SET_CONTEXT, bMustExist = False, bMustGetAccess = False);
-    if fbIsValidHandle(oh0Thread):
+    if not fbIsValidHandle(oh0Thread):
+#      print "fbSetRegisters(%s) => False (oh0Thread = %s)" % (repr(duRegisterValue_by_sName),repr(oh0Thread));
       return False;
     # The function we need to use to set the context depends on the ISA of both the target process and the calling
     # process (the Python process we're running in):
@@ -584,6 +590,7 @@ class cThread(object):
         sSetThreadContextFunctionName,
         oSelf.fs0GetAccessRightsFlagsDescription()
       ));
+#    print "fbSetRegisters(%s) => True" % (repr(duRegisterValue_by_sName),);
     return True;
   
   def fasGetDetails(oSelf):
