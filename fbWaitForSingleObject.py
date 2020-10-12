@@ -1,5 +1,6 @@
 from mWindowsSDK import *;
 from .fbIsValidHandle import fbIsValidHandle;
+from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
 
 def fbWaitForSingleObject(ohSubject, nTimeoutInSeconds = None, bInvalidHandleMeansSignaled = False):
