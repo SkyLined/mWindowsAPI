@@ -2,4 +2,4 @@ from mWindowsSDK import *;
 from .fbWaitForSingleObject import fbWaitForSingleObject;
 
 def fbWaitForTerminationForProcessHandle(ohProcess, nTimeoutInSeconds = None):
-  return fbWaitForSingleObject(ohProcess, nTimeoutInSeconds, bInvalidHandleIsAcceptable = True);
+  return fbWaitForSingleObject(ohProcess, nTimeoutInSeconds, bInvalidHandleMeansSignaled = True);
