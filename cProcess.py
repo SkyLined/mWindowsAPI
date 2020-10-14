@@ -52,17 +52,20 @@ class cProcess(object):
     bSuspended = False,
     bDebug = False,
     bHidden = False,
-    bMinimized = False,
-    bMaximized = False,
+    bMinimizedWindow = False,
+    bNormalWindow = False,
+    bMaximizedWindow = False,
   ):
-    bUseShowWindow = bHidden or bMinimized or bMaximized;
-    if bUseShowWindow:
-      assert not bHidden or not bMinimized, \
-          "Cannot set bHidden = True and bMinimized = True at the same time!";
-      assert not bHidden or not bMaximized, \
-          "Cannot set bHidden = True and bMaximized = True at the same time!";
-      assert not bMinimized or not bMaximized, \
-          "Cannot set bMinimized = True and bMaximized = True at the same time!";
+    # Default to hidden of no visibility flags are provided.
+    asWindowSpecificFlags = [sFlagName for (bValue, sFlagName) in {
+      bHidden: "bHidden",
+      bMinimizedWindow: "bMinimizedWindow",
+      bNormalWindow: "bNormalWindow",
+      bMaximizedWindow: "bMaximizedWindow",
+    }.items() if bValue];
+    bSeparateWindow = len(asWindowSpecificFlags) != 0;
+    assert not bSeparateWindow or len(asWindowSpecificFlags) == 1, \
+        "Cannot set the following arguments to True at the same time: %s" % (", ".join(asWindowSpecificFlags),);
     # The output of oStdInPipe is inherited so the application can read from it when we write to the input.
     # The output of oStdInPipe is closed by us after the application is started, as we do not use it and
     # want Windows to clean it up when the application terminates.
@@ -75,15 +78,16 @@ class cProcess(object):
       for s in [sBinaryPath] + asArguments
     ]);
     odwCreationFlags = DWORD(sum([
-      bSuspended and CREATE_SUSPENDED or 0,
-      bDebug and DEBUG_PROCESS or 0,
+      CREATE_NEW_CONSOLE if bSeparateWindow else 0,
+      CREATE_SUSPENDED if bSuspended else 0,
+      DEBUG_PROCESS if bDebug else 0,
     ]));
     oStartupInfo = STARTUPINFOW();
     oStartupInfo.cb = oStartupInfo.fuGetSize();
     oStartupInfo.lpDesktop = NULL;
     oStartupInfo.lpDesktop = NULL;
-    oStartupInfo.dwFlags = STARTF_USESTDHANDLES | (STARTF_USESHOWWINDOW if bUseShowWindow else 0);
-    oStartupInfo.wShowWindow = SW_HIDE if bHidden else SW_SHOWMINNOACTIVE if bMinimized else SW_SHOWMAXIMIZED if bMaximized else 0;
+    oStartupInfo.dwFlags = STARTF_USESTDHANDLES | (STARTF_USESHOWWINDOW if bSeparateWindow else 0);
+    oStartupInfo.wShowWindow = SW_HIDE if bHidden else SW_SHOWMINNOACTIVE if bMinimizedWindow else SW_SHOWMAXIMIZED if bMaximizedWindow else 0;
     oStartupInfo.hStdInput = oKernel32.GetStdHandle(STD_INPUT_HANDLE);
     oStartupInfo.hStdOutput = oKernel32.GetStdHandle(STD_OUTPUT_HANDLE);
     oStartupInfo.hStdError = oKernel32.GetStdHandle(STD_ERROR_HANDLE);

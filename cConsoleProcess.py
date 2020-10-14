@@ -20,20 +20,23 @@ class cConsoleProcess(cProcess):
     bSuspended = False,
     bDebug = False,
     bHidden = False,
-    bMinimized = False,
-    bMaximized = False,
+    bMinimizedWindow = False,
+    bNormalWindow = False,
+    bMaximizedWindow = False,
   ):
     # Default to hidden of no visibility flags are provided.
-    bUseShowWindow = bHidden or bMinimized or bMaximized;
-    if bUseShowWindow:
+    asWindowSpecificFlags = [sFlagName for (bValue, sFlagName) in {
+      bHidden: "bHidden",
+      bMinimizedWindow: "bMinimizedWindow",
+      bNormalWindow: "bNormalWindow",
+      bMaximizedWindow: "bMaximizedWindow",
+    }.items() if bValue];
+    bSeparateWindow = len(asWindowSpecificFlags) != 0;
+    if bSeparateWindow:
+      assert len(asWindowSpecificFlags) == 1, \
+          "Cannot set the following arguments to True at the same time: %s" % (", ".join(asWindowSpecificFlags),);
       assert not (bRedirectStdIn or bRedirectStdOut or bRedirectStdErr), \
-          "Cannot use bHidden, bMinimized, or bMaximized when redirecting I/O!";
-      assert not bHidden or not bMinimized, \
-          "Cannot set bHidden = True and bMinimized = True at the same time!";
-      assert not bHidden or not bMaximized, \
-          "Cannot set bHidden = True and bMaximized = True at the same time!";
-      assert not bMinimized or not bMaximized, \
-          "Cannot set bMinimized = True and bMaximized = True at the same time!";
+          "Cannot use %s when redirecting I/O!" % (asWindowSpecificFlags[0],);
     # The output of oStdInPipe is inherited so the application can read from it when we write to the input.
     # The output of oStdInPipe is closed by us after the application is started, as we do not use it and
     # want Windows to clean it up when the application terminates.
@@ -54,14 +57,14 @@ class cConsoleProcess(cProcess):
           odwCreationFlags = DWORD(sum([
             CREATE_SUSPENDED if bSuspended else 0,
             DEBUG_PROCESS if bDebug else 0,
-            CREATE_NEW_CONSOLE if not (bRedirectStdIn or bRedirectStdOut or bRedirectStdErr or bHidden) else 0,
+            CREATE_NEW_CONSOLE if bSeparateWindow else 0,
           ]));
           oStartupInfo = STARTUPINFOW();
           oStartupInfo.cb = oStartupInfo.fuGetSize();
           oStartupInfo.lpDesktop = NULL;
           oStartupInfo.lpDesktop = NULL;
-          oStartupInfo.dwFlags = STARTF_USESTDHANDLES | (STARTF_USESHOWWINDOW if bUseShowWindow else 0);
-          oStartupInfo.wShowWindow = SW_HIDE if bHidden else SW_SHOWMINNOACTIVE if bMinimized else SW_SHOWMAXIMIZED if bMaximized else 0;
+          oStartupInfo.dwFlags = STARTF_USESTDHANDLES | (STARTF_USESHOWWINDOW if bSeparateWindow else 0);
+          oStartupInfo.wShowWindow = SW_HIDE if bHidden else SW_SHOWMINNOACTIVE if bMinimizedWindow else SW_SHOWMAXIMIZED if bMaximizedWindow else 0;
           oStartupInfo.hStdInput = oStdInPipe.ohOutput if oStdInPipe else oKernel32.GetStdHandle(STD_INPUT_HANDLE);
           oStartupInfo.hStdOutput = oStdOutPipe.ohInput if oStdOutPipe else oKernel32.GetStdHandle(STD_OUTPUT_HANDLE);
           oStartupInfo.hStdError = oStdErrPipe.ohInput if oStdErrPipe else oKernel32.GetStdHandle(STD_ERROR_HANDLE);

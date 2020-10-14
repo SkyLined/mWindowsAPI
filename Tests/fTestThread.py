@@ -57,10 +57,10 @@ def faoGetAndDumpProcessThreads(oTestProcess):
 
 def fTestThread(sComSpec, sISA):
   oConsole.fPrint("=== Testing thread related functions ", sPadding = "=");
-  oConsole.fStatus("  * Calling cProcess.foCreateForBinaryPath(%s, bMinimized = True)..." % (repr(sComSpec),));
+  oConsole.fStatus("  * Calling cProcess.foCreateForBinaryPath(%s, bSuspended = True)..." % (repr(sComSpec),));
   oTestProcess = cConsoleProcess.foCreateForBinaryPath(sComSpec, bSuspended = True);
   try:
-    oConsole.fPrint("  + cProcess.foCreateForBinaryPath(%s, bMinimized = True) = <cProcess #%X>" % (repr(sComSpec), oTestProcess.uId));
+    oConsole.fPrint("  + cProcess.foCreateForBinaryPath(%s, bSuspended = True) = <cProcess #%X>" % (repr(sComSpec), oTestProcess.uId));
     
     # List all threads in process
     aoThreads = faoGetAndDumpProcessThreads(oTestProcess);

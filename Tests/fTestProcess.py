@@ -4,10 +4,13 @@ from mWindowsSDK import SECURITY_MANDATORY_MEDIUM_RID;
 from oConsole import oConsole;
 
 def fTestProcess(sComSpec, sExpectedISA = None):
+  oConsole.fPrint("=== Testing process related functions ", sPadding = "=");
   uExitCode = 1234;
   # Start cmd.exe and have it exit with a specific error code.
+  oConsole.fStatus("  * Calling cProcess.foCreateForBinaryPath(%s, [\"/K\", \"EXIT %s\"], bHidden = True)..." % (repr(sComSpec), uExitCode));
   oTestProcess = cProcess.foCreateForBinaryPathAndArguments(sComSpec, ["/K", "EXIT %s" % uExitCode], bHidden = True);
   try:
+    oConsole.fPrint("  + cProcess.foCreateForBinaryPath(%s, [\"/K\", \"EXIT %s\"], bHidden = True) = <cProcess #%X>" % (repr(sComSpec), oTestProcess.uId));
     oTestProcess.fbWait();
     assert not oTestProcess.bIsRunning, \
         "Expected process not to be running.";
