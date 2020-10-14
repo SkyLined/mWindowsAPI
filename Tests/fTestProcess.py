@@ -10,7 +10,7 @@ def fTestProcess(sComSpec, sExpectedISA = None):
   oConsole.fStatus("  * Calling cProcess.foCreateForBinaryPath(%s, [\"/K\", \"EXIT %s\"], bHidden = True)..." % (repr(sComSpec), uExitCode));
   oTestProcess = cProcess.foCreateForBinaryPathAndArguments(sComSpec, ["/K", "EXIT %s" % uExitCode], bHidden = True);
   try:
-    oConsole.fPrint("  + cProcess.foCreateForBinaryPath(%s, [\"/K\", \"EXIT %s\"], bHidden = True) = <cProcess #%X>" % (repr(sComSpec), oTestProcess.uId));
+    oConsole.fPrint("  + cProcess.foCreateForBinaryPath(%s, [\"/K\", \"EXIT %s\"], bHidden = True) = <cProcess #%X>" % (repr(sComSpec), uExitCode, oTestProcess.uId));
     oTestProcess.fbWait();
     assert not oTestProcess.bIsRunning, \
         "Expected process not to be running.";
