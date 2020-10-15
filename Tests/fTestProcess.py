@@ -17,7 +17,7 @@ def fTestProcess(sComSpec, sExpectedISA = None):
     assert oTestProcess.uExitCode == uExitCode, \
         "Expected exit code %d, got %d" % (uExitCode, oTestProcess.uExitCode);
     # Restart cmd.exe and let it wait for input.
-    oTestProcess = cProcess.foCreateForBinaryPath(sComSpec, bMinimized = True);
+    oTestProcess = cProcess.foCreateForBinaryPath(sComSpec, bMinimizedWindow = True);
     time.sleep(1); # Allow process to start
     oConsole.fPrint("  + Started test process %d..." % oTestProcess.uId);
     # cProcess
