@@ -1,4 +1,6 @@
 {
+  "asProductTypes": ["Python module"],
+  "sPythonModuleName": "mWindowsAPI",
   "asDependentOnProductNames": [
     "mRegistry", 
     "mWindowsSDK"
