@@ -8,9 +8,7 @@ msvcrt
 platform
 string
 strop
-struct
 subprocess
 thread
 threading
 time
-winreg
