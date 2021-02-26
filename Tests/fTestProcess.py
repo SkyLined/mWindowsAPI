@@ -1,10 +1,11 @@
-import os, re, sys, threading, time;
+import os, time;
 from mWindowsAPI import *;
 from mWindowsSDK import SECURITY_MANDATORY_MEDIUM_RID;
 from oConsole import oConsole;
 
-def fTestProcess(sComSpec, sExpectedISA = None):
+def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
   oConsole.fPrint("=== Testing process related functions ", sPadding = "=");
+  oConsole.fOutput("* This process ISA: %s, child process ISA: %s" % (sThisProcessISA, sExpectedChildProcessISA));
   uExitCode = 1234;
   # Start cmd.exe and have it exit with a specific error code.
   oConsole.fStatus("  * Calling cProcess.foCreateForBinaryPath(%s, [\"/K\", \"EXIT %s\"], bHidden = True)..." % (repr(sComSpec), uExitCode));
@@ -21,6 +22,8 @@ def fTestProcess(sComSpec, sExpectedISA = None):
     time.sleep(1); # Allow process to start
     oConsole.fPrint("  + Started test process %d..." % oTestProcess.uId);
     # cProcess
+    assert oTestProcess.sISA == sExpectedChildProcessISA, \
+        "cProcess.sISA == %s instead of %s" % (oTestProcess.sISA, sExpectedChildProcessISA);
     oConsole.fPrint("  * Testing cProcess...");
     time.sleep(1); # Allow process to start
     assert oTestProcess.bIsRunning, \
@@ -28,12 +31,10 @@ def fTestProcess(sComSpec, sExpectedISA = None):
     sISAFromId = fsGetISAForProcessId(oTestProcess.uId);
     assert sISAFromId == oTestProcess.sISA, \
         "Process ISA %s != %s" % (sISAFromId, oTestProcess.sISA);
-    assert sExpectedISA is None or sISAFromId == sExpectedISA, \
-        "Process ISA %s != %s" % (sISAFromId, sExpectedISA);
     oConsole.fPrint("    + ISA = %s" % repr(oTestProcess.sISA));
     oConsole.fPrint("    + Binary start address = 0x%08X" % oTestProcess.uBinaryStartAddress);
     assert oTestProcess.sBinaryPath.lower() == sComSpec.lower(), \
-        "Expected binary path %s, got %s" % (sComSpec, oTestProcess.sBinaryPath);
+        "Expected binary path %s, got %s" % (repr(sComSpec), repr(oTestProcess.sBinaryPath));
     assert oTestProcess.sBinaryName.lower() == os.path.basename(sComSpec).lower(), \
         "Expected binary name %s, got %s" % (os.path.basename(sComSpec), oTestProcess.sBinaryName);
     oConsole.fPrint("    + Binary Path = %s" % repr(oTestProcess.sBinaryPath));
@@ -53,7 +54,7 @@ def fTestProcess(sComSpec, sExpectedISA = None):
     oConsole.fPrint("  * Testing cProcess.foGetProcessParameters()...");
     for sLine in oTestProcess.foGetProcessParameters().fasDump("Process %d/0x%X ProcessParameters" % (oTestProcess.uId, oTestProcess.uId)):
       oConsole.fPrint("    | " + sLine);
-
+    
     # cVirtualAllocation
     oBinaryVirtualAllocation = cVirtualAllocation(oTestProcess.uId, oTestProcess.uBinaryStartAddress);
     assert oBinaryVirtualAllocation.bAllocated, \
@@ -64,15 +65,15 @@ def fTestProcess(sComSpec, sExpectedISA = None):
     oConsole.fPrint("    + There are 0x%X bytes of memory allocated at address 0x%08X." % \
         (oBinaryVirtualAllocation.uSize, oBinaryVirtualAllocation.uStartAddress));
     
-    # fdsProcessesExecutableName_by_uId (make sure test process binary is included)
-    oConsole.fPrint("  * Testing fdsProcessesExecutableName_by_uId...");
-    dsProcessesExecutableName_by_uId = fdsProcessesExecutableName_by_uId();
+    # fdsGetProcessesExecutableName_by_uId (make sure test process binary is included)
+    oConsole.fPrint("  * Testing fdsGetProcessesExecutableName_by_uId...");
+    dsProcessesExecutableName_by_uId = fdsGetProcessesExecutableName_by_uId();
     sProcessesExecutableName = dsProcessesExecutableName_by_uId.get(oTestProcess.uId);
     assert sProcessesExecutableName, \
         "Test process id %d/0x%X not found in process list (%s)!" % \
         (oTestProcess.uId, oTestProcess.uId, ", ".join(["0x%X" % uId for uId in dsProcessesExecutableName_by_uId]));
     assert sProcessesExecutableName.lower() == os.path.basename(sComSpec).lower(), \
-        "Text process %d/0x%X is reported to run %s" % (oTestProcess.uId, sProcessesExecutableName);
+        "Text process %d/0x%X is reported to run %s" % (oTestProcess.uId, oTestProcess.uId, repr(sProcessesExecutableName));
     # fuGetIntegrityLevelForProcessId
     oConsole.fPrint("  * Testing oTestProcess.uIntegrityLevel...");
     uProcessIntegrityLevel = oTestProcess.uIntegrityLevel;
@@ -112,7 +113,7 @@ def fTestProcess(sComSpec, sExpectedISA = None):
     assert uProcessMemoryUsageAfterFree >= uProcessMemoryUsage, \
         "Process memory usage was expected to be at least 0x%X after free, but is 0x%X" % \
         (uProcessMemoryUsage, uProcessMemoryUsageAfterFree);
-
+    
     # cJobObject
     # Also test if OOM error codes cause a Python MemoryError exception to be thrown.
     oConsole.fPrint("  * Testing cJobObject...");
@@ -136,8 +137,8 @@ def fTestProcess(sComSpec, sExpectedISA = None):
     fbTerminateForProcessId(oTestProcess.uId);
     assert oTestProcess.bIsTerminated, \
         "Test process was not terminated!";
-    # fdsProcessesExecutableName_by_uId (make sure test process is removed)
-    assert oTestProcess.uId not in fdsProcessesExecutableName_by_uId(), \
+    # fdsGetProcessesExecutableName_by_uId (make sure test process is removed)
+    assert oTestProcess.uId not in fdsGetProcessesExecutableName_by_uId(), \
         "Test process is still reported to exist after being terminated!?";
     oConsole.fPrint("  + Test process was terminated.");
     
@@ -145,46 +146,6 @@ def fTestProcess(sComSpec, sExpectedISA = None):
     # This will require attaching a debugger to the process to determine a thread id, resume the application, or catch
     # the exceptions these functions throw.
     
-    # cConsoleProcess, fSuspendForProcessId
-    oConsole.fPrint("* Testing cConsoleProcess...");
-    sExpectedOutput = "Test";
-    oConsoleProcess = cConsoleProcess.foCreateForBinaryPathAndArguments(
-      sComSpec,
-      ["/K", "ECHO %s&ECHO OFF" % sExpectedOutput],
-    );
-    sExpectedOutput += "\r\n";
-    time.sleep(1); # Allow process to start
-    oConsole.fPrint("  * Reading process output...");
-    sActualOutput = oConsoleProcess.oStdOutPipe.fsReadBytes(len(sExpectedOutput));
-    assert sActualOutput == sExpectedOutput, \
-        "Expected %s, got %s" % (repr(sExpectedOutput), repr(sActualOutput));
-    # Suspend the process to test for a known issue: attempting to close handles on a
-    # suspended process will hang until the process is resumed or killed.
-    fSuspendForProcessId(oConsoleProcess.uId);
-    def fPipeReadingThread():
-      oConsole.fPrint("  * Reading end of console process output in thread...");
-      sBytesRead = oConsoleProcess.oStdOutPipe.fsReadBytes();
-      assert sBytesRead == "", \
-          "Expected %s, got %s" % (repr(""), repr(sBytesRead));
-    oReadThread = threading.Thread(target = fPipeReadingThread);
-    oReadThread.start();
-    def fKillProcessThread():
-      time.sleep(1);
-      oConsole.fPrint("  * Terminating console process...");
-      fbTerminateForProcessId(oConsoleProcess.uId);
-    oKillProcessThread = threading.Thread(target = fKillProcessThread);
-    oKillProcessThread.start();
-    oConsole.fPrint("  * Closing pipes...");
-    # This will hang until the process is killed...
-    oConsoleProcess.fClose();
-    oConsole.fPrint("  * Waiting for kill process thread...");
-    oKillProcessThread.join();
-    oConsole.fPrint("  * Waiting for end of console process output in thread...");
-    oReadThread.join();
-    oConsole.fPrint("  * Reading end of output...");
-    sReadBytes = oConsoleProcess.oStdOutPipe.fsReadBytes(1);
-    assert sReadBytes == "", \
-        "Read %s from a completely closed pipe" % repr(sReadBytes);
   finally:
     if oTestProcess.bIsRunning:
       oTestProcess.fbTerminate();

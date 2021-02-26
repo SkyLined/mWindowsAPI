@@ -1,6 +1,6 @@
 from mWindowsSDK import *;
 from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
-from .fThrowError import fThrowError;
+from .fThrowLastError import fThrowLastError;
 
 def fuGetExitCodeForThreadHandle(ohThread):
   oKernel32 = foLoadKernel32DLL();
@@ -9,5 +9,5 @@ def fuGetExitCodeForThreadHandle(ohThread):
     return None;
   odwExitCode = DWORD();
   if not oKernel32.GetExitCodeThread(ohThread, odwExitCode.foCreatePointer()):
-    fThrowLastError("GetExitCodeThread(0x%08X, 0x%X)" % (ohThread.value, odwExitCode.fuGetAddress()));
-  return odwExitCode.value;
+    fThrowLastError("GetExitCodeThread(%s, 0x%X)" % (repr(ohThread), odwExitCode.fuGetAddress()));
+  return odwExitCode.fuGetValue();

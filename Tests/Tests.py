@@ -40,15 +40,17 @@ try:
   from fTestDbgHelp import fTestDbgHelp;
   from fTestPipe import fTestPipe;
   from fTestProcess import fTestProcess;
+  from fTestConsoleProcess import fTestConsoleProcess;
   from fTestSystemInfo import fTestSystemInfo;
   from fTestThread import fTestThread;
   
-  if fsGetPythonISA() == "x64":
-    sComSpec_x64 = os.environ.get("ComSpec");
-    sComSpec_x86 = sComSpec_x64.replace("\\system32\\", "\\SysWOW64\\");
+  sPythonISA = fsGetPythonISA();
+  if sPythonISA == "x64":
+    s0ComSpec_x64 = os.environ.get("ComSpec");
+    s0ComSpec_x86 = s0ComSpec_x64.replace("\\system32\\", "\\SysWOW64\\");
   else:
-    sComSpec_x64 = None;
-    sComSpec_x86 = os.environ.get("ComSpec");
+    s0ComSpec_x64 = None;
+    s0ComSpec_x86 = os.environ.get("ComSpec");
   
   bTestSystemInfo = True;
   bTestConsole = True;
@@ -70,12 +72,14 @@ try:
   
   if bTestProcess:
     # Test process functions
-    if sComSpec_x86: fTestProcess(sComSpec_x86, "x86");
-    if sComSpec_x64: fTestProcess(sComSpec_x64, "x64");
+    if s0ComSpec_x86: fTestProcess(s0ComSpec_x86, sPythonISA, "x86");
+    if s0ComSpec_x64: fTestProcess(s0ComSpec_x64, sPythonISA, "x64");
+    if s0ComSpec_x86: fTestConsoleProcess(s0ComSpec_x86, sPythonISA, "x86");
+    if s0ComSpec_x64: fTestConsoleProcess(s0ComSpec_x64, sPythonISA, "x64");
   
   if bTestThread:
-    if sComSpec_x86: fTestThread(sComSpec_x86, "x86");
-    if sComSpec_x64: fTestThread(sComSpec_x64, "x64");
+    if s0ComSpec_x86: fTestThread(s0ComSpec_x86, sPythonISA, "x86");
+    if s0ComSpec_x64: fTestThread(s0ComSpec_x64, sPythonISA, "x64");
   
   if bTestDbgHelp:
     fTestDbgHelp();

@@ -6,5 +6,5 @@ def fuCreateThreadForProcessIdAndAddress(uProcessId, uAddress, **dxArguments):
   oKernel32 = foLoadKernel32DLL();
   (ohThread, uThreadId) = ftohuCreateThreadForProcessIdAndAddress(uProcessId, uAddress, **dxArguments);
   if not oKernel32.CloseHandle(ohThread):
-    fThrowLastError("CloseHandle(0x%08X)" % (ohThread.value,));
+    fThrowLastError("CloseHandle(%s)" % (repr(ohThread),));
   return uThreadId;

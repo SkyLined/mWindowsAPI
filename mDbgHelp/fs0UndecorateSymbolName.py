@@ -2,7 +2,7 @@ from mWindowsSDK import *;
 from ..fbLastErrorIs import fbLastErrorIs;
 from ..fThrowLastError import fThrowLastError;
 
-def fsUndecorateSymbolName(sDecoratedSymbolName, bNameOnly = False):
+def fs0UndecorateSymbolName(sDecoratedSymbolName, bNameOnly = False):
   oDbgHelp = foLoadDbgHelpDLL();
   if sDecoratedSymbolName.startswith(".?AV"):
     # This is a prefix for class names that for some reason does not get handled well, so we'll fix that here:
@@ -11,26 +11,29 @@ def fsUndecorateSymbolName(sDecoratedSymbolName, bNameOnly = False):
   # Calls to "UnDecorateSymbolName" will officially succeed if the return value > 0. However, it turns out that if the
   # buffer is too small to contain the entire undecorated symbol, UnDecorateSymbolName will write as many chars as
   # possible to the buffer and return the number of chars it was able to write. This would leave us with a truncated
-  # symbol, so we work around this by repeatedly increasing the size of the buffer until we get the same return value
-  # twice as this indicates the symbol was not truncated in both calls.
+  # symbol, so we work around this by repeatedly increasing the size of the buffer until we get a string that is
+  # smaller than the buffer, because that means it is not truncated.
   uSymbolNameBufferLengthInChars = len(sDecoratedSymbolName) * 2; # Let's start with twice the length of the input.
   uLastReturnValue = 0;
-  uFlags = bNameOnly and UNDNAME_NAME_ONLY or UNDNAME_COMPLETE;
+  uFlags = UNDNAME_NAME_ONLY if bNameOnly else UNDNAME_COMPLETE;
+  oDecoratedSymbolNameBuffer = CHAR.foCreateBufferFromString(sDecoratedSymbolName);
   while uSymbolNameBufferLengthInChars < 0x10000: # Just a random sane upper limit.
-    oBuffer = foCreateBuffer(uSymbolNameBufferLengthInChars);
+    oUndecoratedSymbolNameBuffer = CHAR[uSymbolNameBufferLengthInChars]();
     odwSymbolNameLengthInCharsExcludingNullTerminator = oDbgHelp.UnDecorateSymbolName(
-      foCreateBuffer(sDecoratedSymbolName).foCreatePointer(PCSTR),
-      oBuffer.foCreatePointer(PSTR),
+      PCSTR(oDecoratedSymbolNameBuffer),
+      PSTR(oUndecoratedSymbolNameBuffer),
       uSymbolNameBufferLengthInChars,
       uFlags,
     );
-    uSymbolNameLength = odwSymbolNameLengthInCharsExcludingNullTerminator.value;
-    if uSymbolNameLength > 0:
-      if uLastReturnValue == uSymbolNameLength:
-        sSymbolName = oBuffer.fsGetString(uLength = uSymbolNameLength);
-        # Only return a value if the function returned something different; it can return its input unaltered if it does
-        # not know how to demangle it.
-        return sSymbolName != sDecoratedSymbolName and sSymbolName or None;
+    uSymbolNameLength = odwSymbolNameLengthInCharsExcludingNullTerminator.fuGetValue();
+    if 0 < uSymbolNameLength < uSymbolNameBufferLengthInChars - 1:
+      sSymbolName = oUndecoratedSymbolNameBuffer.fsGetValue(u0Length = uSymbolNameLength);
+      assert len(sSymbolName) == uSymbolNameLength, \
+          "There are %d bytes in the symbol name (%s), but there should be %d" % \
+          (len(sSymbolName), repr(sSymbolName), uSymbolNameLength);
+      # Only return a value if the function returned something different; it can return its input unaltered if it does
+      # not know how to demangle it.
+      return sSymbolName if sSymbolName != sDecoratedSymbolName else None;
     elif not fbLastErrorIs(ERROR_INVALID_PARAMETER):
       fThrowLastError("UnDecorateSymbolNameW(\"%s\", ..., 0x%X, 0x%X)" % \
           (sDecoratedSymbolName, uSymbolNameBufferLengthInChars, uFlags,));

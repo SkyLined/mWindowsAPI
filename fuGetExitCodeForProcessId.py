@@ -13,5 +13,5 @@ def fuGetExitCodeForProcessId(uProcessId):
   finally:
     # Only throw an exception if one isn't already being thrown:
     if oKernel32.CloseHandle(ohProcess) and bSuccess:
-      fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+      fThrowLastError("CloseHandle(%s)" % (rep(ohProcess),));
   return uProcessExitCode;

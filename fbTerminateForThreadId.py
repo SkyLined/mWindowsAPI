@@ -2,7 +2,7 @@ from mWindowsSDK import *;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbTerminateForThreadHandle import fbTerminateForThreadHandle;
 from .foh0OpenForThreadIdAndDesiredAccess import foh0OpenForThreadIdAndDesiredAccess;
-from .fThrowError import fThrowError;
+from .fThrowLastError import fThrowLastError;
 
 def fbTerminateForThreadId(uThreadId, nTimeoutInSeconds = None, bWait = True):
   # Try to open the thread so we can terminate it...
@@ -19,5 +19,5 @@ def fbTerminateForThreadId(uThreadId, nTimeoutInSeconds = None, bWait = True):
     # Only throw an exception if one isn't already being thrown:
     oKernel32 = foLoadKernel32DLL();
     if not oKernel32.CloseHandle(ohThread) and bSuccess:
-      fThrowLastError("CloseHandle(0x%X)" % (ohThread.value,));
+      fThrowLastError("CloseHandle(%s)" % (repr(ohThread),));
   return bResult;

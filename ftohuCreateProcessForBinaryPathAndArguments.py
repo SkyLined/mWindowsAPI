@@ -1,4 +1,4 @@
-from .fThrowError import fThrowError;
+from .fThrowWin32Error import fThrowWin32Error;
 from .ftohuohuCreateProcessAndThreadForBinaryPathAndArguments import ftohuohuCreateProcessAndThreadForBinaryPathAndArguments;
 from mWindowsSDK import foLoadKernel32DLL;
 
@@ -9,7 +9,10 @@ def ftohuCreateProcessForBinaryPathAndArguments(*txArguments, **dxArguments):
   oKernel32 = foLoadKernel32DLL();
   if not oKernel32.CloseHandle(ohThread):
     # Save the last error because want to try to close the process handle, which may fail and modify it.
-    odwLastError = oKernel32.GetLastError();
+    uLastError = oKernel32.GetLastError().fuGetValue();
     oKernel32.CloseHandle(ohProcess);
-    fThrowError("CloseHandle(0x%X)" % (ohThread.value,), odwLastError.value);
+    fThrowWin32Error(
+      "CloseHandle(%s)" % (repr(ohThread),),
+      uLastError
+    );
   return (ohProcess, uProcessId);

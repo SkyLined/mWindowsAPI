@@ -15,14 +15,14 @@ def ftohuohuCreateProcessAndThreadForBinaryPathAndArguments(sBinaryPath, asArgum
   oProcessInformation = PROCESS_INFORMATION();
   oKernel32 = foLoadKernel32DLL();
   if not oKernel32.CreateProcessW(
-    foCreateBuffer(sBinaryPath, bUnicode = True).foCreatePointer(PCWSTR), # lpApplicationName
-    foCreateBuffer(sCommandLine, bUnicode = True).foCreatePointer(PWSTR), # lpCommandLine
+    PCWSTR(sBinaryPath), # lpApplicationName
+    PWSTR(sCommandLine), # lpCommandLine
     NULL, # lpProcessAttributes
     NULL, # lpThreadAttributes
     FALSE, # bInheritHandles
     bSuspended and CREATE_SUSPENDED or 0, # dwCreationFlags
     NULL, # lpEnvironment
-    foCreateBuffer(sWorkingDirectory, bUnicode = True).foCreatePointer(PCWSTR) if sWorkingDirectory else NULL, # lpCurrentDirectory
+    PCWSTR(sWorkingDirectory) if sWorkingDirectory else NULL, # lpCurrentDirectory
     oStartupInfo.foCreatePointer(), # lpStartupInfo
     oProcessInformation.foCreatePointer(), # lpProcessInformation
   ):
@@ -32,7 +32,7 @@ def ftohuohuCreateProcessAndThreadForBinaryPathAndArguments(sBinaryPath, asArgum
     return (None, None, None, None);
   return (
     oProcessInformation.hProcess,
-    oProcessInformation.dwProcessId.value,
+    oProcessInformation.dwProcessId.fuGetValue(),
     oProcessInformation.hThread,
-    oProcessInformation.dwThreadId.value
+    oProcessInformation.dwThreadId.fuGetValue()
   );

@@ -3,7 +3,7 @@ from .fbIsRunningForProcessId import fbIsRunningForProcessId;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbWaitForTerminationForProcessHandle import fbWaitForTerminationForProcessHandle;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
-from .fThrowError import fThrowError;
+from .fThrowLastError import fThrowLastError;
 
 def fbWaitForTerminationForProcessId(uProcessId, nTimeoutInSeconds = None):
   # Try to open the process so we can wait for it...
@@ -18,5 +18,5 @@ def fbWaitForTerminationForProcessId(uProcessId, nTimeoutInSeconds = None):
     # Only throw an exception if one isn't already being thrown:
     oKernel32 = foLoadKernel32DLL();
     if not oKernel32.CloseHandle(ohProcess) and bSuccess:
-      fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+      fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
   return bResult;

@@ -183,14 +183,14 @@ class cPipe(object):
       NULL, # lpOverlapped
     ):
       if not fbLastErrorIs(ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE):
-        fThrowLastError("ReadFile(hFile=0x%X, lpBuffer=0x%X, nNumberOfBytesToRead=0x%X, lpNumberOfBytesRead=0x%X, lpOverlapped=NULL)" % \
-            (oSelf.__ohOutput.value, oByte.fuGetAddress(), oByte.fuGetSize(), odwBytesRead.fuGetAddress()));
+        fThrowLastError("ReadFile(hFile=%s, lpBuffer=0x%X, nNumberOfBytesToRead=0x%X, lpNumberOfBytesRead=0x%X, lpOverlapped=NULL)" % \
+            (repr(oSelf.__ohOutput), oByte.fuGetAddress(), oByte.fuGetSize(), odwBytesRead.fuGetAddress()));
       raise IOError("Pipe closed");
-    assert odwBytesRead.value == 1, \
-        "ReadFile(hFile=0x%X, lpBuffer=0x%X, nNumberOfBytesToRead=0x%X, lpNumberOfBytesRead=0x%X, lpOverlapped=NULL) => read 0x%X bytes" % \
-        (oSelf.__ohOutput.value, oByte.fuGetAddress(), oByte.fuGetSize(), odwBytesRead.fuGetAddress(), odwBytesRead.value);
-    return oByte.value;
-
+    assert odwBytesRead.fuGetValue() == 1, \
+        "ReadFile(hFile=%s, lpBuffer=0x%X, nNumberOfBytesToRead=0x%X, lpNumberOfBytesRead=0x%X, lpOverlapped=NULL) => read 0x%X bytes" % \
+        (repr(oSelf.__ohOutput), oByte.fuGetAddress(), oByte.fuGetSize(), odwBytesRead.fuGetAddress(), odwBytesRead);
+    return oByte.fuGetValue();
+  
   def fsReadLine(oSelf):
     sData = "";
     while 1:
@@ -218,12 +218,12 @@ class cPipe(object):
   
   def fWriteBytes(oSelf, sData):
     odwBytesWritten = DWORD(0);
-    oBuffer = foCreateBuffer(sData);
+    opBuffer = PCHAR(sData).foCastTo(LPVOID);
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365747(v=vs.85).aspx
     oKernel32 = foLoadKernel32DLL();
     if not oKernel32.WriteFile(
       oSelf.__ohInput, # hFile # We write to the pipe's input handle
-      oBuffer.foCreatePointer(LPVOID), # lpBuffer
+      opBuffer, # lpBuffer
       len(sData), # nNumberOfBytesToWrite (without trailing '\0')
       odwBytesWritten.foCreatePointer(), # lpNumberOfBytesWritten
       NULL, # lpOverlapped

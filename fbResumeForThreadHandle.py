@@ -7,5 +7,5 @@ def fbResumeForThreadHandle(ohThread):
   oKernel32 = foLoadKernel32DLL();
   odwSuspendCount = oKernel32.ResumeThread(ohThread);
   if odwSuspendCount == DWORD(-1):
-    fThrowLastError("ResumeThread(0x%08X) == -1" % (ohThread.value,));
+    fThrowLastError("ResumeThread(%s) == -1" % (repr(ohThread),));
   return odwSuspendCount.value == 1;

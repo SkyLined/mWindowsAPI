@@ -28,17 +28,17 @@ class cJobObject(object):
       if oKernel32.AssignProcessToJobObject(oSelf.__ohJob, ohProcess):
         return True;
       if bThrowAllErrors or not fbLastErrorIs(ERROR_ACCESS_DENIED):
-        fThrowLastError("AssignProcessToJobObject(0x%08X, 0x%08X)" % (oSelf.__ohJob.value, ohProcess.value,));
+        fThrowLastError("AssignProcessToJobObject(%s, %s)" % (repr(oSelf.__ohJob), repr(ohProcess)));
     finally:
       if not oKernel32.CloseHandle(ohProcess):
-        fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+        fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
     # We cannot add the process to the job, but maybe it is already added?
     ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_QUERY_LIMITED_INFORMATION);
     try:
       obProcessInJob = BOOLEAN();
       if not oKernel32.IsProcessInJob(ohProcess, oSelf.__ohJob, obProcessInJob.foCreatePointer()):
         fThrowLastError("IsProcessInJob(0x%X, ..., ...)" % (ohProcess,));
-      return obProcessInJob.value != 0;
+      return obProcessInJob != 0;
     finally:
       if not oKernel32.CloseHandle(ohProcess):
         fThrowLastError("CloseHandle(0x%X)" % (ohProcess,));
@@ -54,13 +54,22 @@ class cJobObject(object):
       oExtendedLimitInformation.fuGetSize(), # cbJobObjectInfoLength,
       odwReturnLength.foCreatePointer(), # lpReturnLength
     ):
-      fThrowLastError("QueryInformationJobObject(hJob=0x%X, JobObjectInfoClass=0x%X, lpJobObjectInfo=0x%X, cbJobObjectInfoLength=0x%X, lpReturnLength=0x%X)" % \
-          (oSelf.__ohJob.value, JobObjectExtendedLimitInformation, oExtendedLimitInformation.fuGetAddress(),
-          oExtendedLimitInformation.fuGetSize(), odwReturnLength.fuGetAddress()));
-    assert odwReturnLength.value == oExtendedLimitInformation.fuGetSize(), \
-        "QueryInformationJobObject(hJob=0x%X, JobObjectInfoClass=0x%X, lpJobObjectInfo=0x%X, cbJobObjectInfoLength=0x%X, lpReturnLength=0x%X) => wrote 0x%X bytes" % \
-        (oSelf.__ohJob.value, JobObjectExtendedLimitInformation, oExtendedLimitInformation.fuGetAddress(),
-          oExtendedLimitInformation.fuGetSize(), odwReturnLength.fuGetAddress(), odwReturnLength.value);
+      fThrowLastError("QueryInformationJobObject(hJob=%s, JobObjectInfoClass=0x%X, lpJobObjectInfo=0x%X, cbJobObjectInfoLength=0x%X, lpReturnLength=0x%X)" % (
+        repr(oSelf.__ohJob),
+        JobObjectExtendedLimitInformation,
+        oExtendedLimitInformation.fuGetAddress(),
+        oExtendedLimitInformation.fuGetSize(),
+        odwReturnLength.fuGetAddress()
+      ));
+    assert odwReturnLength == oExtendedLimitInformation.fuGetSize(), \
+        "QueryInformationJobObject(hJob=%s, JobObjectInfoClass=0x%X, lpJobObjectInfo=0x%X, cbJobObjectInfoLength=0x%X, lpReturnLength=0x%X) => wrote 0x%X bytes" % (
+          repr(oSelf.__ohJob),
+          JobObjectExtendedLimitInformation,
+          oExtendedLimitInformation.fuGetAddress(),
+          oExtendedLimitInformation.fuGetSize(),
+          odwReturnLength.fuGetAddress(),
+          odwReturnLength.fuGetValue()
+        );
     return oExtendedLimitInformation;
   
   def __fSetExtendedLimitInformation(oSelf, oExtendedLimitInformation):

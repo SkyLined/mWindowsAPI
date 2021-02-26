@@ -69,32 +69,33 @@ class cConsoleProcess(cProcess):
           oStartupInfo.hStdOutput = oStdOutPipe.ohInput if oStdOutPipe else oKernel32.GetStdHandle(STD_OUTPUT_HANDLE);
           oStartupInfo.hStdError = oStdErrPipe.ohInput if oStdErrPipe else oKernel32.GetStdHandle(STD_ERROR_HANDLE);
           oProcessInformation = PROCESS_INFORMATION();
+          opBinaryPath = PCWSTR(sBinaryPath);
+          opCommandLine = PWSTR(sCommandLine);
+          olpCurrentDirectory = PCWSTR(sWorkingDirectory if sWorkingDirectory else NULL);
           if not oKernel32.CreateProcessW(
-            foCreateBuffer(sBinaryPath, bUnicode = True).foCreatePointer(PCWSTR), # lpApplicationName
-            foCreateBuffer(sCommandLine, bUnicode = True).foCreatePointer(PWSTR), # lpCommandLine
+            opBinaryPath, # lpApplicationName
+            opCommandLine, # lpCommandLine
             NULL, # lpProcessAttributes
             NULL, # lpThreadAttributes
             TRUE, # bInheritHandles
             odwCreationFlags, # dwCreationFlags
             NULL, # lpEnvironment
-            foCreateBuffer(sWorkingDirectory, bUnicode = True).foCreatePointer(PCWSTR) if sWorkingDirectory else NULL, # lpCurrentDirectory
+            olpCurrentDirectory, # lpCurrentDirectory
             oStartupInfo.foCreatePointer(), # lpStartupInfo
             oProcessInformation.foCreatePointer(), # lpProcessInformation
           ):
-            if not fbLastErrorIs(ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME):
-              fThrowLastError("CreateProcessW(%s, %s, NULL, NULL, FALSE, 0x%08X, NULL, %s, ..., ...)" % \
-                  (repr(sBinaryPath), repr(sCommandLine), odwCreationFlags.value, repr(sWorkingDirectory)));
-            return None;
+            fThrowLastError("CreateProcessW(%s, %s, NULL, NULL, FALSE, %s, NULL, %s, ..., ...)" % \
+                (repr(opBinaryPath), repr(opCommandLine), repr(odwCreationFlags), repr(olpCurrentDirectory)));
           # Close all handles that we no longer need:
           if not oKernel32.CloseHandle(oProcessInformation.hThread):
-            fThrowLastError("CloseHandle(0x%X)" % (oProcessInformation.hThread.value,));
+            fThrowLastError("CloseHandle(%s)" % (repr(oProcessInformation.hThread),));
           # Close the ends of the stdin/out/err pipes that we do not use; the child will keep them open until it dies
           # at which point they can be cleaned up because we are not keeping them open ourselves.
           oStdInPipe and oStdInPipe.fClose(bOutput = True); 
           oStdOutPipe and oStdOutPipe.fClose(bInput = True);
           oStdErrPipe and oStdErrPipe.fClose(bInput = True);
           return cConsoleProcess(
-            uId = oProcessInformation.dwProcessId.value,
+            uId = oProcessInformation.dwProcessId.fuGetValue(),
             oStdInPipe = oStdInPipe,
             oStdOutPipe = oStdOutPipe,
             oStdErrPipe = oStdErrPipe,

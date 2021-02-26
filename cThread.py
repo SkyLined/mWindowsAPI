@@ -12,7 +12,6 @@ from .fsGetThreadAccessRightsFlagsDescription import fsGetThreadAccessRightsFlag
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fbSuspendForThreadHandle import fbSuspendForThreadHandle;
-from .fThrowError import fThrowError;
 from .fThrowLastError import fThrowLastError;
 from .fuGetExitCodeForThreadHandle import fuGetExitCodeForThreadHandle;
 
@@ -243,7 +242,7 @@ class cThread(object):
         "uId must be an integer not %s" % repr(uId);
     oSelf.uId = uId;
     if oh0Thread is not None:
-      assert isinstance(oh0Thread, HANDLE) and oh0Thread.value != INVALID_HANDLE_VALUE, \
+      assert isinstance(oh0Thread, HANDLE) and oh0Thread != INVALID_HANDLE_VALUE, \
           "oh0Thread (%s) is not a valid handle" % repr(oh0Thread);
       assert u0ThreadHandleFlags is not None, \
           "You must provide u0ThreadHandleFlags when you provide oh0Thread";
@@ -279,13 +278,13 @@ class cThread(object):
       return oh0Thread;
     # We have a new HANDLE with more access rights; close the old one if we have it and replace
     # it with the new handle. NOTE: rather than `oSelf.__oh0Thread = oh0Thread`, we do
-    # `oSelf.__oh0Thread.value = oh0Thread.value`. This way any code that previously requested a HANDLE
+    # `oSelf.__oh0Thread = oh0Thread`. This way any code that previously requested a HANDLE
     # and is not yet done using it can continue to use it, albeit they will be using the new HANDLE.
     if oSelf.__oh0Thread:
       oKernel32 = foLoadKernel32DLL();
       if not oKernel32.CloseHandle(oSelf.__oh0Thread):
-        fThrowLastError("CloseHandle(0x%X)" % (oSelf.__oh0Thread.value,));
-      oSelf.__oh0Thread.value = oh0Thread.value;
+        fThrowLastError("CloseHandle(%s)" % (repr(oSelf.__oh0Thread),));
+      oSelf.__oh0Thread.fSetValue(oh0Thread.fuGetValue());
     else:
       oSelf.__oh0Thread = oh0Thread;
     oSelf.__uThreadHandleFlags = uFlags;
@@ -303,7 +302,7 @@ class cThread(object):
     if oh0Thread:
       oKernel32 = foLoadKernel32DLL();
       if not oKernel32.CloseHandle(oh0Thread) and not fbLastErrorIs(ERROR_INVALID_HANDLE):
-        fThrowLastError("CloseHandle(0x%X)" % (oh0Thread.value,));
+        fThrowLastError("CloseHandle(%s)" % (repr(oh0Thread),));
   
   @property
   def bIsRunning(oSelf):
@@ -372,52 +371,47 @@ class cThread(object):
         oThreadBasicInformation.fuGetSize(), # ThreadInformationLength
         ouReturnLength.foCreatePointer(), # ReturnLength
       );
-      if NT_ERROR(oNTStatus):
-        fThrowError(
-          "NtQueryInformationThread(0x%X (%s), 0x%X, ..., 0x%X, ...)" % (
-            oh0Thread.value, oSelf.fs0GetAccessRightsFlagsDescription(),
+      if not NT_SUCCESS(oNTStatus):
+        fThrowNTStatusError(
+          "NtQueryInformationThread(%s (%s), 0x%X, ..., 0x%X, ...)" % (
+            repr(oh0Thread), oSelf.fs0GetAccessRightsFlagsDescription(),
             ThreadBasicInformation,
             oThreadBasicInformation.fuGetSize()
           ),
-          oNTStatus.value
+          oNTStatus.fuGetValue()
         );
       # In practise I found that this function succeeds without providing any
       # data on a newly started, suspended thread. I am not sure why this is
       # but I have to work around it I guess.
-      if ouReturnLength.value != 0:
-        assert ouReturnLength.value == oThreadBasicInformation.fuGetSize(), \
-            "NtQueryInformationThread(0x%X (%s), 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % (
-              oh0Thread.value, oSelf.fs0GetAccessRightsFlagsDescription(),
+      if ouReturnLength != 0:
+        assert ouReturnLength == oThreadBasicInformation.fuGetSize(), \
+            "NtQueryInformationThread(%s (%s), 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % (
+              repr(oh0Thread), oSelf.fs0GetAccessRightsFlagsDescription(),
               ThreadBasicInformation,
               oThreadBasicInformation.fuGetSize(),
-              ouReturnLength.value
+              ouReturnLength.fuGetvalue()
             );
         # Terminated threads have TEB address set to 0, indicating no TEB exists.
-        uTEBAddress = oThreadBasicInformation.TebBaseAddress.value;
+        uTEBAddress = oThreadBasicInformation.TebBaseAddress.fuGetValue();
         if uTEBAddress != 0:
           # Read TEB. The type of TEB (32- or 64-bit) depends on the type of THREAD_BASIC_INFORMATION (see above)
           cTEB = {"x86": TEB32, "x64": TEB64}[fsGetPythonISA()];
-          oVirtualAllocation = oSelf.oProcess.foGetAllocatedVirtualAllocationWithSizeCheck(
-            uTEBAddress,
-            cTEB.fuGetSize(),
-            "TEB"
-          );
-          oSelf.__o0TEB = oVirtualAllocation.foReadStructureForOffset(
-            cStructure = cTEB,
-            uOffset = uTEBAddress - oVirtualAllocation.uStartAddress,
-          );
+          oSelf.__o0TEB = oSelf.oProcess.fo0ReadStructureForAddress(cTEB, uTEBAddress);
+          assert oSelf.__o0TEB, \
+              "Cannot read TEB for process %d /0x%X at address 0x%X" % \
+              (oSelf.oProcess.uId, oSelf.oProcess.uId, uTEBAddress);
           oSelf.__u0TEBAddress = uTEBAddress;
     return oSelf.__o0TEB;
   
   @property
   def u0StackBottomAddress(oSelf):
     o0TEB = oSelf.o0TEB;
-    return o0TEB.NtTib.StackBase.value if o0TEB else None;
+    return o0TEB.NtTib.StackBase.fuGetValue() if o0TEB else None;
   
   @property
   def u0StackTopAddress(oSelf):
     o0TEB = oSelf.o0TEB;
-    return o0TEB.NtTib.StackLimit.value if o0TEB else None;
+    return o0TEB.NtTib.StackLimit.fuGetValue() if o0TEB else None;
   
   @property
   def o0StackVirtualAllocation(oSelf):
@@ -450,18 +444,18 @@ class cThread(object):
     oThreadContext.ContextFlags = CONTEXT_ALL;
     oKernel32 = foLoadKernel32DLL();
     fbGetThreadContext = getattr(oKernel32, sGetThreadContextFunctionName);
+    opoThreadContext = oThreadContext.foCreatePointer();
     if not fbGetThreadContext(
       oh0Thread, # hThread
-      oThreadContext.foCreatePointer(), # lpContext
+      opoThreadContext, # lpContext
     ):
       if oSelf.bIsTerminated and fbLastErrorIs(uErrorWhenThreadIsTerminated): # This happens when a thread is terminated.
 #        print "oThreadContext = None (Thread terminated)";
         return None;
-      fThrowLastError("%s(hThread = 0x%X (%s), lpContext = 0x%X)" % (
+      fThrowLastError("%s(%s (%s), 0x%X)" % (
         sGetThreadContextFunctionName,
-        oh0Thread.value,
-        oSelf.fs0GetAccessRightsFlagsDescription(),
-        oThreadContext.fuGetAddress()
+        repr(oh0Thread), oSelf.fs0GetAccessRightsFlagsDescription(),
+        repr(opoThreadContext)
       ));
 #    print "oThreadContext = %s" % repr(oThreadContext);
     return oThreadContext;
@@ -475,10 +469,10 @@ class cThread(object):
       else:
         xValue = getattr(xValue, sMemberName);
     if isinstance(xValue, M128A):
-      uValue = (xValue.High.value * (1 << 64)) ^ xValue.Low.value;
+      uValue = (xValue.High.fuGetValue() * (1 << 64)) ^ xValue.Low.fuGetValue();
       return (uValue >> uBitOffset) & ((1 << uBitSize) - 1);
-    elif isinstance(xValue, cIntegerType):
-      uValue = xValue.value;
+    elif isinstance(xValue, iIntegerBaseType):
+      uValue = xValue.fuGetValue();
       return (uValue >> uBitOffset) & ((1 << uBitSize) - 1);
     else:
       auMemberValueBytes = xValue;
@@ -495,7 +489,7 @@ class cThread(object):
           uValueComponent = uValueComponent & ((1 << iEndBitOffsetForMemberValueByte) - 1);
         uValue += uValueComponent;
       return uValue;
-
+  
   def __fSetRegisterInThreadContext(oSelf, oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize, uRegisterValue):
     # Walk down the "sThreadContextMemberName" path to find the parent of the value from oThreadContext.
     xValue = oThreadContext;
@@ -507,15 +501,15 @@ class cThread(object):
       else:
         xValue = getattr(xValue, sMemberName);
     if isinstance(xValue, M128A):
-      uM128AValue = (xValue.High.value * (1 << 64)) ^ xValue.Low.value;
+      uM128AValue = (xValue.High.fuGetValue() * (1 << 64)) ^ xValue.Low.fuGetValue();
       uCurrentValueInM128A = uValue & (((1 << uBitSize) - 1) << uBitOffset);
       uNewValueInM128A = uRegisterValue << uBitOffset;
       # Subtract the current value and add the new value:
       uM128AValue = uM128AValue - uCurrentValueInM128A + uNewValueInM128A;
       xValue.High = uM128AValue >> 64;
       xValue.Low = uM128AValue & ((1 << 64) - 1);
-    elif isinstance(xValue, cIntegerType):
-      uValue = xValue.value;
+    elif isinstance(xValue, iIntegerBaseType):
+      uValue = xValue.fuGetValue();
       uCurrentValue = uValue & (((1 << uBitSize) - 1) << uBitOffset);
       uNewValue = uRegisterValue << uBitOffset;
       uValue = uValue - uCurrentValue + uNewValue;

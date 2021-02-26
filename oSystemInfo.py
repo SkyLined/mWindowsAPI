@@ -27,14 +27,14 @@ class cSystemInfo(object):
     oSelf.sOSISA = {
       PROCESSOR_ARCHITECTURE_INTEL: "x86",
       PROCESSOR_ARCHITECTURE_AMD64: "x64",
-    }.get(oSystemInfo.wProcessorArchitecture.value);
+    }.get(oSystemInfo.wProcessorArchitecture.fuGetValue());
     assert oSelf.sOSISA is not None, \
-        "Unknown processor architecture 0x%X" % oSystemInfo.wProcessorArchitecture.value;
-    oSelf.uPageSize = oSystemInfo.dwPageSize.value;
-    oSelf.uMinimumApplicationAddress = oSystemInfo.lpMinimumApplicationAddress.value;
-    oSelf.uMaximumApplicationAddress = oSystemInfo.lpMaximumApplicationAddress.value;
-    oSelf.uNumberOfProcessors = oSystemInfo.dwNumberOfProcessors.value;
-    oSelf.uAllocationAddressGranularity = oSystemInfo.dwAllocationGranularity.value;
+        "Unknown processor architecture %s" % oSystemInfo.wProcessorArchitecture;
+    oSelf.uPageSize = oSystemInfo.dwPageSize.fuGetValue();
+    oSelf.uMinimumApplicationAddress = oSystemInfo.lpMinimumApplicationAddress.fuGetValue();
+    oSelf.uMaximumApplicationAddress = oSystemInfo.lpMaximumApplicationAddress.fuGetValue();
+    oSelf.uNumberOfProcessors = oSystemInfo.dwNumberOfProcessors.fuGetValue();
+    oSelf.uAllocationAddressGranularity = oSystemInfo.dwAllocationGranularity.fuGetValue();
     
     oSelf.__sOSName = None;
     oSelf.__uOSMajorVersionNumber = None;
@@ -96,14 +96,14 @@ class cSystemInfo(object):
   def sOSPath(oSelf):
     if oSelf.__sOSPath is None:
       oKernel32 = foLoadKernel32DLL();
-      oBuffer = foCreateBuffer(MAX_PATH);
-      oPathSize = oKernel32.GetWindowsDirectoryW(
-        oBuffer.foCreatePointer(LPWSTR),
+      osBuffer = WCHAR[MAX_PATH]();
+      ouPathSize = oKernel32.GetWindowsDirectoryW(
+        osBuffer.foCreatePointer(),
         MAX_PATH
       );
-      if oPathSize.value == 0:
+      if ouPathSize == 0:
         fThrowLastError("GetWindowsDirectoryW(..., 0x%X)" % (MAX_PATH,));
-      oSelf.__sPath = oBuffer.fsGetString();
+      oSelf.__sPath = osBuffer.fsGetNullTerminatedString();
     return oSelf.__sPath;
   
   @property

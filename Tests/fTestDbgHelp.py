@@ -13,15 +13,15 @@ def fTestDbgHelp():
     "Not a decorated name":                 [None, None],
   }.items():
     sExpectedFullSymbolName, sExpectedSymbolName = tsExpectedResults;
-    sUndecoratedFullSymbolName = mDbgHelp.fsUndecorateSymbolName(sDecoratedSymbolName);
-    assert sUndecoratedFullSymbolName == sExpectedFullSymbolName, \
+    s0UndecoratedFullSymbolName = mDbgHelp.fs0UndecorateSymbolName(sDecoratedSymbolName);
+    assert s0UndecoratedFullSymbolName == sExpectedFullSymbolName, \
+        "mDbgHelp.fs0UndecorateSymbolName(%s) => %s instead of %s" % \
+        (repr(sDecoratedSymbolName), repr(s0UndecoratedFullSymbolName), repr(sExpectedFullSymbolName));
+    s0UndecoratedSymbolName = mDbgHelp.fs0UndecorateSymbolName(sDecoratedSymbolName, bNameOnly = True);
+    assert s0UndecoratedSymbolName == sExpectedSymbolName, \
         "mDbgHelp.fsUndecorateSymbolName(%s) => %s instead of %s" % \
-        (repr(sDecoratedSymbolName), repr(sUndecoratedFullSymbolName), repr(sExpectedFullSymbolName));
-    sUndecoratedSymbolName = mDbgHelp.fsUndecorateSymbolName(sDecoratedSymbolName, bNameOnly = True);
-    assert sUndecoratedSymbolName == sExpectedSymbolName, \
-        "mDbgHelp.fsUndecorateSymbolName(%s) => %s instead of %s" % \
-        (repr(sDecoratedSymbolName), repr(sUndecoratedSymbolName), repr(sExpectedSymbolName));
-    oConsole.fOutput("    + %s => %s / %s" % (sDecoratedSymbolName, sUndecoratedSymbolName, sUndecoratedFullSymbolName));
+        (repr(sDecoratedSymbolName), repr(s0UndecoratedSymbolName), repr(sExpectedSymbolName));
+    oConsole.fOutput("    + %s => %s / %s" % (sDecoratedSymbolName, s0UndecoratedSymbolName, s0UndecoratedFullSymbolName));
   oConsole.fOutput("* Texting cUWPApplication...");
   oCalc = cUWPApplication("Microsoft.WindowsCalculator");
   assert oCalc.bPackageExists, \

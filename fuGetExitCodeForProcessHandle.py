@@ -11,5 +11,5 @@ def fuGetExitCodeForProcessHandle(ohProcess):
     return None;
   odwExitCode = DWORD();
   if not oKernel32.GetExitCodeProcess(ohProcess, odwExitCode.foCreatePointer()):
-    fThrowLastError("GetExitCodeProcess(0x%08X, 0x%X)" % (ohProcess.value, odwExitCode.fuGetAddress()));
+    fThrowLastError("GetExitCodeProcess(%s, 0x%X)" % (repr(ohProcess), odwExitCode.fuGetAddress()));
   return odwExitCode.value;

@@ -13,5 +13,5 @@ def fuGetIntegrityLevelForProcessId(uProcessId):
   finally:
     # Only throw an exception if one isn't already being thrown:
     if not oKernel32.CloseHandle(ohProcess) and bSuccess:
-      fThrowLastError("CloseHandle(0x%08X)" % (ohProcess.value,));
+      fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
   return uIntegrityLevel;

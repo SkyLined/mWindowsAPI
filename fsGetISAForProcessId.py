@@ -14,5 +14,5 @@ def fsGetISAForProcessId(uProcessId):
     # Only throw an exception if one isn't already being thrown:
     oKernel32 = foLoadKernel32DLL();
     if not oKernel32.CloseHandle(ohProcess) and bSuccess:
-      fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+      fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
   return sResult;

@@ -3,7 +3,7 @@ from .fbIsRunningForThreadId import fbIsRunningForThreadId;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbWaitForTerminationForThreadHandle import fbWaitForTerminationForThreadHandle;
 from .foh0OpenForThreadIdAndDesiredAccess import foh0OpenForThreadIdAndDesiredAccess;
-from .fThrowError import fThrowError;
+from .fThrowLastError import fThrowLastError;
 
 def fbWaitForTerminationForThreadId(uThreadId, nTimeoutInSeconds = None):
   # Try to open the thread so we can wait for it...
@@ -18,5 +18,5 @@ def fbWaitForTerminationForThreadId(uThreadId, nTimeoutInSeconds = None):
     # Only throw an exception if one isn't already being thrown:
     oKernel32 = foLoadKernel32DLL();
     if not oKernel32.CloseHandle(ohThread) and bSuccess:
-      fThrowLastError("CloseHandle(0x%X)" % (ohThread.value,));
+      fThrowLastError("CloseHandle(%s)" % (repr(ohThread),));
   return bResult;

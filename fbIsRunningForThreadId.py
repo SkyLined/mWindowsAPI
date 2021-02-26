@@ -1,7 +1,7 @@
 from mWindowsSDK import *;
 from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
 from .foh0OpenForThreadIdAndDesiredAccess import foh0OpenForThreadIdAndDesiredAccess;
-from .fThrowError import fThrowError;
+from .fThrowLastError import fThrowLastError;
 
 def fbIsRunningForThreadId(uThreadId, bMustGetAccess = True):
   # A thread can be suspended multiple times. This function returns True if the
@@ -20,5 +20,5 @@ def fbIsRunningForThreadId(uThreadId, bMustGetAccess = True):
     # Only throw an exception if one isn't already being thrown:
     oKernel32 = foLoadKernel32DLL();
     if not oKernel32.CloseHandle(ohThread) and bSuccess:
-      fThrowLastError("CloseHandle(0x%X)" % (ohThread.value,));
+      fThrowLastError("CloseHandle(%s)" % (repr(ohThread),));
   return bResult;

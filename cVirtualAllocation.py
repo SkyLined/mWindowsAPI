@@ -1,6 +1,7 @@
 from mWindowsSDK import *;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
+from .fsGetISAForProcessHandle import fsGetISAForProcessHandle;
 from .fsGetPythonISA import fsGetPythonISA;
 from .fThrowLastError import fThrowLastError;
 from .oSystemInfo import oSystemInfo;
@@ -87,13 +88,13 @@ class cVirtualAllocation(object):
           uProtection, # flProtect
       );
       if opBaseAddress.fbIsNULLPointer():
-        fThrowLastError("VirtualAllocEx(0x%08X, 0x%08X, 0x%X, MEM_COMMIT, %s)" % \
-            (ohProcess.value, uAddress or 0, uSize, fsProtection(uProtection)));
+        fThrowLastError("VirtualAllocEx(%s, 0x%08X, 0x%X, MEM_COMMIT, %s)" % \
+            (repr(ohProcess), uAddress or 0, uSize, fsProtection(uProtection)));
       # Return a cVirtualAllocation object that represents the newly allocated memory.
-      return cVirtualAllocation(uProcessId, opBaseAddress.value);
+      return cVirtualAllocation(uProcessId, opBaseAddress.fuGetValue());
     finally:
       if not oKernel32.CloseHandle(ohProcess):
-        fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+        fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
   
   def __init__(oSelf, uProcessId, uAddress):
     oSelf.__uProcessId = uProcessId;
@@ -117,10 +118,7 @@ class cVirtualAllocation(object):
           sProcessISA = "x86";
         else:
           # Finally we find out if the remote process is 64-bit:
-          obIsWow64Process = BOOLEAN();
-          if not oKernel32.IsWow64Process(ohProcess, obIsWow64Process.foCreatePointer()):
-            fThrowLastError("IsWow64Process(0x%08X, ...)" % (ohProcess.value,));
-          sProcessISA = "x64" if obIsWow64Process.value == 0 else "x86";
+          sProcessISA = fsGetISAForProcessHandle(ohProcess);
           # Throw an error if this is the case:
           assert fsGetPythonISA() == "x64" or sProcessISA != "x64", \
               "Accessing a virtual allocation in a 64-bit process from 32-bit Python process is not implemented";
@@ -133,11 +131,11 @@ class cVirtualAllocation(object):
         oMemoryBasicInformation.foCreatePointer(), # lpBuffer,
         MEMORY_BASIC_INFORMATION.fuGetSize(), # nLength
       );
-      if oStoredBytes.value != MEMORY_BASIC_INFORMATION.fuGetSize():
+      if oStoredBytes != MEMORY_BASIC_INFORMATION.fuGetSize():
         # This can fail if the address is not valid, which is acceptable.
         if not fbLastErrorIs(ERROR_INVALID_PARAMETER):
-          foThrowLastError("VirtualQueryEx(0x%08X, 0x%08X, ..., 0x%X) = 0x%X" % \
-              (ohProcess.value, uAddress, MEMORY_BASIC_INFORMATION.fuGetSize(), oStoredBytes.value));
+          foThrowLastError("VirtualQueryEx(%s, 0x%08X, ..., 0x%X) = %s" % \
+              (repr(ohProcess), uAddress, MEMORY_BASIC_INFORMATION.fuGetSize(), repr(oStoredBytes)));
         oSelf.__uAllocationBaseAddress = None;
         oSelf.__uAllocationProtection = None;
         oSelf.__uStartAddress = None;
@@ -148,18 +146,18 @@ class cVirtualAllocation(object):
         oSelf.__sBytes = None;
       else:
         # Not all information is valid when there is no memory allocated at the address.
-        bNotFree = oMemoryBasicInformation.State.value != MEM_FREE;
-        oSelf.__uAllocationBaseAddress = oMemoryBasicInformation.AllocationBase.value if bNotFree else None;
-        oSelf.__uAllocationProtection = oMemoryBasicInformation.AllocationProtect.value if bNotFree else None;
-        oSelf.__uStartAddress = oMemoryBasicInformation.BaseAddress.value if bNotFree else None;
-        oSelf.__uSize = oMemoryBasicInformation.RegionSize.value if bNotFree else None;
-        oSelf.__uState = oMemoryBasicInformation.State.value;
-        oSelf.__uProtection = oMemoryBasicInformation.Protect.value if bNotFree else None;
-        oSelf.__uType = oMemoryBasicInformation.Type.value if bNotFree else None;
+        bNotFree = oMemoryBasicInformation.State != MEM_FREE;
+        oSelf.__uAllocationBaseAddress = oMemoryBasicInformation.AllocationBase.fuGetValue() if bNotFree else None;
+        oSelf.__uAllocationProtection = oMemoryBasicInformation.AllocationProtect.fuGetValue() if bNotFree else None;
+        oSelf.__uStartAddress = oMemoryBasicInformation.BaseAddress.fuGetValue() if bNotFree else None;
+        oSelf.__uSize = oMemoryBasicInformation.RegionSize.fuGetValue() if bNotFree else None;
+        oSelf.__uState = oMemoryBasicInformation.State.fuGetValue();
+        oSelf.__uProtection = oMemoryBasicInformation.Protect.fuGetValue() if bNotFree else None;
+        oSelf.__uType = oMemoryBasicInformation.Type.fuGetValue() if bNotFree else None;
         oSelf.__sBytes = None;
     finally:
       if not oKernel32.CloseHandle(ohProcess):
-        fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+        fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
   
   def fbContainsAddress(oSelf, uAddress, uSize = 1):
     return (
@@ -260,12 +258,12 @@ class cVirtualAllocation(object):
         DWORD(uNewProtection), # flNewProtection
         PDWORD(flOldProtection), # lpflOldProtection
       ):
-        fThrowLastError("VirtualProtectEx(0x%08X, 0x%08X, 0x%X, 0x%08X, ...)" % \
-            (ohProcess.value, oSelf.__uStartAddress, oSelf.__uSize, uNewProtection,));
+        fThrowLastError("VirtualProtectEx(%s, 0x%08X, 0x%X, 0x%08X, ...)" % \
+            (repr(ohProcess), oSelf.__uStartAddress, oSelf.__uSize, uNewProtection,));
       oSelf.__uProtection = uNewProtection;
     finally:
       if not oKernel32.CloseHandle(ohProcess):
-        fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+        fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
 
   @sProtection.setter
   def sProtection(oSelf, sNewProtection):
@@ -306,35 +304,25 @@ class cVirtualAllocation(object):
   def bPrivate(oSelf):
     return oSelf.__uType == MEM_PRIVATE;
   
-  # Data
-  @property
-  def sBytes(oSelf):
-    if not oSelf.__sBytes:
-      oSelf.__sBytes = oSelf.fsReadBytesForOffsetAndSize(0, oSelf.__uSize);
-    return oSelf.__sBytes;
-  
   def fsReadBytesForOffsetAndSize(oSelf, uOffset, uSize):
-    # Read ASCII string.
-    return oSelf.fsReadStringForOffsetAndSize(uOffset, uSize);
-  def fsReadStringForOffsetAndSize(oSelf, uOffset, uSize, bUnicode = False):
+    # Read ASCII string without NULL terminator.
+    return oSelf.fsReadStringForOffsetAndLength(uOffset, uSize, bUnicode = False, bNullTerminated = False);
+  def fsReadStringForOffsetAndLength(oSelf, uOffset, uLength, bUnicode = False, bNullTerminated = False):
     oKernel32 = foLoadKernel32DLL();
     # Sanity checks
+    uSize = uLength * (2 if bUnicode else 1);
     assert oSelf.bAllocated, \
         "Cannot read data from a virtual allocation that is not allocated";
     assert uOffset >= 0, \
         "Offset -0x%X must be positive" % (-uOffset);
-    assert uSize >= 0, \
-        "Size -0x%X must be positive" % (-uSize);
+    assert uLength >= 0, \
+        "uLength -0x%X must be positive" % (-uLength);
     assert uOffset < oSelf.__uSize, \
         "Offset 0x%X is outside of the virtual allocation of 0x%X bytes at 0x%08X" % \
         (uOffset, oSelf.__uSize, oSelf.__uStartAddress);
     assert uOffset + uSize <= oSelf.__uSize, \
         "Offset 0x%X + size 0x%X is outside of the virtual allocation of 0x%X bytes at 0x%08X" % \
         (uOffset, uSize, oSelf.__uSize, oSelf.__uStartAddress);
-    assert not bUnicode or uSize % 2 == 0, \
-        "Cannot read a Unicode string that has an odd number of bytes (%d)" % uSize;
-    if oSelf.__sBytes:
-      return oSelf.__sBytes[uOffset: uOffset + uSize];
     # If needed, modify the protection to make sure the pages can be read.
     uOriginalProtection = oSelf.uProtection;
     if "read" not in fasAllowedAccessTypesForProtection(oSelf.uProtection):
@@ -343,41 +331,53 @@ class cVirtualAllocation(object):
     # Open process to read memory
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_READ);
     try:
-      oBuffer = foCreateBuffer(uSize, bUnicode = bUnicode);
+      osBuffer = (WCHAR if bUnicode else CHAR)[uLength]();
       ouBytesRead = SIZE_T(0);
+      opsBuffer = osBuffer.foCreatePointer(LPVOID);
+      opuBytesRead = ouBytesRead.foCreatePointer();
       if not oKernel32.ReadProcessMemory(
         ohProcess,
         oSelf.__uStartAddress + uOffset, # lpBaseAddress
-        oBuffer.foCreatePointer(LPVOID), # lpBuffer
+        opsBuffer, # lpBuffer
         uSize, # nSize
-        ouBytesRead.foCreatePointer(), # lpNumberOfBytesRead
+        opuBytesRead, # lpNumberOfBytesRead
       ):
-        fThrowLastError("ReadProcessMemory(0x%08X, 0x%08X+0x%X, %sbuffer, 0x%X, &(0x%X))" % \
-            (ohProcess.value, oSelf.__uStartAddress, uOffset, "unicode" if bUnicode else "byte", uSize, ouBytesRead.value));
-      assert ouBytesRead.value == uSize, \
-          "ReadProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...) => 0x%X bytes read" % \
-          (ohProcess.value, oSelf.__uStartAddress + uOffset, uSize, ouBytesRead.value);
+        fThrowLastError("ReadProcessMemory(%s, 0x%08X+0x%X, %s, 0x%X, %s)" % \
+            (repr(ohProcess), oSelf.__uStartAddress, uOffset, repr(opsBuffer), uSize, repr(opuBytesRead)));
+      assert ouBytesRead == uSize, \
+          "ReadProcessMemory(%s, 0x%08X+0x%X, %s, 0x%X, %s) => %s bytes read" % \
+          (repr(ohProcess), oSelf.__uStartAddress, uOffset, repr(opsBuffer), uSize, repr(opuBytesRead), ouBytesRead.fuGetValue());
       # Return read data as a string.
-      return oBuffer.fsGetString();
+      if bNullTerminated:
+        return osBuffer.fsGetNullTerminatedString();
+      return osBuffer.fsGetValue();
     finally:
       if not oKernel32.CloseHandle(ohProcess):
-        fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+        fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
       # Restore original protection if needed
       if uOriginalProtection in [PAGE_NOACCESS, PAGE_EXECUTE]:
         oSelf.uProtection = uOriginalProtection;
   
-  def fsReadNullTerminatedStringForOffset(oSelf, uOffset, bUnicode = False):
-    sNull = bUnicode and u"\0" or "\0";
+  def fs0ReadNullTerminatedStringForOffset(oSelf, uOffset, bUnicode = False):
+    # If the string is not terminated with a '\0', we will read it up to the
+    # end of the virtual allocation before finding out and return None.
+    # This normally indicates that you're not reading a NULL terminated string.
+    # However, there is an extremely unlikely possibility that an application
+    # created two adjacent virtual allocations to store the string. I'm writing
+    # this here in case you are debugging and find this to be the case.
+    uCharSize = 2 if bUnicode else 1;
     sString = "";
     while 1:
       uSize = min(guStringReadAheadBlockSize, oSelf.uSize - uOffset);
-      if uSize == 0:
+      uLength = uSize / uCharSize;
+      if uLength == 0:
         return None; # String is not NULL terminated because it runs until the end of the virtual allocation.
-      sSubString = oSelf.fsReadStringForOffsetAndSize(uOffset, uSize, bUnicode);
-      uEndIndex = sSubString.find(sNull);
-      if uEndIndex >= 0:
-        return sString + sSubString[:uEndIndex];
-      sString += sSubString;
+      s0SubString = oSelf.fsReadStringForOffsetAndLength(uOffset, uLength, bUnicode, bNullTerminated = True);
+      if s0SubString is None:
+        return None; # Apparently he string can no longer be read.
+      sString += s0SubString;
+      if len(s0SubString) < uLength: # We found a NULL terminator
+        return sString;
       uOffset += uSize;
   
   def fauReadValuesForOffsetSizeAndCount(oSelf, uOffset, uSize, uCount):
@@ -408,7 +408,7 @@ class cVirtualAllocation(object):
     return cStructure.foFromBytesString(sData);
   
   def fWriteBytesForOffset(oSelf, sBytes, uOffset):
-    return oSelf.fWriteStringForOffset(sBytes, uOffset);
+    return oSelf.fWriteStringForOffset(sBytes, uOffset, bUnicode = False);
   def fWriteStringForOffset(oSelf, sString, uOffset, bUnicode = False):
     oKernel32 = foLoadKernel32DLL();
     # Sanity checks
@@ -434,7 +434,7 @@ class cVirtualAllocation(object):
     # Open process to read memory
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_WRITE | PROCESS_VM_OPERATION);
     try:
-      oBuffer = foCreateBuffer(sString, bUnicode = bUnicode);
+      oBuffer = (PWCHAR if bUnicode else PCHAR)(sString);
       ouBytesWritten = SIZE_T(0);
       if not oKernel32.WriteProcessMemory(
         ohProcess,
@@ -443,14 +443,14 @@ class cVirtualAllocation(object):
         uSize, # nSize
         ouBytesWritten.foCreatePointer(), # lpNumberOfBytesRead
       ):
-        fThrowLastError("WriteProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...)" % \
-            (ohProcess.value, oSelf.__uStartAddress + uOffset, uSize,));
-      assert ouBytesWritten.value == uSize, \
-          "WriteProcessMemory(0x%08X, 0x%08X, ..., 0x%X, ...) => 0x%X bytes written" % \
-          (ohProcess.value, oSelf.__uStartAddress + uOffset, uSize, ouBytesWritten.value);
+        fThrowLastError("WriteProcessMemory(%s, 0x%08X, ..., 0x%X, ...)" % \
+            (repr(ohProcess), oSelf.__uStartAddress + uOffset, uSize,));
+      assert ouBytesWritten == uSize, \
+          "WriteProcessMemory(%s, 0x%08X, ..., 0x%X, ...) => 0x%X bytes written" % \
+          (repr(ohProcess), oSelf.__uStartAddress + uOffset, uSize, ouBytesWritten.fuGetValue());
     finally:
       if not oKernel32.CloseHandle(ohProcess):
-        fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+        fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
       # Restore original protection if needed
       if uOriginalProtection in [PAGE_NOACCESS, PAGE_READONLY, PAGE_EXECUTE, PAGE_EXECUTE_READ]:
         oSelf.uProtection = uOriginalProtection;
@@ -489,16 +489,16 @@ class cVirtualAllocation(object):
         uProtection, # flProtect
       );
       if opBaseAddress.fbIsNULLPointer():
-        fThrowLastError("VirtualAllocEx(0x%X, 0x%08X, 0x%X, MEM_COMMIT, 0x%08X)" % \
-            (ohProcess.value, oSelf.__uStartAddress, oSelf.__uSize, uProtection));
-      uBaseAddress = opBaseAddress.value;
+        fThrowLastError("VirtualAllocEx(%s, 0x%08X, 0x%X, MEM_COMMIT, 0x%08X)" % \
+            (repr(ohProcess), oSelf.__uStartAddress, oSelf.__uSize, uProtection));
+      uBaseAddress = opBaseAddress.fuGetValue();
       assert uBaseAddress == oSelf.__uStartAddress, \
           "Allocating reserved virtual allocation at 0x%08X allocated memory at %08X" % \
           (oSelf.__uStartAddress, uBaseAddress);
     finally:
       try:
         if not oKernel32.CloseHandle(ohProcess):
-          fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+          fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
       finally:
         oSelf.__fUpdate();
   
@@ -515,12 +515,12 @@ class cVirtualAllocation(object):
         oSelf.__uSize, # dwSize
         MEM_DECOMMIT, # dwFreeType
       ):
-        fThrowLastError("VirtualFreeEx(0x%08X, 0x%08X, 0, 0x%08X)" % \
-          (ohProcess.value, oSelf.__uStartAddress, MEM_DECOMMIT,));
+        fThrowLastError("VirtualFreeEx(%s, 0x%08X, 0, 0x%08X)" % \
+          (repr(ohProcess), oSelf.__uStartAddress, MEM_DECOMMIT,));
     finally:
       try:
         if not oKernel32.CloseHandle(ohProcess):
-          fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+          fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
       finally:
         oSelf.__fUpdate();
   
@@ -535,11 +535,11 @@ class cVirtualAllocation(object):
         0, # dwSize
         MEM_RELEASE, # dwFreeType
       ):
-        fThrowLastError("VirtualFreeEx(0x%08X, 0x%08X, 0, 0x%08X)" % \
-            (ohProcess.value, oSelf.__uStartAddress, MEM_RELEASE,));
+        fThrowLastError("VirtualFreeEx(%s, 0x%08X, 0, 0x%08X)" % \
+            (repr(ohProcess), oSelf.__uStartAddress, MEM_RELEASE,));
     finally:
       try:
         if not oKernel32.CloseHandle(ohProcess):
-          fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
+          fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
       finally:
         oSelf.__fUpdate();

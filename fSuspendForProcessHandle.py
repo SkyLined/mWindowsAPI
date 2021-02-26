@@ -1,8 +1,11 @@
 from mWindowsSDK import *;
-from .fThrowError import fThrowError;
+from .fThrowNTStatusError import fThrowNTStatusError;
 
 def fSuspendForProcessHandle(ohProcess):
   oNTDLL = foLoadNTDLL();
   oNTStatus = oNTDLL.NtSuspendProcess(ohProcess); # NOT RELIABLE!
-  if NT_ERROR(oNTStatus):
-    fThrowError("NtSuspendProcess(0x%08X)" % (ohProcess.value,), oNTStatus.value);
+  if not NT_SUCCESS(oNTStatus):
+    fThrowNTStatusError(
+      "NtSuspendProcess(%s)" % (repr(ohProcess),),
+      oNTStatus.fuGetValue()
+    );

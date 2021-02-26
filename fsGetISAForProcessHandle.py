@@ -9,7 +9,8 @@ else:
   def fsGetISAForProcessHandle(ohProcess):
     obIsWow64Process = BOOLEAN();
     oKernel32 = foLoadKernel32DLL();
-    if not oKernel32.IsWow64Process(ohProcess, obIsWow64Process.foCreatePointer()):
-      fThrowLastError("IsWow64Process(0x%X, ...)" % (ohProcess.value,));
-    return "x64" if obIsWow64Process.value == 0 else "x86";
+    opobIsWow64Process = obIsWow64Process.foCreatePointer()
+    if not oKernel32.IsWow64Process(ohProcess, opobIsWow64Process):
+      fThrowLastError("IsWow64Process(%s, %s)" % (repr(ohProcess), repr(opobIsWow64Process)));
+    return "x86" if obIsWow64Process.fbGetValue() else "x64";
 

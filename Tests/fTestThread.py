@@ -55,16 +55,21 @@ def faoGetAndDumpProcessThreads(oTestProcess):
   oConsole.fPrint("  + <cProcess #%X>.faoGetThreads() => [%s]" % (oTestProcess.uId, ", ".join(["0x%X" % (oThread.uId,) for oThread in aoThreads]),));
   return aoThreads;
 
-def fTestThread(sComSpec, sISA):
+def fTestThread(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
   oConsole.fPrint("=== Testing thread related functions ", sPadding = "=");
+  oConsole.fOutput("* This process ISA: %s, test thread ISA: %s" % (sThisProcessISA, sExpectedChildProcessISA));
   oConsole.fStatus("  * Calling cProcess.foCreateForBinaryPath(%s, bSuspended = True)..." % (repr(sComSpec),));
   oTestProcess = cConsoleProcess.foCreateForBinaryPath(sComSpec, bSuspended = True);
   try:
     oConsole.fPrint("  + cProcess.foCreateForBinaryPath(%s, bSuspended = True) = <cProcess #%X>" % (repr(sComSpec), oTestProcess.uId));
+    time.sleep(1); # Allow process to start
+    # cProcess
+    assert oTestProcess.sISA == sExpectedChildProcessISA, \
+        "cProcess.sISA == %s instead of %s" % (oTestProcess.sISA, sExpectedChildProcessISA);
     
     # List all threads in process
     aoThreads = faoGetAndDumpProcessThreads(oTestProcess);
-    fDumpThreadInfo(aoThreads[0], sISA, bDumpContext = True);
+    fDumpThreadInfo(aoThreads[0], oTestProcess.sISA, bDumpContext = True);
     
     # Create an additional test thread
     oConsole.fStatus("  * Calling <cProcess #%X>.fuCreateThreadForAddress(0, bSuspended = True)..." % (oTestProcess.uId,));
@@ -79,7 +84,7 @@ def fTestThread(sComSpec, sISA):
     oTestThread = oTestProcess.foGetThreadForId(uTestThreadId);
     oConsole.fPrint("  + <cProcess #%X>.foGetThreadForId(0x%X) = <cThread #%0X>" % (oTestProcess.uId, uTestThreadId, oTestThread.uId));
     oConsole.fPrint("    ", repr(oTestThread));
-    fDumpThreadInfo(oThread, sISA, bDumpContext = True);
+    fDumpThreadInfo(oThread, oTestProcess.sISA, bDumpContext = True);
     
     oConsole.fStatus("  * Calling <cThread #%0X>.fbTerminate()..." % uTestThreadId);
     assert oTestThread.fbTerminate(), \
@@ -92,7 +97,7 @@ def fTestThread(sComSpec, sISA):
         "Expected to be able to wait for the thread to terminate in 1 second!";
     oConsole.fPrint("  + <cThread #%X>.fbWait(1) = True" % uTestThreadId);
     oConsole.fPrint("    ", repr(oTestThread));
-    fDumpThreadInfo(oThread, sISA, bDumpContext = True);
+    fDumpThreadInfo(oThread, oTestProcess.sISA, bDumpContext = True);
     
     # We will have to wait a bit for the terminated thread to be removed from the process.
     aoThreads = faoGetAndDumpProcessThreads(oTestProcess);
@@ -128,5 +133,5 @@ def fTestThread(sComSpec, sISA):
     assert ohThread is None, \
         "Opening a non-existing thread somehow worked!?";
   finally:
-    if oTestProcess.bIsRunning:
+    if oTestProcess and oTestProcess.bIsRunning:
       oTestProcess.fbTerminate();

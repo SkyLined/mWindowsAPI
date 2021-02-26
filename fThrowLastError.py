@@ -1,7 +1,7 @@
 from mWindowsSDK import *;
-from fThrowError import fThrowError;
+from fThrowWin32Error import fThrowWin32Error;
 
 def fThrowLastError(sFailedOperation):
   oKernel32 = foLoadKernel32DLL();
   odwLastError = oKernel32.GetLastError();
-  return fThrowError(sFailedOperation, odwLastError.value);
+  return fThrowWin32Error(sFailedOperation, odwLastError.fuGetValue());

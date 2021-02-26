@@ -1,10 +1,14 @@
 collections
 ctypes
+dis
 gc
 heapq
+imp
+inspect
 itertools
 keyword
 msvcrt
+opcode
 platform
 string
 strop
@@ -12,3 +16,5 @@ subprocess
 thread
 threading
 time
+token
+tokenize

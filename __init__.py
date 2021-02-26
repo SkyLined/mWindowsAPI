@@ -22,7 +22,7 @@ __all__ = [
   "fbWaitForTerminationForThreadHandle",
   "fbWaitForTerminationForThreadId",
   "fDebugBreakForProcessId",
-  "fdsProcessesExecutableName_by_uId",
+  "fdsGetProcessesExecutableName_by_uId",
   "foh0OpenForThreadIdAndDesiredAccess",
   "fResumeForProcessId",
   "fSendCtrlCForProcessId",
