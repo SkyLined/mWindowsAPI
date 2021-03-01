@@ -10,15 +10,13 @@
     "Python module"
   ], 
   "asPythonApplicationNames": [], 
-  "oProductVersion": "2021-03-01 09:16", 
+  "oProductVersion": "2021-03-01 18:39", 
   "oRepository": {
     "sBranch": "master", 
     "sRepositoryName": "mWindowsAPI", 
     "sType": "GitHub", 
     "sUserName": "SkyLined"
   }, 
-  "oTrialPeriodDuration": null, 
-  "sLicenseServerURL": null, 
   "sProductAuthor": "SkyLined", 
   "sProductName": "mWindowsAPI", 
   "sProductURL": "https://github.com/SkyLined/mWindowsAPI", 
