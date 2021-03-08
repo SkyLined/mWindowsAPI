@@ -6,8 +6,9 @@ from .fThrowWin32Error import fThrowWin32Error;
 def foh0OpenForThreadIdAndDesiredAccess(uThreadId, uDesiredAccess, bInheritHandle = False, bMustExist = True, bMustGetAccess = True):
   oKernel32 = foLoadKernel32DLL();
   odwDesiredAccess = DWORD(uDesiredAccess);
+  obInheritHandle = BOOLEAN(bInheritHandle);
   odwThreadId = DWORD(uThreadId);
-  ohThread = oKernel32.OpenThread(odwDesiredAccess, BOOLEAN(bInheritHandle), odwThreadId);
+  ohThread = oKernel32.OpenThread(odwDesiredAccess, obInheritHandle, odwThreadId);
   if not fbIsValidHandle(ohThread):
     # Save the last error because want to check if the thread exists, which may fail and modify it.
     uLastError = oKernel32.GetLastError().fuGetValue();
@@ -18,7 +19,7 @@ def foh0OpenForThreadIdAndDesiredAccess(uThreadId, uDesiredAccess, bInheritHandl
     # The thread exists; report an error:
     sDesiredAccess = fsGetThreadAccessRightsFlagsDescription(uDesiredAccess);
     fThrowWin32Error(
-      "OpenThread(%s (%s), FALSE, %s)" % (repr(odwDesiredAccess), sDesiredAccess, repr(odwThreadId)),
+      "OpenThread(%s (%s), %s, %s)" % (repr(odwDesiredAccess), repr(obInheritHandle), repr(odwThreadId)),
       uLastError
     );
   return ohThread;

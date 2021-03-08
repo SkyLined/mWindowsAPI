@@ -26,7 +26,7 @@ def fsProtection(uProtection):
       PAGE_EXECUTE_READ: "PAGE_EXECUTE_READ",
       PAGE_EXECUTE_READWRITE: "PAGE_EXECUTE_READWRITE",
       PAGE_EXECUTE_WRITECOPY: "PAGE_EXECUTE_WRITECOPY",
-    }[uProtection & uBasicProtectionFlagsMask],
+    }[uProtection & uBasicProtectionFlagsMask] if uProtection else None,
     "PAGE_GUARD" if uProtection & PAGE_GUARD else None,
   ] if s]);
 
@@ -146,14 +146,19 @@ class cVirtualAllocation(object):
         oSelf.__sBytes = None;
       else:
         # Not all information is valid when there is no memory allocated at the address.
-        bNotFree = oMemoryBasicInformation.State != MEM_FREE;
-        oSelf.__uAllocationBaseAddress = oMemoryBasicInformation.AllocationBase.fuGetValue() if bNotFree else None;
-        oSelf.__uAllocationProtection = oMemoryBasicInformation.AllocationProtect.fuGetValue() if bNotFree else None;
-        oSelf.__uStartAddress = oMemoryBasicInformation.BaseAddress.fuGetValue() if bNotFree else None;
-        oSelf.__uSize = oMemoryBasicInformation.RegionSize.fuGetValue() if bNotFree else None;
+        bFreed = oMemoryBasicInformation.State == MEM_FREE;
+        oSelf.__uAllocationBaseAddress = oMemoryBasicInformation.AllocationBase.fuGetValue() if not bFreed else None;
+        oSelf.__uAllocationProtection = oMemoryBasicInformation.AllocationProtect.fuGetValue() if not bFreed else None;
+        oSelf.__uStartAddress = oMemoryBasicInformation.BaseAddress.fuGetValue() if not bFreed else None;
+        oSelf.__uSize = oMemoryBasicInformation.RegionSize.fuGetValue() if not bFreed else None;
         oSelf.__uState = oMemoryBasicInformation.State.fuGetValue();
-        oSelf.__uProtection = oMemoryBasicInformation.Protect.fuGetValue() if bNotFree else None;
-        oSelf.__uType = oMemoryBasicInformation.Type.fuGetValue() if bNotFree else None;
+        if not bFreed:
+          oSelf.__uProtection = oMemoryBasicInformation.Protect.fuGetValue()
+          if oSelf.__uProtection == 0:
+            oSelf.__uProtection = None;
+        else:
+          oSelf.__uProtection = None;
+        oSelf.__uType = oMemoryBasicInformation.Type.fuGetValue() if not bFreed else None;
         oSelf.__sBytes = None;
     finally:
       if not oKernel32.CloseHandle(ohProcess):
@@ -245,6 +250,8 @@ class cVirtualAllocation(object):
   
   @uProtection.setter
   def uProtection(oSelf, uNewProtection):
+    assert isinstance(uNewProtection, (int, long)) and uNewProtection > 0, \
+        "Cannot set uProtection to %s" % repr(uNewProtection);
     oKernel32 = foLoadKernel32DLL();
     assert oSelf.bAllocated, \
         "Cannot modify protection on a virtual allocation that is not allocated";
@@ -333,7 +340,7 @@ class cVirtualAllocation(object):
     try:
       osBuffer = (WCHAR if bUnicode else CHAR)[uLength]();
       ouBytesRead = SIZE_T(0);
-      opsBuffer = osBuffer.foCreatePointer(LPVOID);
+      opsBuffer = LPVOID(osBuffer, bCast = True);
       opuBytesRead = ouBytesRead.foCreatePointer();
       if not oKernel32.ReadProcessMemory(
         ohProcess,
@@ -439,7 +446,7 @@ class cVirtualAllocation(object):
       if not oKernel32.WriteProcessMemory(
         ohProcess,
         oSelf.__uStartAddress + uOffset, # lpBaseAddress
-        oBuffer.foCreatePointer(LPVOID), # lpBuffer
+        LPVOID(oBuffer, bCast = True), # lpBuffer
         uSize, # nSize
         ouBytesWritten.foCreatePointer(), # lpNumberOfBytesRead
       ):

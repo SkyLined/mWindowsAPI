@@ -182,13 +182,13 @@ class cProcess(object):
     # calling it, in this case it's the Python process we're running in:
     cProcessBasicInformation = {"x86": PROCESS_BASIC_INFORMATION32, "x64": PROCESS_BASIC_INFORMATION64}[fsGetPythonISA()];
     oProcessBasicInformation = cProcessBasicInformation();
-    poProcessBasicInformation = oProcessBasicInformation.foCreatePointer(PVOID);
+    poProcessBasicInformation = PVOID(oProcessBasicInformation, bCast = True);
     ouReturnLength = ULONG();
     oNTDLL = foLoadNTDLL();
     oNTStatus = oNTDLL.NtQueryInformationProcess(
       oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ),# ProcessHandle
       ProcessBasicInformation, # ProcessInformationClass
-      oProcessBasicInformation.foCreatePointer(PVOID), # ProcessInformation
+      PVOID(oProcessBasicInformation, bCast = True), # ProcessInformation
       oProcessBasicInformation.fuGetSize(), # ProcessInformationLength
       ouReturnLength.foCreatePointer(), # ReturnLength
     );
@@ -206,7 +206,7 @@ class cProcess(object):
     # Read the PEB from the remote process
     # The type of PEB (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
     o0PEB = oSelf.fo0ReadStructureForAddress(
-      oProcessBasicInformation.PebBaseAddress.c0TargetType,
+      oProcessBasicInformation.PebBaseAddress.c0TargetClass,
       oProcessBasicInformation.PebBaseAddress.fuGetValue()
     );
     assert o0PEB, \
@@ -222,7 +222,7 @@ class cProcess(object):
     # Read Process Parameters from the remote process
     oPEB = oSelf.foGetPEB();
     o0ProcessParameters = oSelf.fo0ReadStructureForAddress(
-      oPEB.ProcessParameters.c0TargetType,
+      oPEB.ProcessParameters.c0TargetClass,
       oPEB.ProcessParameters.fuGetValue()
     );
     assert o0ProcessParameters, \
@@ -292,7 +292,7 @@ class cProcess(object):
     return fbWaitForTerminationForProcessHandle(oSelf.fohOpenWithFlags(SYNCHRONIZE), uTimeout);
   
   def fSuspend(oSelf): # No return value; undocumented and unreliable: use fbSuspendThreads instead.
-    return fSuspendForProcessHandle(oSelf.fohOpenWithFlags(PROCESS_SUSPEND_RESUME ));
+    return fSuspendForProcessHandle(oSelf.fohOpenWithFlags(PROCESS_SUSPEND_RESUME));
   
   def fbSuspendThreads(oSelf): # Returns true if any threads were running but are now suspended.
     bSuspended = False;

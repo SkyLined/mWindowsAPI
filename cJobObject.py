@@ -50,7 +50,7 @@ class cJobObject(object):
     if not oKernel32.QueryInformationJobObject(
       oSelf.__ohJob, # hJob
       JobObjectExtendedLimitInformation, # JobObjectInfoClass
-      oExtendedLimitInformation.foCreatePointer(LPVOID), # lpJobObjectInfo
+      LPVOID(oExtendedLimitInformation, bCast = True), # lpJobObjectInfo
       oExtendedLimitInformation.fuGetSize(), # cbJobObjectInfoLength,
       odwReturnLength.foCreatePointer(), # lpReturnLength
     ):
@@ -77,7 +77,7 @@ class cJobObject(object):
     if not oKernel32.SetInformationJobObject(
       oSelf.__ohJob, # hJob
       JobObjectExtendedLimitInformation, # JobObjectInfoClass
-      oExtendedLimitInformation.foCreatePointer(LPVOID), # lpJobObjectInfo
+      LPVOID(oExtendedLimitInformation, bCast = True), # lpJobObjectInfo
       oExtendedLimitInformation.fuGetSize(), # cbJobObjectInfoLength,
     ):
       fThrowLastError("SetInformationJobObject(hJob=0x%X, JobObjectInfoClass=0x%X, lpJobObjectInfo=0x%X, cbJobObjectInfoLength=0x%X)" % \

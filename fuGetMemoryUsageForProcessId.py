@@ -11,7 +11,7 @@ def fuGetMemoryUsageForProcessId(uProcessId):
     oProcessMemoryCounters = PROCESS_MEMORY_COUNTERS_EX();
     if not oKernel32.K32GetProcessMemoryInfo(
       ohProcess,
-      oProcessMemoryCounters.foCreatePointer(PPROCESS_MEMORY_COUNTERS),
+      PPROCESS_MEMORY_COUNTERS(oProcessMemoryCounters, bCast = True),
       oProcessMemoryCounters.fuGetSize()
     ):
       fThrowLastError("GetProcessMemoryInfo(%s, 0x%X, 0x%X)" % \

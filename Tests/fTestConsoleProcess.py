@@ -6,13 +6,15 @@ def fTestConsoleProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
   oConsole.fPrint("=== Testing console process related functions ", sPadding = "=");
   # cConsoleProcess, fSuspendForProcessId
   oConsole.fPrint("* Testing cConsoleProcess...");
-  oConsole.fOutput("* This process ISA: %s, child console process ISA: %s" % (sThisProcessISA, sExpectedChildProcessISA));
   sExpectedOutput = "Test";
   oConsoleProcess = cConsoleProcess.foCreateForBinaryPathAndArguments(
     sComSpec,
     ["/K", "ECHO %s&ECHO OFF" % sExpectedOutput],
   );
   try:
+    oConsole.fOutput("* Console process id: %s, ISA: %s" % (oConsoleProcess.uId, sExpectedChildProcessISA));
+    assert oConsoleProcess.sISA == sExpectedChildProcessISA, \
+        "oConsoleProcess.sISA == %s instead of %s" % (oConsoleProcess.sISA, sExpectedChildProcessISA);
     sExpectedOutput += "\r\n";
     time.sleep(1); # Allow process to start
     oConsole.fPrint("  * Reading process output...");

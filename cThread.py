@@ -13,6 +13,7 @@ from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fbSuspendForThreadHandle import fbSuspendForThreadHandle;
 from .fThrowLastError import fThrowLastError;
+from .fThrowNTStatusError import fThrowNTStatusError;
 from .fuGetExitCodeForThreadHandle import fuGetExitCodeForThreadHandle;
 
 gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA = {
@@ -274,19 +275,16 @@ class cThread(object):
     # as anything new the caller wants to do:
     uFlags = oSelf.__uThreadHandleFlags | uRequiredFlags;
     oh0Thread = foh0OpenForThreadIdAndDesiredAccess(oSelf.uId, uFlags, bMustExist = bMustExist, bMustGetAccess = bMustGetAccess);
-    if not fbIsValidHandle(oh0Thread):
+    if oh0Thread is None or not fbIsValidHandle(oh0Thread):
       return oh0Thread;
+    ohThread = oh0Thread;
     # We have a new HANDLE with more access rights; close the old one if we have it and replace
-    # it with the new handle. NOTE: rather than `oSelf.__oh0Thread = oh0Thread`, we do
-    # `oSelf.__oh0Thread = oh0Thread`. This way any code that previously requested a HANDLE
-    # and is not yet done using it can continue to use it, albeit they will be using the new HANDLE.
+    # it with the new handle.
     if oSelf.__oh0Thread:
       oKernel32 = foLoadKernel32DLL();
       if not oKernel32.CloseHandle(oSelf.__oh0Thread):
         fThrowLastError("CloseHandle(%s)" % (repr(oSelf.__oh0Thread),));
-      oSelf.__oh0Thread.fSetValue(oh0Thread.fuGetValue());
-    else:
-      oSelf.__oh0Thread = oh0Thread;
+    oSelf.__oh0Thread = ohThread;
     oSelf.__uThreadHandleFlags = uFlags;
     return oSelf.__oh0Thread;
   
@@ -355,28 +353,33 @@ class cThread(object):
   def o0TEB(oSelf):
     # Get TEB with caching
     if oSelf.__o0TEB is None:
-      oh0Thread = oSelf.foh0OpenWithFlags(SYNCHRONIZE, bMustExist = False, bMustGetAccess = False);
-      if not fbIsValidHandle(oh0Thread):
+      oh0Thread = oSelf.foh0OpenWithFlags(THREAD_QUERY_INFORMATION, bMustExist = False, bMustGetAccess = False);
+      if oh0Thread is None or not fbIsValidHandle(oh0Thread):
         return None; # If the thread does not exists or is not accessible, return None
+      ohThread = oh0Thread;
       # The type of THREAD_BASIC_INFORMATION returned by NtQueryInformationThread depends on the ISA of the calling
       # process (the Python process we're running in):
       cThreadBasicInformation = {"x86": THREAD_BASIC_INFORMATION32, "x64": THREAD_BASIC_INFORMATION64}[fsGetPythonISA()];
       oThreadBasicInformation = cThreadBasicInformation();
+      opThreadBasicInformation = PVOID(oThreadBasicInformation, bCast = True);
       ouReturnLength = ULONG();
+      opReturnLength = ouReturnLength.foCreatePointer();
       oNTDLL = foLoadNTDLL();
       oNTStatus = oNTDLL.NtQueryInformationThread(
-        oh0Thread,# ThreadHandle
+        ohThread,# ThreadHandle
         ThreadBasicInformation, # ThreadInformationClass
-        oThreadBasicInformation.foCreatePointer(PVOID), # ThreadInformation
+        opThreadBasicInformation, # ThreadInformation
         oThreadBasicInformation.fuGetSize(), # ThreadInformationLength
-        ouReturnLength.foCreatePointer(), # ReturnLength
+        opReturnLength, # ReturnLength
       );
       if not NT_SUCCESS(oNTStatus):
         fThrowNTStatusError(
-          "NtQueryInformationThread(%s (%s), 0x%X, ..., 0x%X, ...)" % (
-            repr(oh0Thread), oSelf.fs0GetAccessRightsFlagsDescription(),
+          "NtQueryInformationThread(%s (%s), 0x%X, %s, 0x%X, %s)" % (
+            repr(ohThread), oSelf.fs0GetAccessRightsFlagsDescription(),
             ThreadBasicInformation,
-            oThreadBasicInformation.fuGetSize()
+            repr(opThreadBasicInformation),
+            oThreadBasicInformation.fuGetSize(),
+            repr(opReturnLength),
           ),
           oNTStatus.fuGetValue()
         );
@@ -385,10 +388,12 @@ class cThread(object):
       # but I have to work around it I guess.
       if ouReturnLength != 0:
         assert ouReturnLength == oThreadBasicInformation.fuGetSize(), \
-            "NtQueryInformationThread(%s (%s), 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % (
-              repr(oh0Thread), oSelf.fs0GetAccessRightsFlagsDescription(),
+            "NtQueryInformationThread(%s (%s), 0x%X, %s, 0x%X, %s) wrote 0x%X bytes" % (
+              repr(ohThread), oSelf.fs0GetAccessRightsFlagsDescription(),
               ThreadBasicInformation,
+              repr(opThreadBasicInformation),
               oThreadBasicInformation.fuGetSize(),
+              repr(opReturnLength),
               ouReturnLength.fuGetvalue()
             );
         # Terminated threads have TEB address set to 0, indicating no TEB exists.

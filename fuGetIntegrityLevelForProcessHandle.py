@@ -30,7 +30,7 @@ def fuGetIntegrityLevelForProcessHandle(ohProcess):
         "The OS is reporting that a TOKEN_MANDATORY_LABEL requires %d bytes, but at least %d bytes are expected!" %\
         (odwTokenMandatoryLabelSize.fuGetValue(), TOKEN_MANDATORY_LABEL.fuGetSize());
     oTokenMandatoryLabelBuffer = BYTE[odwTokenMandatoryLabelSize.fuGetValue()]();
-    poTokenMandatoryLabel = oTokenMandatoryLabelBuffer.foCreatePointer(PTOKEN_MANDATORY_LABEL);
+    poTokenMandatoryLabel = PTOKEN_MANDATORY_LABEL(oTokenMandatoryLabelBuffer, bCast = True);
     # Get the TOKEN_MANDATORY_LABEL struct:
     xTokenInformationClass = TokenIntegrityLevel
     if not oAdvAPI32.GetTokenInformation(
