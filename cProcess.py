@@ -140,9 +140,10 @@ class cProcess(object):
     assert oSelf.sISA == "x86" or fsGetPythonISA() == "x64", \
         "You cannot get information on a 64-bit process from 32-bit Python";
     oSelf.uPointerSize = {"x86": 4, "x64": 8}[oSelf.sISA];
-    # Cache for dynamically retreieved properties:
+    # Cache for dynamically retrieved properties:
     oSelf.__sBinaryPath = None;
     oSelf.__sCommandLine = None;
+    oSelf.__n0RunDurationInSeconds = None;
   
   def fohOpenWithFlags(oSelf, uRequiredFlags):
     # See if we have an open handle
@@ -311,6 +312,42 @@ class cProcess(object):
   @property
   def uExitCode(oSelf):
     return fuGetExitCodeForProcessHandle(oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION));
+  
+  @property
+  def n0RunDurationInSeconds(oSelf):
+    if not oSelf.bIsTerminated:
+      return None;
+    if oSelf.__n0RunDurationInSeconds is None:
+      oSelf.__fGetProcessTimes();
+    return oSelf.__n0RunDurationInSeconds;
+  
+  def __fGetProcessTimes(oSelf):
+    oKernel32 = foLoadKernel32DLL();
+    ohProccess = oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION);
+    # FILETIME has two 32-bit values that represent to lower and higher parts of a 64-bit count of 100 nanosecond
+    # intervals.
+    oCreationTime = FILETIME();
+    oExitTime = FILETIME();
+    oKernelTime = FILETIME();
+    oUserTime = FILETIME();
+    if not oKernel32.GetProcessTimes(
+      ohProccess, 
+      oCreationTime.foCreatePointer(),
+      oExitTime.foCreatePointer(),
+      oKernelTime.foCreatePointer(),
+      oUserTime.foCreatePointer(),
+    ):
+      fThrowLastError("GetProcessTimes(%s, &(%s), &(%s), &(%s), &(%s))" % (
+        repr(ohProcess),
+        repr(oCreationTime),
+        repr(oExitTime),
+        repr(oKernelTime),
+        repr(oUserTime),
+      ));
+    # The difference between oExitTime and oExitTime is the run duration in 100 nanosecond intervals.
+    uStartTime = (oCreationTime.dwHighDateTime << 32) + oCreationTime.dwLowDateTime;
+    uEndTime = (oExitTime.dwHighDateTime << 32) + oExitTime.dwLowDateTime;
+    oSelf.__n0RunDurationInSeconds = (uEndTime - uStartTime) * 0.0000001;
   
   def foCreateVirtualAllocation(oSelf, uSize, uAddress = None, bReserved = False, uProtection = None):
     return cVirtualAllocation.foCreateForProcessId(
