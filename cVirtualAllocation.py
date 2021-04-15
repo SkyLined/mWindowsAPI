@@ -1,3 +1,5 @@
+import struct;
+
 from mWindowsSDK import *;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
