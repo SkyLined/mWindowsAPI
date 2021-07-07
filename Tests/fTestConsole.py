@@ -1,6 +1,6 @@
 from mWindowsAPI import *;
 from mWindowsSDK import *;
-from oConsole import oConsole;
+from mConsole import oConsole;
 
 def fTestConsole():
   # Test console functions

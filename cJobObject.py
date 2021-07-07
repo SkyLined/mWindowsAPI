@@ -86,21 +86,21 @@ class cJobObject(object):
   
   def fSetMaxProcessMemoryUse(oSelf, uMemoryUseInBytes):
     oExtendedLimitInformation = oSelf.__foQueryExtendedLimitInformation();
-    oExtendedLimitInformation.ProcessMemoryLimit = long(uMemoryUseInBytes);
+    oExtendedLimitInformation.ProcessMemoryLimit = int(uMemoryUseInBytes);
     oExtendedLimitInformation.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_PROCESS_MEMORY;
     oSelf.__fSetExtendedLimitInformation(oExtendedLimitInformation);
 
   def fSetMaxTotalMemoryUse(oSelf, uMemoryUseInBytes):
     oExtendedLimitInformation = oSelf.__foQueryExtendedLimitInformation();
-    oExtendedLimitInformation.JobMemoryLimit = long(uMemoryUseInBytes);
+    oExtendedLimitInformation.JobMemoryLimit = int(uMemoryUseInBytes);
     oExtendedLimitInformation.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_JOB_MEMORY;
     oSelf.__fSetExtendedLimitInformation(oExtendedLimitInformation);
   
   def fuGetMaxProcessMemoryUse(oSelf):
     oExtendedLimitInformation = oSelf.__foQueryExtendedLimitInformation();
-    return long(oExtendedLimitInformation.PeakProcessMemoryUsed);
+    return int(oExtendedLimitInformation.PeakProcessMemoryUsed);
   
   def fuGetMaxTotalMemoryUse(oSelf):
     oExtendedLimitInformation = oSelf.__foQueryExtendedLimitInformation();
-    return long(oExtendedLimitInformation.PeakJobMemoryUsed);
+    return int(oExtendedLimitInformation.PeakJobMemoryUsed);
 

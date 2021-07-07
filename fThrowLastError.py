@@ -1,5 +1,5 @@
 from mWindowsSDK import *;
-from fThrowWin32Error import fThrowWin32Error;
+from .fThrowWin32Error import fThrowWin32Error;
 
 def fThrowLastError(sFailedOperation):
   oKernel32 = foLoadKernel32DLL();

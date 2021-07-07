@@ -1,17 +1,32 @@
-import re, subprocess;
+import os, re;
 
-def fasRunApplication(*asCommandLine):
-  sCommandLine = " ".join([" " in s and '"%s"' % s.replace("\\", "\\\\").replace('"', '\\"') or s for s in asCommandLine]);
-  oProcess = subprocess.Popen(
-    args = sCommandLine,
-    stdin = subprocess.PIPE,
-    stdout = subprocess.PIPE,
-    stderr = subprocess.PIPE,
-    creationflags = subprocess.CREATE_NEW_PROCESS_GROUP,
-  );
-  (sStdOut, sStdErr) = oProcess.communicate();
-  assert not sStdErr, \
-      "Error running %s:\r\n%s" % (sCommandLine, sStdErr);
+from .cConsoleProcess import cConsoleProcess;
+
+grGetAppxPackageOutputLine = re.compile(
+  r"^"
+  r"(.*?)"
+  r"\s+:\s+"
+  r"(.*?)"
+  r"\s*$"
+);
+
+for sPath in os.get_exec_path():
+  gsPowershellBinaryPath = os.path.join(sPath, "powershell.exe");
+  if os.path.isfile(gsPowershellBinaryPath):
+    break;
+else:
+  raise AssertionError("Cannot find powershell.exe!");
+
+def fasRunPowershellAndGetStdOut(sPowershellCommand):
+  global gsPowershellBinaryPath;
+  oPowershellProcess = cConsoleProcess.foCreateForBinaryPathAndArguments(gsPowershellBinaryPath, [sPowershellCommand]);
+  oPowershellProcess.oStdInPipe.fClose(); # Prevent powershell from waiting for input for any reason.
+  oPowershellProcess.fWait();
+  sStdOut = oPowershellProcess.oStdOutPipe.fsRead();
+  sStdErr = oPowershellProcess.oStdErrPipe.fsRead();
+  assert oPowershellProcess.uExitCode == 0 and sStdErr == "", \
+      "Powershell exited with error %d (stderr = %s, stdout = %s" % \
+      (oPowershellProcess.uExitCode, repr(sStdErr), repr(sStdOut));
   asStdOut = sStdOut.split("\r\n");
   if asStdOut[-1] == "":
     asStdOut.pop();
@@ -22,7 +37,7 @@ class cUWPApplication(object):
     oSelf.sPackageName = sPackageName;
     
     # Find the package full name and family name
-    asQueryOutput = fasRunApplication("powershell", "Get-AppxPackage %s" % oSelf.sPackageName);
+    asQueryOutput = fasRunPowershellAndGetStdOut("Get-AppxPackage %s" % oSelf.sPackageName);
     oSelf.sPackageFullName = None;
     oSelf.sPackageFamilyName = None;
     # Output should consist of "Name : Value" Pairs. Values can span multiple lines in which case additional lines
@@ -44,7 +59,7 @@ class cUWPApplication(object):
               "Get-AppxPackage output firstline starts with a space: %s in\r\n%s" % (repr(sLine), "\r\n".join(asQueryOutput));
           dsValue_by_sName[sCurrentName] += " " + sLine.strip();
         else:
-          oNameAndValueMatch = re.match(r"^(.*?)\s+: (.*)$", sLine);
+          oNameAndValueMatch = re.match(grGetAppxPackageOutputLine, sLine);
           assert oNameAndValueMatch, \
               "Unrecognized Get-AppxPackage output: %s in\r\n%s" % (repr(sLine), "\r\n".join(asQueryOutput));
           sCurrentName, sValue = oNameAndValueMatch.groups();
@@ -70,8 +85,7 @@ class cUWPApplication(object):
       assert oSelf.sPackageFamilyName, \
           "Expected Get-AppxPackage output to contain 'PackageFamilyName' value.\r\n%s" % "\r\n".join(asQueryOutput);
       # Sanity check the application id
-      oSelf.asApplicationIds = fasRunApplication(
-        "powershell",
+      oSelf.asApplicationIds = fasRunPowershellAndGetStdOut(
         "(Get-AppxPackageManifest %s).package.applications.application.id" % oSelf.sPackageFullName
       );
     if sApplicationId is None and len(oSelf.asApplicationIds) == 1:

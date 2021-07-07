@@ -17,7 +17,7 @@ def fxHKLMValue(sKeyName, sValueName, sTypeName, bRequired = True):
 def fsHKLMValue(sKeyName, sValueName, bRequired = True):
   return fxHKLMValue(sKeyName, sValueName, "REG_SZ", bRequired);
 def fuHKLMValue(sKeyName, sValueName, bRequired = True):
-  return fxHKLMValue(sKeyName, sValueName, "REG_DWORD", bRequired);
+  return fxHKLMValue(sKeyName, sValueName, "REG_DWORD_LITTLE_ENDIAN", bRequired);
 
 class cSystemInfo(object):
   def __init__(oSelf):
@@ -79,7 +79,7 @@ class cSystemInfo(object):
     return oSelf.__sOSReleaseId;
   @property
   def uReleaseId(oSelf):
-    return long(oSelf.sOSReleaseId);
+    return int(oSelf.sOSReleaseId);
 
   @property
   def sOSBuild(oSelf):
@@ -90,7 +90,7 @@ class cSystemInfo(object):
   def uOSBuild(oSelf):
     if not oSelf.__sOSBuild:
       oSelf.__sOSBuildNumber = fsHKLMValue(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CurrentBuildNumber");
-    return long(oSelf.__sOSBuildNumber);
+    return int(oSelf.__sOSBuildNumber);
   
   @property
   def sOSPath(oSelf):

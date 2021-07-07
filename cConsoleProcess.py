@@ -4,12 +4,20 @@ from .cProcess import cProcess;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
 
+try: # mDebugOutput use is Optional
+  from mDebugOutput import ShowDebugOutput, fShowDebugOutput;
+except ModuleNotFoundError as oException:
+  if oException.args[0] != "No module named 'mDebugOutput'":
+    raise;
+  ShowDebugOutput = fShowDebugOutput = lambda x: x; # NOP
+
 class cConsoleProcess(cProcess):
   @staticmethod
   def foGetForId(uProcessId):
     # Overwrite cProcess.foGetForId, as we cannot get the stdi/o streams for an existing process.
     raise NotImplementedError("This is not possible for console processes");
   @staticmethod
+  @ShowDebugOutput
   def foCreateForBinaryPathAndArguments(
     sBinaryPath,
     asArguments,
@@ -54,6 +62,8 @@ class cConsoleProcess(cProcess):
             (s and (s[0] == '"' or s.find(" ") == -1)) and s or '"%s"' % s.replace('"', '\\"')
             for s in [sBinaryPath] + asArguments
           ]);
+          fShowDebugOutput("sBinaryPath = %s" % repr(sBinaryPath));
+          fShowDebugOutput("sCommandLine = %s" % repr(sCommandLine));
           odwCreationFlags = DWORD(sum([
             CREATE_SUSPENDED if bSuspended else 0,
             DEBUG_PROCESS if bDebug else 0,
@@ -94,8 +104,10 @@ class cConsoleProcess(cProcess):
           oStdInPipe and oStdInPipe.fClose(bOutput = True); 
           oStdOutPipe and oStdOutPipe.fClose(bInput = True);
           oStdErrPipe and oStdErrPipe.fClose(bInput = True);
+          uProcessId = oProcessInformation.dwProcessId.fuGetValue();
+          fShowDebugOutput("Process id = %d/0x%X" % (uProcessId, uProcessId));
           return cConsoleProcess(
-            uId = oProcessInformation.dwProcessId.fuGetValue(),
+            uId = uProcessId,
             oStdInPipe = oStdInPipe,
             oStdOutPipe = oStdOutPipe,
             oStdErrPipe = oStdErrPipe,
@@ -112,6 +124,7 @@ class cConsoleProcess(cProcess):
       oStdInPipe and oStdInPipe.fClose();
       raise;
   
+  @ShowDebugOutput
   def __init__(oSelf, uId, oStdInPipe, oStdOutPipe, oStdErrPipe, ohProcess = None, uProcessHandleFlags = None):
     cProcess.__init__(oSelf, uId, ohProcess = ohProcess, uProcessHandleFlags = uProcessHandleFlags);
     oSelf.oStdInPipe = oStdInPipe;
@@ -121,10 +134,15 @@ class cConsoleProcess(cProcess):
   def __del__(oSelf):
     # Make sure all pipes are closed, so as not to cause a handle leak
     try:
-      oSelf.fClose();
-    except Exception:
+      oSelf.oStdInPipe.fClose();
+    except:
       pass;
+      try:
+        oSelf.oStdOutPipe and oSelf.oStdOutPipe.fClose();
+      finally:
+        oSelf.oStdErrPipe and oSelf.oStdErrPipe.fClose();
   
+  @ShowDebugOutput
   def fClose(oSelf):
     # This will attemp to close all pipes, even if an exception is thrown when closing one of them. If multiple pipes
     # throw exceptions, all but the last one are ignored.

@@ -1,11 +1,11 @@
 import threading, time;
 from mWindowsAPI import *;
-from oConsole import oConsole;
+from mConsole import oConsole;
 
 def fTestConsoleProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
-  oConsole.fPrint("=== Testing console process related functions ", sPadding = "=");
+  oConsole.fOutput("=== Testing console process related functions ", sPadding = "=");
   # cConsoleProcess, fSuspendForProcessId
-  oConsole.fPrint("* Testing cConsoleProcess...");
+  oConsole.fOutput("* Testing cConsoleProcess...");
   sExpectedOutput = "Test";
   oConsoleProcess = cConsoleProcess.foCreateForBinaryPathAndArguments(
     sComSpec,
@@ -17,37 +17,37 @@ def fTestConsoleProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
         "oConsoleProcess.sISA == %s instead of %s" % (oConsoleProcess.sISA, sExpectedChildProcessISA);
     sExpectedOutput += "\r\n";
     time.sleep(1); # Allow process to start
-    oConsole.fPrint("  * Reading process output...");
-    sActualOutput = oConsoleProcess.oStdOutPipe.fsReadBytes(len(sExpectedOutput));
+    oConsole.fOutput("  * Reading process output...");
+    sActualOutput = oConsoleProcess.oStdOutPipe.fsRead(len(sExpectedOutput));
     assert sActualOutput == sExpectedOutput, \
         "Expected %s, got %s" % (repr(sExpectedOutput), repr(sActualOutput));
     # Suspend the process to test for a known issue: attempting to close handles on a
     # suspended process will hang until the process is resumed or killed.
     fSuspendForProcessId(oConsoleProcess.uId);
-    asBytesRead = [""];
+    asDataRead = [""];
     def fPipeReadingThread():
-      oConsole.fPrint("  * Reading end of console process output in thread...");
-      asBytesRead[0] = oConsoleProcess.oStdOutPipe.fsReadBytes();
+      oConsole.fOutput("  * Reading end of console process output in thread...");
+      asDataRead[0] = oConsoleProcess.oStdOutPipe.fsRead();
     oReadThread = threading.Thread(target = fPipeReadingThread);
     oReadThread.start();
     def fKillProcessThread():
       time.sleep(1);
-      oConsole.fPrint("  * Terminating console process...");
+      oConsole.fOutput("  * Terminating console process...");
       fbTerminateForProcessId(oConsoleProcess.uId);
     oKillProcessThread = threading.Thread(target = fKillProcessThread);
     oKillProcessThread.start();
-    oConsole.fPrint("  * Closing pipes...");
+    oConsole.fOutput("  * Closing pipes...");
     # This will hang until the process is killed...
     oConsoleProcess.fClose();
-    oConsole.fPrint("  * Waiting for kill process thread...");
+    oConsole.fOutput("  * Waiting for kill process thread...");
     oKillProcessThread.join();
-    oConsole.fPrint("  * Waiting for end of console process output in thread...");
+    oConsole.fOutput("  * Waiting for end of console process output in thread...");
     oReadThread.join();
-    assert asBytesRead[0] == "", \
-        "Expected %s, got %s" % (repr(""), repr(asBytesRead[0]));
-    oConsole.fPrint("  * Reading end of output...");
-    sReadBytes = oConsoleProcess.oStdOutPipe.fsReadBytes(1);
-    assert sReadBytes == "", \
+    assert asDataRead[0] == "", \
+        "Expected %s, got %s" % (repr(""), repr(asDataRead[0]));
+    oConsole.fOutput("  * Reading end of output...");
+    sReadBytes = oConsoleProcess.oStdOutPipe.fsbReadBytes(1);
+    assert sReadBytes == b"", \
         "Read %s from a completely closed pipe" % repr(sReadBytes);
   finally:
     if oConsoleProcess.bIsRunning:

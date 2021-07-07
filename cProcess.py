@@ -18,6 +18,8 @@ from .fuGetMemoryUsageForProcessId import fuGetMemoryUsageForProcessId;
 from .cThread import cThread;
 from .cVirtualAllocation import cVirtualAllocation;
 
+gbDebugOutput = False;
+
 dsProcessAccessRightName_by_uFlag = {
   DELETE: "DELETE",
   PROCESS_CREATE_PROCESS: "PROCESS_CREATE_PROCESS",
@@ -89,7 +91,7 @@ class cProcess(object):
     oStartupInfo.lpDesktop = NULL;
     oStartupInfo.lpDesktop = NULL;
     oStartupInfo.dwFlags = STARTF_USESTDHANDLES | (STARTF_USESHOWWINDOW if bSeparateWindow else 0);
-    oStartupInfo.wShowWindow = SW_HIDE if bHidden else SW_SHOWMINNOACTIVE if bMinimizedWindow else SW_SHOWMAXIMIZED if bMaximizedWindow else 0;
+    oStartupInfo.wShowWindow = SW_HIDE if bHidden else SW_SHOWMINNOACTIVE if bMinimizedWindow else SW_SHOWMAXIMIZED if bMaximizedWindow else SW_SHOW;
     oStartupInfo.hStdInput = oKernel32.GetStdHandle(STD_INPUT_HANDLE);
     oStartupInfo.hStdOutput = oKernel32.GetStdHandle(STD_OUTPUT_HANDLE);
     oStartupInfo.hStdError = oKernel32.GetStdHandle(STD_ERROR_HANDLE);
@@ -118,7 +120,7 @@ class cProcess(object):
     );
   
   def __init__(oSelf, uId, ohProcess = None, uProcessHandleFlags = None):
-    assert isinstance(uId, (int, long)), \
+    assert isinstance(uId, int), \
         "uId must be an integer not %s" % repr(uId);
     oSelf.uId = uId;
     if ohProcess:
@@ -141,7 +143,7 @@ class cProcess(object):
         "You cannot get information on a 64-bit process from 32-bit Python";
     oSelf.uPointerSize = {"x86": 4, "x64": 8}[oSelf.sISA];
     # Cache for dynamically retrieved properties:
-    oSelf.__sBinaryPath = None;
+    oSelf.__s0BinaryPath = None;
     oSelf.__sCommandLine = None;
     oSelf.__n0RunDurationInSeconds = None;
   
@@ -162,10 +164,10 @@ class cProcess(object):
     oSelf.__ohProcess = ohProcess;
     oSelf.__uProcessHandleFlags = uFlags if ohProcess != INVALID_HANDLE_VALUE else 0;
     if ohOldProcessHandle:
-      # If it does not have the required flags, close it:
+      # Close the old process handle:
       oKernel32 = foLoadKernel32DLL();
-      if not oKernel32.CloseHandle(oSelf.__ohProcess):
-        fThrowLastError("CloseHandle(%s)" % (repr(oSelf.__ohProcess),));
+      if not oKernel32.CloseHandle(ohOldProcessHandle):
+        fThrowLastError("CloseHandle(%s)" % (repr(ohOldProcessHandle),));
     return ohProcess;
   
   def fs0GetAccessRightsFlagsDescription(oSelf):
@@ -204,15 +206,20 @@ class cProcess(object):
     assert ouReturnLength == oProcessBasicInformation.fuGetSize(), \
         "NtQueryInformationProcess(%s, 0x%08X, ..., 0x%X, ...) wrote 0x%X bytes" % \
         (repr(oSelf.__ohProcess), ProcessBasicInformation, oProcessBasicInformation.fuGetSize(), ouReturnLength.fuGetValue());
+    if gbDebugOutput:
+      for sLine in oProcessBasicInformation.fasDump():
+        print(sLine);
     # Read the PEB from the remote process
     # The type of PEB (32- or 64-bit) depends on the type of PROCESS_BASIC_INFORMATION (see above)
-    o0PEB = oSelf.fo0ReadStructureForAddress(
-      oProcessBasicInformation.PebBaseAddress.c0TargetClass,
-      oProcessBasicInformation.PebBaseAddress.fuGetValue()
+    o0PEB = oSelf.fo0ReadStructureUsingPointer(
+      oProcessBasicInformation.PebBaseAddress,
     );
     assert o0PEB, \
         "Unable to read the PEB from process %d / 0x%X at address 0x%X!" % \
         (oSelf.uId, oSelf.uId, oProcessBasicInformation.PebBaseAddress.fuGetValue());
+    if gbDebugOutput:
+      for sLine in o0PEB.fasDump():
+        print(sLine);
     return o0PEB;
   
   @property
@@ -222,9 +229,8 @@ class cProcess(object):
   def foGetProcessParameters(oSelf):
     # Read Process Parameters from the remote process
     oPEB = oSelf.foGetPEB();
-    o0ProcessParameters = oSelf.fo0ReadStructureForAddress(
-      oPEB.ProcessParameters.c0TargetClass,
-      oPEB.ProcessParameters.fuGetValue()
+    o0ProcessParameters = oSelf.fo0ReadStructureUsingPointer(
+      oPEB.ProcessParameters,
     );
     assert o0ProcessParameters, \
         "Unable to read the ProcessParameters from process %d / 0x%X at address 0x%X!" % \
@@ -233,23 +239,23 @@ class cProcess(object):
   
   @property
   def sBinaryPath(oSelf):
-    if oSelf.__sBinaryPath is None:
+    if oSelf.__s0BinaryPath is None:
       # Read Image Path Name
       oProcessParameters = oSelf.foGetProcessParameters();
       s0BinaryPath = oSelf.fs0ReadStringForAddressAndLength(
         oProcessParameters.ImagePathName.Buffer.fuGetValue(),
-        oProcessParameters.ImagePathName.Length.fuGetValue() / 2,
+        oProcessParameters.ImagePathName.Length.fuGetValue() >> 1,
         bUnicode = True,
       );
       assert s0BinaryPath, \
           "Unable to read the ImagePathName from process %d / 0x%X at address 0x%X and with size 0x%X!" % \
           (oSelf.uId, oSelf.uId, ProcessParameters.ImagePathName.Buffer, oProcessParameters.ImagePathName.Length);
-      oSelf.__sBinaryPath = s0BinaryPath;
-    return oSelf.__sBinaryPath;
+      oSelf.__s0BinaryPath = s0BinaryPath; # Never None!
+    return oSelf.__s0BinaryPath;
   
   @property
   def sBinaryName(oSelf):
-    return oSelf.sBinaryPath and os.path.basename(oSelf.sBinaryPath) or None;
+    return os.path.basename(oSelf.sBinaryPath);
   
   @property
   def sCommandLine(oSelf):
@@ -258,7 +264,7 @@ class cProcess(object):
       oProcessParameters = oSelf.foGetProcessParameters();
       s0CommandLine = oSelf.fs0ReadStringForAddressAndLength(
         oProcessParameters.CommandLine.Buffer.fuGetValue(),
-        oProcessParameters.CommandLine.Length.fuGetValue() / 2,
+        oProcessParameters.CommandLine.Length.fuGetValue() >> 1,
         bUnicode = True,
       );
       assert s0CommandLine, \
@@ -273,8 +279,11 @@ class cProcess(object):
     except AttributeError:
       return;
     oKernel32 = foLoadKernel32DLL();
-    if not oKernel32.CloseHandle(ohProcess):
-      fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
+    if ohProcess != INVALID_HANDLE_VALUE and not oKernel32.CloseHandle(ohProcess):
+      # If the process is already terminated we can see a ERROR_INVALID_HANDLE error, which we'll ignore.
+      # Any other, unexpected errors are reported:
+      if not fbLastErrorIs(ERROR_INVALID_HANDLE):
+        fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
   
   @property
   def bIsRunning(oSelf):
@@ -420,11 +429,23 @@ class cProcess(object):
     uOffset = uAddress - oVirtualAllocation.uStartAddress;
     return oVirtualAllocation.fauReadPointersForOffsetAndCount(uOffset, uCount);  
   
+  def fo0ReadStructureUsingPointer(oSelf, oStructurePointer):
+    return oSelf.fo0ReadStructureForAddress(
+      oStructurePointer.c0TargetClass,
+      oStructurePointer.fuGetValue(),
+    );
   def fo0ReadStructureForAddress(oSelf, cStructure, uAddress):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
     if not oVirtualAllocation.bAllocated:
       return None; # TOCTOU
     uOffset = uAddress - oVirtualAllocation.uStartAddress;
+    if gbDebugOutput:
+      print(
+        "Reading %s @ 0x%X, which is at offset 0x%X from start address in this virtual allocation:" % \
+        (cStructure.__name__, uAddress, uOffset)
+      );
+      for sLine in oVirtualAllocation.fasDump():
+        print("  " + sLine);
     return oVirtualAllocation.foReadStructureForOffset(cStructure, uOffset);  
   
   def fbWriteBytesForAddress(oSelf, sData, uAddress):
@@ -489,7 +510,7 @@ class cProcess(object):
       "pid = 0x%X" % (oSelf.uId,),
       "ISA = %s" % (oSelf.sISA,),
       "command = %s" % (oSelf.__sCommandLine,) if oSelf.__sCommandLine else
-        "binary = %s" % (oSelf.__sBinaryPath,) if oSelf.__sBinaryPath else
+        "binary = %s" % (oSelf.__s0BinaryPath,) if oSelf.__s0BinaryPath else
         None,
       "access = %s" % (sAccessRightsFlagsDescription,) if sAccessRightsFlagsDescription else "no access",
     ] if s];

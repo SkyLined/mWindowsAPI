@@ -16,48 +16,48 @@ from .fThrowLastError import fThrowLastError;
 from .fThrowNTStatusError import fThrowNTStatusError;
 from .fuGetExitCodeForThreadHandle import fuGetExitCodeForThreadHandle;
 
-gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA = {
+gddtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName_by_sISA = {
   "x86": {
     # 8 bit
-    "ah":   ("Eax", 8, 8),
-    "al":   ("Eax", 8, 0),
-    "bh":   ("Ebx", 8, 8),
-    "bl":   ("Ebx", 8, 0),
-    "ch":   ("Ecx", 8, 8),
-    "cl":   ("Ecx", 8, 0),
-    "dh":   ("Edx", 8, 8),
-    "dl":   ("Edx", 8, 0),
+    b"ah":   ("Eax", 8, 8),
+    b"al":   ("Eax", 8, 0),
+    b"bh":   ("Ebx", 8, 8),
+    b"bl":   ("Ebx", 8, 0),
+    b"ch":   ("Ecx", 8, 8),
+    b"cl":   ("Ecx", 8, 0),
+    b"dh":   ("Edx", 8, 8),
+    b"dl":   ("Edx", 8, 0),
     # 16 bit
-    "ax":   ("Eax", 16, 0),
-    "bx":   ("Ebx", 16, 0),
-    "cx":   ("Ecx", 16, 0),
-    "dx":   ("Edx", 16, 0),
-    "si":   ("Esi", 16, 0),
-    "di":   ("Edi", 16, 0),
-    "bp":   ("Ebp", 16, 0),
-    "sp":   ("Esp", 16, 0),
-    "ip":   ("Eip", 16, 0),
+    b"ax":   ("Eax", 16, 0),
+    b"bx":   ("Ebx", 16, 0),
+    b"cx":   ("Ecx", 16, 0),
+    b"dx":   ("Edx", 16, 0),
+    b"si":   ("Esi", 16, 0),
+    b"di":   ("Edi", 16, 0),
+    b"bp":   ("Ebp", 16, 0),
+    b"sp":   ("Esp", 16, 0),
+    b"ip":   ("Eip", 16, 0),
     # 32 bit
-    "eax":  ("Eax", 32, 0),
-    "ebx":  ("Ebx", 32, 0),
-    "ecx":  ("Ecx", 32, 0),
-    "edx":  ("Edx", 32, 0),
-    "esi":  ("Esi", 32, 0),
-    "edi":  ("Edi", 32, 0),
-    "ebp":  ("Ebp", 32, 0),
-    "esp":  ("Esp", 32, 0),
-    "eip":  ("Eip", 32, 0),
-    "*sp":  ("Esp", 32, 0),
-    "*ip":  ("Eip", 32, 0),
+    b"eax":  ("Eax", 32, 0),
+    b"ebx":  ("Ebx", 32, 0),
+    b"ecx":  ("Ecx", 32, 0),
+    b"edx":  ("Edx", 32, 0),
+    b"esi":  ("Esi", 32, 0),
+    b"edi":  ("Edi", 32, 0),
+    b"ebp":  ("Ebp", 32, 0),
+    b"esp":  ("Esp", 32, 0),
+    b"eip":  ("Eip", 32, 0),
+    b"*sp":  ("Esp", 32, 0),
+    b"*ip":  ("Eip", 32, 0),
     # 64 bit
-    "mm0":  ("FloatSave.RegisterArea", 80, 0*80),
-    "mm1":  ("FloatSave.RegisterArea", 80, 1*80),
-    "mm2":  ("FloatSave.RegisterArea", 80, 2*80),
-    "mm3":  ("FloatSave.RegisterArea", 80, 3*80),
-    "mm4":  ("FloatSave.RegisterArea", 80, 4*80),
-    "mm5":  ("FloatSave.RegisterArea", 80, 5*80),
-    "mm6":  ("FloatSave.RegisterArea", 80, 6*80),
-    "mm7":  ("FloatSave.RegisterArea", 80, 7*80),
+    b"mm0":  ("FloatSave.RegisterArea", 80, 0*80),
+    b"mm1":  ("FloatSave.RegisterArea", 80, 1*80),
+    b"mm2":  ("FloatSave.RegisterArea", 80, 2*80),
+    b"mm3":  ("FloatSave.RegisterArea", 80, 3*80),
+    b"mm4":  ("FloatSave.RegisterArea", 80, 4*80),
+    b"mm5":  ("FloatSave.RegisterArea", 80, 5*80),
+    b"mm6":  ("FloatSave.RegisterArea", 80, 6*80),
+    b"mm7":  ("FloatSave.RegisterArea", 80, 7*80),
     # 80 bit floats
 # Python has no support for 80 bit floats, so implementing this is going to be quite a lot of work.
 #    "st0":  ("FloatSave.RegisterArea", 80, 0*80),
@@ -69,127 +69,127 @@ gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA = {
 #    "st6":  ("FloatSave.RegisterArea", 80, 6*80),
 #    "st7":  ("FloatSave.RegisterArea", 80, 7*80),
     # 128 bit
-    "xmm0": ("ExtendedRegisters", 128, 0*128 + 0x500),
-    "xmm1": ("ExtendedRegisters", 128, 1*128 + 0x500),
-    "xmm2": ("ExtendedRegisters", 128, 2*128 + 0x500),
-    "xmm3": ("ExtendedRegisters", 128, 3*128 + 0x500),
-    "xmm4": ("ExtendedRegisters", 128, 4*128 + 0x500),
-    "xmm5": ("ExtendedRegisters", 128, 5*128 + 0x500),
-    "xmm6": ("ExtendedRegisters", 128, 6*128 + 0x500),
-    "xmm7": ("ExtendedRegisters", 128, 7*128 + 0x500),
+    b"xmm0": ("ExtendedRegisters", 128, 0*128 + 0x500),
+    b"xmm1": ("ExtendedRegisters", 128, 1*128 + 0x500),
+    b"xmm2": ("ExtendedRegisters", 128, 2*128 + 0x500),
+    b"xmm3": ("ExtendedRegisters", 128, 3*128 + 0x500),
+    b"xmm4": ("ExtendedRegisters", 128, 4*128 + 0x500),
+    b"xmm5": ("ExtendedRegisters", 128, 5*128 + 0x500),
+    b"xmm6": ("ExtendedRegisters", 128, 6*128 + 0x500),
+    b"xmm7": ("ExtendedRegisters", 128, 7*128 + 0x500),
     # Flags
-    "cf":   ("Eflags", 1, 0),
-    "pf":   ("Eflags", 1, 2),
-    "af":   ("Eflags", 1, 4),
-    "zf":   ("Eflags", 1, 6),
-    "sf":   ("Eflags", 1, 7),
-    "tf":   ("Eflags", 1, 8),
-    "if":   ("Eflags", 1, 9),
-    "df":   ("Eflags", 1, 10),
-    "of":   ("Eflags", 1, 11),
-    "iopl": ("Eflags", 2, 12),
-    "nt":   ("Eflags", 1, 14),
-    "rf":   ("Eflags", 1, 16),
-    "vm":   ("Eflags", 1, 17),
-    "ac":   ("Eflags", 1, 18),
-    "vif":  ("Eflags", 1, 19),
-    "vip":  ("Eflags", 1, 20),
-    "id":   ("Eflags", 1, 21),
+    b"cf":   ("Eflags", 1, 0),
+    b"pf":   ("Eflags", 1, 2),
+    b"af":   ("Eflags", 1, 4),
+    b"zf":   ("Eflags", 1, 6),
+    b"sf":   ("Eflags", 1, 7),
+    b"tf":   ("Eflags", 1, 8),
+    b"if":   ("Eflags", 1, 9),
+    b"df":   ("Eflags", 1, 10),
+    b"of":   ("Eflags", 1, 11),
+    b"iopl": ("Eflags", 2, 12),
+    b"nt":   ("Eflags", 1, 14),
+    b"rf":   ("Eflags", 1, 16),
+    b"vm":   ("Eflags", 1, 17),
+    b"ac":   ("Eflags", 1, 18),
+    b"vif":  ("Eflags", 1, 19),
+    b"vip":  ("Eflags", 1, 20),
+    b"id":   ("Eflags", 1, 21),
   },
   "x64": {
     # 8 bit
-    "ah":   ("Rax", 8, 8),
-    "al":   ("Rax", 8, 0),
-    "bh":   ("Rbx", 8, 8),
-    "bl":   ("Rbx", 8, 0),
-    "ch":   ("Rcx", 8, 8),
-    "cl":   ("Rcx", 8, 0),
-    "dh":   ("Rdx", 8, 8),
-    "dl":   ("Rdx", 8, 0),
-    "sih":  ("Rsi", 8, 8),
-    "sil":  ("Rsi", 8, 0),
-    "dih":  ("Rdi", 8, 8),
-    "dil":  ("Rdi", 8, 0),
-    "bph":  ("Rbp", 8, 8),
-    "bpl":  ("Rbp", 8, 0),
-    "sph":  ("Rsp", 8, 8),
-    "spl":  ("Rsp", 8, 0),
-    "iph":  ("Rip", 8, 8),
-    "ipl":  ("Rip", 8, 0),
-    "r8b":  ("R8",  8, 0),
-    "r9b":  ("R9",  8, 0),
-    "r10b": ("R10", 8, 0),
-    "r11b": ("R11", 8, 0),
-    "r12b": ("R12", 8, 0),
-    "r13b": ("R13", 8, 0),
-    "r14b": ("R14", 8, 0),
-    "r15b": ("R15", 8, 0),
+    b"ah":   ("Rax", 8, 8),
+    b"al":   ("Rax", 8, 0),
+    b"bh":   ("Rbx", 8, 8),
+    b"bl":   ("Rbx", 8, 0),
+    b"ch":   ("Rcx", 8, 8),
+    b"cl":   ("Rcx", 8, 0),
+    b"dh":   ("Rdx", 8, 8),
+    b"dl":   ("Rdx", 8, 0),
+    b"sih":  ("Rsi", 8, 8),
+    b"sil":  ("Rsi", 8, 0),
+    b"dih":  ("Rdi", 8, 8),
+    b"dil":  ("Rdi", 8, 0),
+    b"bph":  ("Rbp", 8, 8),
+    b"bpl":  ("Rbp", 8, 0),
+    b"sph":  ("Rsp", 8, 8),
+    b"spl":  ("Rsp", 8, 0),
+    b"iph":  ("Rip", 8, 8),
+    b"ipl":  ("Rip", 8, 0),
+    b"r8b":  ("R8",  8, 0),
+    b"r9b":  ("R9",  8, 0),
+    b"r10b": ("R10", 8, 0),
+    b"r11b": ("R11", 8, 0),
+    b"r12b": ("R12", 8, 0),
+    b"r13b": ("R13", 8, 0),
+    b"r14b": ("R14", 8, 0),
+    b"r15b": ("R15", 8, 0),
     # 16 bit
-    "ax":   ("Rax", 16, 0),
-    "bx":   ("Rbx", 16, 0),
-    "cx":   ("Rcx", 16, 0),
-    "dx":   ("Rdx", 16, 0),
-    "si":   ("Rsi", 16, 0),
-    "di":   ("Rdi", 16, 0),
-    "bp":   ("Rbp", 16, 0),
-    "sp":   ("Rsp", 16, 0),
-    "ip":   ("Rip", 16, 0),
-    "r8w":  ("R8",  16, 0),
-    "r9w":  ("R9",  16, 0),
-    "r10w": ("R10", 16, 0),
-    "r11w": ("R11", 16, 0),
-    "r12w": ("R12", 16, 0),
-    "r13w": ("R13", 16, 0),
-    "r14w": ("R14", 16, 0),
-    "r15w": ("R15", 16, 0),
+    b"ax":   ("Rax", 16, 0),
+    b"bx":   ("Rbx", 16, 0),
+    b"cx":   ("Rcx", 16, 0),
+    b"dx":   ("Rdx", 16, 0),
+    b"si":   ("Rsi", 16, 0),
+    b"di":   ("Rdi", 16, 0),
+    b"bp":   ("Rbp", 16, 0),
+    b"sp":   ("Rsp", 16, 0),
+    b"ip":   ("Rip", 16, 0),
+    b"r8w":  ("R8",  16, 0),
+    b"r9w":  ("R9",  16, 0),
+    b"r10w": ("R10", 16, 0),
+    b"r11w": ("R11", 16, 0),
+    b"r12w": ("R12", 16, 0),
+    b"r13w": ("R13", 16, 0),
+    b"r14w": ("R14", 16, 0),
+    b"r15w": ("R15", 16, 0),
     # 32 bit
-    "eax":  ("Rax", 32, 0),
-    "ebx":  ("Rbx", 32, 0),
-    "ecx":  ("Rcx", 32, 0),
-    "edx":  ("Rdx", 32, 0),
-    "esi":  ("Rsi", 32, 0),
-    "edi":  ("Rdi", 32, 0),
-    "ebp":  ("Rbp", 32, 0),
-    "esp":  ("Rsp", 32, 0),
-    "eip":  ("Rip", 32, 0),
-    "r8d":  ("R8",  32, 0),
-    "r9d":  ("R9",  32, 0),
-    "r10d": ("R10", 32, 0),
-    "r11d": ("R11", 32, 0),
-    "r12d": ("R12", 32, 0),
-    "r13d": ("R13", 32, 0),
-    "r14d": ("R14", 32, 0),
-    "r15d": ("R15", 32, 0),
+    b"eax":  ("Rax", 32, 0),
+    b"ebx":  ("Rbx", 32, 0),
+    b"ecx":  ("Rcx", 32, 0),
+    b"edx":  ("Rdx", 32, 0),
+    b"esi":  ("Rsi", 32, 0),
+    b"edi":  ("Rdi", 32, 0),
+    b"ebp":  ("Rbp", 32, 0),
+    b"esp":  ("Rsp", 32, 0),
+    b"eip":  ("Rip", 32, 0),
+    b"r8d":  ("R8",  32, 0),
+    b"r9d":  ("R9",  32, 0),
+    b"r10d": ("R10", 32, 0),
+    b"r11d": ("R11", 32, 0),
+    b"r12d": ("R12", 32, 0),
+    b"r13d": ("R13", 32, 0),
+    b"r14d": ("R14", 32, 0),
+    b"r15d": ("R15", 32, 0),
     # 64 bit
-    "rax":  ("Rax", 64, 0),
-    "rbx":  ("Rbx", 64, 0),
-    "rcx":  ("Rcx", 64, 0),
-    "rdx":  ("Rdx", 64, 0),
-    "rsi":  ("Rsi", 64, 0),
-    "rdi":  ("Rdi", 64, 0),
-    "rbp":  ("Rbp", 64, 0),
-    "rsp":  ("Rsp", 64, 0),
-    "rip":  ("Rip", 64, 0),
-    "*sp":  ("Rsp", 64, 0),
-    "*ip":  ("Rip", 64, 0),
-    "r8":   ("R8",  64, 0),
-    "r9":   ("R9",  64, 0),
-    "r10":  ("R10", 64, 0),
-    "r11":  ("R11", 64, 0),
-    "r12":  ("R12", 64, 0),
-    "r13":  ("R13", 64, 0),
-    "r14":  ("R14", 64, 0),
-    "r15":  ("R15", 64, 0),
-    "mm0":  ("FltSave.FloatRegisters[0]", 64, 0),
-    "mm1":  ("FltSave.FloatRegisters[1]", 64, 0),
-    "mm2":  ("FltSave.FloatRegisters[2]", 64, 0),
-    "mm3":  ("FltSave.FloatRegisters[3]", 64, 0),
-    "mm4":  ("FltSave.FloatRegisters[4]", 64, 0),
-    "mm5":  ("FltSave.FloatRegisters[5]", 64, 0),
-    "mm6":  ("FltSave.FloatRegisters[6]", 64, 0),
-    "mm7":  ("FltSave.FloatRegisters[7]", 64, 0),
+    b"rax":  ("Rax", 64, 0),
+    b"rbx":  ("Rbx", 64, 0),
+    b"rcx":  ("Rcx", 64, 0),
+    b"rdx":  ("Rdx", 64, 0),
+    b"rsi":  ("Rsi", 64, 0),
+    b"rdi":  ("Rdi", 64, 0),
+    b"rbp":  ("Rbp", 64, 0),
+    b"rsp":  ("Rsp", 64, 0),
+    b"rip":  ("Rip", 64, 0),
+    b"*sp":  ("Rsp", 64, 0),
+    b"*ip":  ("Rip", 64, 0),
+    b"r8":   ("R8",  64, 0),
+    b"r9":   ("R9",  64, 0),
+    b"r10":  ("R10", 64, 0),
+    b"r11":  ("R11", 64, 0),
+    b"r12":  ("R12", 64, 0),
+    b"r13":  ("R13", 64, 0),
+    b"r14":  ("R14", 64, 0),
+    b"r15":  ("R15", 64, 0),
+    b"mm0":  ("FltSave.FloatRegisters[0]", 64, 0),
+    b"mm1":  ("FltSave.FloatRegisters[1]", 64, 0),
+    b"mm2":  ("FltSave.FloatRegisters[2]", 64, 0),
+    b"mm3":  ("FltSave.FloatRegisters[3]", 64, 0),
+    b"mm4":  ("FltSave.FloatRegisters[4]", 64, 0),
+    b"mm5":  ("FltSave.FloatRegisters[5]", 64, 0),
+    b"mm6":  ("FltSave.FloatRegisters[6]", 64, 0),
+    b"mm7":  ("FltSave.FloatRegisters[7]", 64, 0),
     # 80 bit
-# Python has no support for 80 bit floats, so implementing this is going to be quite a lot of work.
+# Pybthon has no support for 80 bit floats, so implementing this is going to be quite a lot of work.
 #    "st0":  ("FltSave.FloatRegisters[0]", 80, 0),
 #    "st1":  ("FltSave.FloatRegisters[1]", 80, 0),
 #    "st2":  ("FltSave.FloatRegisters[2]", 80, 0),
@@ -199,47 +199,47 @@ gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA = {
 #    "st6":  ("FltSave.FloatRegisters[6]", 80, 0),
 #    "st7":  ("FltSave.FloatRegisters[7]", 80, 0),
     # 128 bit
-    "xmm0": ("Xmm0", 128, 0),
-    "xmm1": ("Xmm1", 128, 0),
-    "xmm2": ("Xmm2", 128, 0),
-    "xmm3": ("Xmm3", 128, 0),
-    "xmm4": ("Xmm4", 128, 0),
-    "xmm5": ("Xmm5", 128, 0),
-    "xmm6": ("Xmm6", 128, 0),
-    "xmm7": ("Xmm7", 128, 0),
-    "xmm8": ("Xmm8", 128, 0),
-    "xmm9": ("Xmm9", 128, 0),
-    "xmm10": ("Xmm10", 128, 0),
-    "xmm11": ("Xmm11", 128, 0),
-    "xmm12": ("Xmm12", 128, 0),
-    "xmm13": ("Xmm13", 128, 0),
-    "xmm14": ("Xmm14", 128, 0),
-    "xmm15": ("Xmm15", 128, 0),
+    b"xmm0": ("Xmm0", 128, 0),
+    b"xmm1": ("Xmm1", 128, 0),
+    b"xmm2": ("Xmm2", 128, 0),
+    b"xmm3": ("Xmm3", 128, 0),
+    b"xmm4": ("Xmm4", 128, 0),
+    b"xmm5": ("Xmm5", 128, 0),
+    b"xmm6": ("Xmm6", 128, 0),
+    b"xmm7": ("Xmm7", 128, 0),
+    b"xmm8": ("Xmm8", 128, 0),
+    b"xmm9": ("Xmm9", 128, 0),
+    b"xmm10": ("Xmm10", 128, 0),
+    b"xmm11": ("Xmm11", 128, 0),
+    b"xmm12": ("Xmm12", 128, 0),
+    b"xmm13": ("Xmm13", 128, 0),
+    b"xmm14": ("Xmm14", 128, 0),
+    b"xmm15": ("Xmm15", 128, 0),
     # Flags
-    "cf":   ("EFlags", 1, 0),
-    "pf":   ("EFlags", 1, 2),
-    "af":   ("EFlags", 1, 4),
-    "zf":   ("EFlags", 1, 6),
-    "sf":   ("EFlags", 1, 7),
-    "tf":   ("EFlags", 1, 8),
-    "if":   ("EFlags", 1, 9),
-    "df":   ("EFlags", 1, 10),
-    "of":   ("EFlags", 1, 11),
-    "iopl": ("EFlags", 2, 12),
-    "nt":   ("EFlags", 1, 14),
-    "rf":   ("EFlags", 1, 16),
-    "vm":   ("EFlags", 1, 17),
-    "ac":   ("EFlags", 1, 18),
-    "vif":  ("EFlags", 1, 19),
-    "vip":  ("EFlags", 1, 20),
-    "id":   ("EFlags", 1, 21),
+    b"cf":   ("EFlags", 1, 0),
+    b"pf":   ("EFlags", 1, 2),
+    b"af":   ("EFlags", 1, 4),
+    b"zf":   ("EFlags", 1, 6),
+    b"sf":   ("EFlags", 1, 7),
+    b"tf":   ("EFlags", 1, 8),
+    b"if":   ("EFlags", 1, 9),
+    b"df":   ("EFlags", 1, 10),
+    b"of":   ("EFlags", 1, 11),
+    b"iopl": ("EFlags", 2, 12),
+    b"nt":   ("EFlags", 1, 14),
+    b"rf":   ("EFlags", 1, 16),
+    b"vm":   ("EFlags", 1, 17),
+    b"ac":   ("EFlags", 1, 18),
+    b"vif":  ("EFlags", 1, 19),
+    b"vip":  ("EFlags", 1, 20),
+    b"id":   ("EFlags", 1, 21),
   },
 };
 
 class cThread(object):
   def __init__(oSelf, oProcess, uId, oh0Thread = None, u0ThreadHandleFlags = None):
     oSelf.oProcess = oProcess;
-    assert isinstance(uId, (int, long)), \
+    assert isinstance(uId, int), \
         "uId must be an integer not %s" % repr(uId);
     oSelf.uId = uId;
     if oh0Thread is not None:
@@ -247,7 +247,7 @@ class cThread(object):
           "oh0Thread (%s) is not a valid handle" % repr(oh0Thread);
       assert u0ThreadHandleFlags is not None, \
           "You must provide u0ThreadHandleFlags when you provide oh0Thread";
-      assert isinstance(u0ThreadHandleFlags, (int, long)), \
+      assert isinstance(u0ThreadHandleFlags, int), \
           "u0ThreadHandleFlags (%s) is not a valid integer" % repr(u0ThreadHandleFlags);
       uThreadHandleFlags = u0ThreadHandleFlags;
     else:
@@ -470,7 +470,7 @@ class cThread(object):
     xValue = oThreadContext;
     for sMemberName in re.split("[\.\[]", sThreadContextMemberName):
       if sMemberName[-1] == "]":
-        xValue = xValue[long(sMemberName[:-1])];
+        xValue = xValue[int(sMemberName[:-1])];
       else:
         xValue = getattr(xValue, sMemberName);
     if isinstance(xValue, M128A):
@@ -482,7 +482,7 @@ class cThread(object):
     else:
       auMemberValueBytes = xValue;
       uValue = 0;
-      for uByteIndex in xrange(uBitOffset >> 3, (uBitOffset + uBitSize) >> 3):
+      for uByteIndex in range(uBitOffset >> 3, (uBitOffset + uBitSize) >> 3):
         iStartBitOffsetForMemberValueByte = uBitOffset - uByteIndex * 8;
         iEndBitOffsetForMemberValueByte = iStartBitOffsetForMemberValueByte + uBitSize;
         uValueComponent = auMemberValueBytes[uByteIndex];
@@ -502,7 +502,7 @@ class cThread(object):
     for sMemberName in re.split("[\.\[]", sThreadContextMemberName):
       xParent = xValue;
       if sMemberName[-1] == "]":
-        xValue = xValue[long(sMemberName[:-1])];
+        xValue = xValue[int(sMemberName[:-1])];
       else:
         xValue = getattr(xValue, sMemberName);
     if isinstance(xValue, M128A):
@@ -519,7 +519,7 @@ class cThread(object):
       uNewValue = uRegisterValue << uBitOffset;
       uValue = uValue - uCurrentValue + uNewValue;
       if sMemberName[-1] == "]":
-        xParent[long(sMemberName[:-1])] = uValue;
+        xParent[int(sMemberName[:-1])] = uValue;
       else:
         setattr(xParent, sMemberName, uValue);
     else:
@@ -529,49 +529,49 @@ class cThread(object):
     o0ThreadContext = oSelf.__fo0GetThreadContext();
     if o0ThreadContext is None: return None;
     # Actual valid registers depend on the ISA of the target process:
-    dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName = \
-        gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
+    dtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName = \
+        gddtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName_by_sISA[oSelf.oProcess.sISA];
     duRegisterValues_by_sName = {};
-    for (sRegisterName, (sThreadContextMemberName, uBitSize, uBitOffset)) in \
-        dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName.items():
+    for (sbRegisterName, (sThreadContextMemberName, uBitSize, uBitOffset)) in \
+        dtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName.items():
       uRegisterValue = oSelf.__fxGetRegisterFromThreadContext(o0ThreadContext, sThreadContextMemberName, uBitOffset, uBitSize);
-      duRegisterValues_by_sName[sRegisterName] = uRegisterValue;
+      duRegisterValues_by_sName[sbRegisterName] = uRegisterValue;
     return duRegisterValues_by_sName;
   
-  def fu0GetRegister(oSelf, sRegisterName):
+  def fu0GetRegister(oSelf, sbRegisterName):
     o0ThreadContext = oSelf.__fo0GetThreadContext();
     if o0ThreadContext is None: return None;
     # Actual valid registers depend on the ISA of the target process:
-    dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName = \
-        gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
-    assert sRegisterName in dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName, \
-        "Register %s is not available in the context of %s process %d" % (sRegisterName, oSelf.oProcess.sISA, oSelf.oProcess.uId);
+    dtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName = \
+        gddtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName_by_sISA[oSelf.oProcess.sISA];
+    assert sbRegisterName in dtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName, \
+        "Register %s is not available in the context of %s process %d" % (sbRegisterName, oSelf.oProcess.sISA, oSelf.oProcess.uId);
     (sThreadContextMemberName, uBitSize, uBitOffset) = \
-        dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName[sRegisterName];
+        dtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName[sbRegisterName];
     return oSelf.__fxGetRegisterFromThreadContext(o0ThreadContext, sThreadContextMemberName, uBitOffset, uBitSize);
   
-  def fbSetRegister(oSelf, sRegisterName, uRegisterValue):
-    return oSelf.fbSetRegisters({sRegisterName: uRegisterValue});
+  def fbSetRegister(oSelf, sbRegisterName, uRegisterValue):
+    return oSelf.fbSetRegisters({sbRegisterName: uRegisterValue});
   
-  def fbSetRegisters(oSelf, duRegisterValue_by_sName):
+  def fbSetRegisters(oSelf, duRegisterValue_by_sbName):
     o0ThreadContext = oSelf.__fo0GetThreadContext();
     if o0ThreadContext is None:
-#      print "fbSetRegisters(%s) => False (o0ThreadContext == None)" % (repr(duRegisterValue_by_sName),);
+#      print "fbSetRegisters(%s) => False (o0ThreadContext == None)" % (repr(duRegisterValue_by_sbName),);
       return False;
     # Actual valid registers depend on the ISA of the target process:
-    dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName = \
-        gddtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName_by_sISA[oSelf.oProcess.sISA];
-    for (sRegisterName, uRegisterValue) in duRegisterValue_by_sName.items():
-      assert sRegisterName in dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName, \
-          "Register %s is not available in the context of %s process %d" % (sRegisterName, oSelf.oProcess.sISA, oSelf.oProcess.uId);
+    dtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName = \
+        gddtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName_by_sISA[oSelf.oProcess.sISA];
+    for (sbRegisterName, uRegisterValue) in duRegisterValue_by_sbName.items():
+      assert sbRegisterName in dtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName, \
+          "Register %s is not available in the context of %s process %d" % (sbRegisterName, oSelf.oProcess.sISA, oSelf.oProcess.uId);
       (sThreadContextMemberName, uBitSize, uBitOffset) = \
-          dtxThreadContextMemberNameBitSizeAndOffset_by_sRegisterName[sRegisterName];
+          dtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName[sbRegisterName];
       assert uRegisterValue & ((1 << uBitSize) - 1) == uRegisterValue, \
           "value 0x%X cannot be stored in %d bit" % (uRegisterValue, uBitSize);
       oSelf.__fSetRegisterInThreadContext(o0ThreadContext, sThreadContextMemberName, uBitOffset, uBitSize, uRegisterValue);
     oh0Thread = oSelf.foh0OpenWithFlags(THREAD_SET_CONTEXT, bMustExist = False, bMustGetAccess = False);
     if not fbIsValidHandle(oh0Thread):
-#      print "fbSetRegisters(%s) => False (oh0Thread = %s)" % (repr(duRegisterValue_by_sName),repr(oh0Thread));
+#      print "fbSetRegisters(%s) => False (oh0Thread = %s)" % (repr(duRegisterValue_by_sbName),repr(oh0Thread));
       return False;
     # The function we need to use to set the context depends on the ISA of both the target process and the calling
     # process (the Python process we're running in):
@@ -589,7 +589,7 @@ class cThread(object):
         sSetThreadContextFunctionName,
         oSelf.fs0GetAccessRightsFlagsDescription()
       ));
-#    print "fbSetRegisters(%s) => True" % (repr(duRegisterValue_by_sName),);
+#    print "fbSetRegisters(%s) => True" % (repr(duRegisterValue_by_sbName),);
     return True;
   
   def fasGetDetails(oSelf):

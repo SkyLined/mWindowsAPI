@@ -1,5 +1,5 @@
 from mWindowsAPI import *;
-from oConsole import oConsole;
+from mConsole import oConsole;
 
 def fTestDbgHelp():
   # mDbgHelp.fsUndecorateSymbolName

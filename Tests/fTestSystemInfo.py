@@ -1,6 +1,6 @@
 from mWindowsAPI import *;
 from mWindowsSDK import SECURITY_MANDATORY_MEDIUM_RID;
-from oConsole import oConsole;
+from mConsole import oConsole;
 
 def fTestSystemInfo():
   oConsole.fOutput("* Testing system info...");

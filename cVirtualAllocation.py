@@ -1,4 +1,4 @@
-import struct;
+import math, struct;
 
 from mWindowsSDK import *;
 from .fbLastErrorIs import fbLastErrorIs;
@@ -188,7 +188,7 @@ class cVirtualAllocation(object):
   @property
   def sAllocationProtection(oSelf):
     return fsProtection(oSelf.__uAllocationProtection);
-
+  
   # Start/End address and size
   @property
   def uAddress(oSelf):
@@ -239,20 +239,20 @@ class cVirtualAllocation(object):
   
   @property
   def bReadable(oSelf):
-    return oSelf.bAllocated and "read" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
+    return oSelf.bAllocated and not oSelf.bGuard and "read" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
   @property
   def bWritable(oSelf):
-    return oSelf.bAllocated and "write" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
+    return oSelf.bAllocated and not oSelf.bGuard and "write" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
   @property
   def bExecutable(oSelf):
-    return oSelf.bAllocated and "execute" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
+    return oSelf.bAllocated and not oSelf.bGuard and "execute" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
   @property
   def bGuard(oSelf):
     return oSelf.bAllocated and (oSelf.uAllocationProtection & PAGE_GUARD);
   
   @uProtection.setter
   def uProtection(oSelf, uNewProtection):
-    assert isinstance(uNewProtection, (int, long)) and uNewProtection > 0, \
+    assert isinstance(uNewProtection, int) and uNewProtection > 0, \
         "Cannot set uProtection to %s" % repr(uNewProtection);
     oKernel32 = foLoadKernel32DLL();
     assert oSelf.bAllocated, \
@@ -313,10 +313,12 @@ class cVirtualAllocation(object):
   def bPrivate(oSelf):
     return oSelf.__uType == MEM_PRIVATE;
   
-  def fsReadBytesForOffsetAndSize(oSelf, uOffset, uSize):
-    # Read ASCII string without NULL terminator.
-    return oSelf.fsReadStringForOffsetAndLength(uOffset, uSize, bUnicode = False, bNullTerminated = False);
-  def fsReadStringForOffsetAndLength(oSelf, uOffset, uLength, bUnicode = False, bNullTerminated = False):
+  def fsbReadBytesStringForOffsetAndSize(oSelf, uOffset, uSize):
+    # Read bytes without NULL terminator.
+    return oSelf.fsReadStringForOffsetAndLength(uOffset, uSize, bUnicode = False, bNullTerminated = False, bBytes = True);
+  def fsReadStringForOffsetAndLength(oSelf, uOffset, uLength, bUnicode = False, bNullTerminated = False, bBytes = False):
+    assert not bUnicode or not bBytes, \
+        "Unicode strings cannot be returned as a string of bytes";
     oKernel32 = foLoadKernel32DLL();
     # Sanity checks
     uSize = uLength * (2 if bUnicode else 1);
@@ -358,8 +360,8 @@ class cVirtualAllocation(object):
           (repr(ohProcess), oSelf.__uStartAddress, uOffset, repr(opsBuffer), uSize, repr(opuBytesRead), ouBytesRead.fuGetValue());
       # Return read data as a string.
       if bNullTerminated:
-        return osBuffer.fsGetNullTerminatedString();
-      return osBuffer.fsGetValue();
+        return osBuffer.fsbGetNullTerminatedBytesString() if bBytes else osBuffer.fsGetNullTerminatedString();
+      return osBuffer.fsbGetValue() if bBytes else osBuffer.fsGetValue();
     finally:
       if not oKernel32.CloseHandle(ohProcess):
         fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
@@ -378,7 +380,7 @@ class cVirtualAllocation(object):
     sString = "";
     while 1:
       uSize = min(guStringReadAheadBlockSize, oSelf.uSize - uOffset);
-      uLength = uSize / uCharSize;
+      uLength = math.ceil(uSize / uCharSize);
       if uLength == 0:
         return None; # String is not NULL terminated because it runs until the end of the virtual allocation.
       s0SubString = oSelf.fsReadStringForOffsetAndLength(uOffset, uLength, bUnicode, bNullTerminated = True);
@@ -390,15 +392,15 @@ class cVirtualAllocation(object):
       uOffset += uSize;
   
   def fauReadValuesForOffsetSizeAndCount(oSelf, uOffset, uSize, uCount):
-    sBytes = oSelf.fsReadBytesForOffsetAndSize(uOffset, uCount * uSize);
+    sbBytes = oSelf.fsbReadBytesStringForOffsetAndSize(uOffset, uCount * uSize);
     sUnpackValueFormat = {1: "B", 2: "H", 4: "L", 8: "Q"}.get(uSize);
     assert sUnpackValueFormat, \
         "Unsupported size %d (try 1,2,4 or 8)" % uSize;
-    return struct.unpack("<%s" % (sUnpackValueFormat * uCount), sBytes);
+    return struct.unpack("<%s" % (sUnpackValueFormat * uCount), sbBytes);
   
   def fauReadBytesForOffsetAndSize(oSelf, uOffset, uSize):
     # Read `uSize` values of 1 byte:
-    return oSelf.fauReadValuesForOffsetSizeAndCount(uOffset, 1, uSize);
+    return [int(uByte) for uByte in oSelf.fsbReadBytesStringForOffsetAndSize(uOffset, uSize)];
   
   def fuReadValueForOffsetAndSize(oSelf, uOffset, uSize):
     # Read 1 values of `uSize` byte:
@@ -413,8 +415,8 @@ class cVirtualAllocation(object):
     return oSelf.fauReadValuesForOffsetSizeAndCount(uOffset, oSelf.__uPointerSize, uCount);
   
   def foReadStructureForOffset(oSelf, cStructure, uOffset):
-    sData = oSelf.fsReadBytesForOffsetAndSize(uOffset, cStructure.fuGetSize());
-    return cStructure.foFromBytesString(sData);
+    sbData = oSelf.fsbReadBytesStringForOffsetAndSize(uOffset, cStructure.fuGetSize());
+    return cStructure.foFromBytesString(sbData);
   
   def fWriteBytesForOffset(oSelf, sBytes, uOffset):
     return oSelf.fWriteStringForOffset(sBytes, uOffset, bUnicode = False);

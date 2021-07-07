@@ -4,6 +4,13 @@ from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
 
+try: # mDebugOutput use is Optional
+  from mDebugOutput import ShowDebugOutput, fShowDebugOutput;
+except ModuleNotFoundError as oException:
+  if oException.args[0] != "No module named 'mDebugOutput'":
+    raise;
+  ShowDebugOutput = fShowDebugOutput = lambda x: x; # NOP
+
 guBufferSize = 1;
 gnDefaultConnectTimeoutInSeconds = 1;
 gsPipeNameHeader = r"\\.\pipe\\";
@@ -18,6 +25,7 @@ class cPipe(object):
     return oSecurityAttributes;
   
   @classmethod
+  @ShowDebugOutput
   def foCreateNamed(cPipe, sName, bReadableInput = True, bWritableOutput = True, bInheritable = True, nConnectTimeoutInSeconds = None):
     assert not sName.startswith(gsPipeNameHeader), \
         "The %s header should not be provided in the name!" % repr(gsPipeNameHeader);
@@ -37,7 +45,7 @@ class cPipe(object):
       | PIPE_WAIT # Blocking connect/read/write
       | PIPE_REJECT_REMOTE_CLIENTS # Local connections only for now.
     );
-    nDefaultTimeout = long(1000 * (nConnectTimeoutInSeconds if nConnectTimeoutInSeconds is not None else gnDefaultConnectTimeoutInSeconds));
+    nDefaultTimeout = int(1000 * (nConnectTimeoutInSeconds if nConnectTimeoutInSeconds is not None else gnDefaultConnectTimeoutInSeconds));
     oKernel32 = foLoadKernel32DLL();
     ohHandle = oKernel32.CreateNamedPipeW(
       gsPipeNameHeader + sName, # lpName
@@ -69,6 +77,7 @@ class cPipe(object):
     return cPipe(sName, ohHandle, ohHandle);
   
   @classmethod
+  @ShowDebugOutput
   def foConnectNamed(cPipe, sName, bReadableInput = True, bWritableOutput = True, bInheritable = True, nConnectTimeoutInSeconds = None):
     assert not sName.startswith(gsPipeNameHeader), \
         "The %s header should not be provided in the name!" % repr(gsPipeNameHeader);
@@ -80,7 +89,7 @@ class cPipe(object):
       GENERIC_READ if bReadableInput else 0
       | GENERIC_WRITE if bWritableOutput else 0
     );
-    nEndTimeStamp = time.clock() + (nConnectTimeoutInSeconds if nConnectTimeoutInSeconds is not None else gnDefaultConnectTimeoutInSeconds);
+    nEndTimeStamp = time.time() + (nConnectTimeoutInSeconds if nConnectTimeoutInSeconds is not None else gnDefaultConnectTimeoutInSeconds);
     oKernel32 = foLoadKernel32DLL();
     while 1:
       ohHandle = oKernel32.CreateFileW(
@@ -96,7 +105,7 @@ class cPipe(object):
         break;
       if not fbLastErrorIs(ERROR_PIPE_BUSY):
         fThrowLastError("CreateFileW(%s, 0x%08X, 0, ..., OPEN_EXISTING, 0, NULL)" % (repr(gsPipeNameHeader + sName), odwDesiredAccess));
-      if time.clock() >= nEndTimeStamp:
+      if time.time() >= nEndTimeStamp:
         return None;
     odwMode = DWORD(PIPE_READMODE_BYTE | PIPE_WAIT);
     if not oKernel32.SetNamedPipeHandleState(
@@ -109,6 +118,7 @@ class cPipe(object):
     return cPipe(sName, ohHandle, ohHandle);
   
   @classmethod
+  @ShowDebugOutput
   def foCreate(cPipe, sDescription = None, bInheritableInput = True, bInheritableOutput = True):
     ohInput = HANDLE(); # We write to the pipe's input handle
     ohOutput = HANDLE(); # We read from the pipe's output handle
@@ -136,6 +146,7 @@ class cPipe(object):
         oKernel32.CloseHandle(ohOutput);
     return cPipe(sDescription, ohInput, ohOutput);
   
+  @ShowDebugOutput
   def __init__(oSelf, sDescription, ohInput, ohOutput):
     oSelf.sDescription = sDescription; # Just something you can use to remind you of what this pipe does.
     oSelf.__ohInput = ohInput; # We write to the pipe's input handle
@@ -148,6 +159,17 @@ class cPipe(object):
   def ohOutput(oSelf):
     return oSelf.__ohOutput;
   
+  @property
+  def bClosed(oSelf):
+    return oSelf.__ohInput is INVALID_HANDLE_VALUE and oSelf.__ohOutput is INVALID_HANDLE_VALUE;
+  @property
+  def bClosedForReading(oSelf):
+    return oSelf.__ohOutput is INVALID_HANDLE_VALUE;
+  @property
+  def bClosedForWriting(oSelf):
+    return oSelf.__ohInput is INVALID_HANDLE_VALUE;
+  
+  @ShowDebugOutput
   def fClose(oSelf, bInput = None, bOutput = None):
     if bInput is None and bOutput is None:
       # If nothing is specified, close both. Otherwise close only those for which the value is True-ish.
@@ -159,18 +181,29 @@ class cPipe(object):
         # Named pipes do not have separate input and output handles, so we cannot close them individually.
         assert bOutput or (oSelf.__ohInput != oSelf.__ohOutput), \
             "Cannot close only input on a named pipe!";
-        if not oKernel32.CloseHandle(oSelf.__ohInput):
-          # It is OK if we cannot close this HANDLE because it is already closed, otherwise we throw an exception.
-          if not fbLastErrorIs(ERROR_INVALID_HANDLE):
-            fThrowLastError("CloseHandle(0x%08X)" % (oSelf.__ohInput.value,));
+        if oSelf.__ohInput is not INVALID_HANDLE_VALUE:
+          fShowDebugOutput("Closing pipe input (writing will no longer be possible)");
+          if not oKernel32.CloseHandle(oSelf.__ohInput):
+            # It is OK if we cannot close this HANDLE because it is already closed, otherwise we throw an exception.
+            if not fbLastErrorIs(ERROR_INVALID_HANDLE):
+              fThrowLastError("CloseHandle(0x%08X)" % (oSelf.__ohInput.value,));
+          oSelf.__ohInput = INVALID_HANDLE_VALUE;
     finally:
       # Named pipes do not have separate input and output handles, so we do nnot need to close them individually.
       if bOutput and (not bInput or oSelf.__ohInput != oSelf.__ohOutput):
-        if not oKernel32.CloseHandle(oSelf.__ohOutput):
-          if not fbLastErrorIs(ERROR_INVALID_HANDLE):
-            fThrowLastError("CloseHandle(0x%08X)" % (oSelf.__ohOutput.value,));
+        if oSelf.__ohOutput is not INVALID_HANDLE_VALUE:
+          fShowDebugOutput("Closing pipe output (reading will no longer be possible)");
+          if not oKernel32.CloseHandle(oSelf.__ohOutput):
+            if not fbLastErrorIs(ERROR_INVALID_HANDLE):
+              fThrowLastError("CloseHandle(0x%08X)" % (oSelf.__ohOutput.value,));
+          oSelf.__ohOutput = INVALID_HANDLE_VALUE;
   
-  def fuReadByte(oSelf):
+  # fu0ReadByte shows debug output. There's also a version without debug output for internal use. This second version
+  # may be called repeatedly to read multiple bytes, and having it produce debug output would not be useful.
+  # @ShowDebugOutput This gets call A LOT!
+  def fu0ReadByte(oSelf):
+    return oSelf.__fu0ReadByte();
+  def __fu0ReadByte(oSelf):
     oByte = BYTE();
     odwBytesRead = DWORD();
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365467(v=vs.85).aspx
@@ -185,58 +218,105 @@ class cPipe(object):
       if not fbLastErrorIs(ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE):
         fThrowLastError("ReadFile(hFile=%s, lpBuffer=0x%X, nNumberOfBytesToRead=0x%X, lpNumberOfBytesRead=0x%X, lpOverlapped=NULL)" % \
             (repr(oSelf.__ohOutput), oByte.fuGetAddress(), oByte.fuGetSize(), odwBytesRead.fuGetAddress()));
-      raise IOError("Pipe closed");
+      return None;
     assert odwBytesRead.fuGetValue() == 1, \
         "ReadFile(hFile=%s, lpBuffer=0x%X, nNumberOfBytesToRead=0x%X, lpNumberOfBytesRead=0x%X, lpOverlapped=NULL) => read 0x%X bytes" % \
         (repr(oSelf.__ohOutput), oByte.fuGetAddress(), oByte.fuGetSize(), odwBytesRead.fuGetAddress(), odwBytesRead);
     return oByte.fuGetValue();
   
-  def fsReadLine(oSelf):
+  @ShowDebugOutput
+  def fsbReadBytes(oSelf, uNumberOfBytes = None):
+    auData = [];
+    while uNumberOfBytes is None or len(auData) < uNumberOfBytes:
+      u0Byte = oSelf.__fu0ReadByte();
+      if u0Byte is None:
+        break;
+      auData.append(u0Byte);
+    return bytes(auData);
+  
+  @ShowDebugOutput
+  def fsRead(oSelf, uNumberOfChars = None):
+    sbData = b"";
     sData = "";
-    while 1:
+    # Read until:
+    # - we have read the number of chars the caller wants,
+    # - or we have read 4 bytes and are unable to decode them as a Unicode character
+    while (uNumberOfChars is None or len(sData) < uNumberOfChars) and len(sbData) < 4:
+      u0Byte = oSelf.__fu0ReadByte();
+      if u0Byte is None:
+        break;
+      sbData += bytes((u0Byte,));
       try:
-        uByte = oSelf.fuReadByte();
-      except IOError:
-        if sData == "":
-          raise;
-        break;
-      if uByte == 0x0A: # LF
-        # If EOL was CRLF, strip CR:
-        sData = sData.rstrip("\r");
-        break;
-      sData += chr(uByte);
+        sData += str(sbData, 'utf-8');
+      except UnicodeDecodeError:
+        # We may have read some but not all of the bytes that encode a Unicode char, so this
+        # exception can be expected in some cases.
+        pass;
+      else:
+        sbData = b"";
+    # If there is anything left in the buffer, make sure we parse it and add it to the data.
+    # If the remote has sent us invalid utf-8 encoded data, this will throw a UnicodeDecodeError
+    sData += str(sbData, 'utf-8');
     return sData;
   
-  def fsReadBytes(oSelf, uNumberOfBytes = None):
-    sData = "";
-    while uNumberOfBytes is None or len(sData) < uNumberOfBytes:
+  @ShowDebugOutput
+  def fs0ReadLine(oSelf):
+    sbData = b""; # stores utf-8 encoded character bytes read from the pipe
+    sData = ""; # stores characters decoded from the utf-8 bytes.
+    # Read until we have read 4 bytes and are unable to decode them as a Unicode character
+    while len(sbData) < 4:
+      u0Byte = oSelf.__fu0ReadByte();
+      if u0Byte is None: # pipe has been closed
+        if len(sData) == 0 and len(sbData) == 0: # nothing received: return None;
+          return None;
+        break; # return whatever we received so far.
+      sbData += bytes((u0Byte,));
       try:
-        sData += chr(oSelf.fuReadByte());
-      except IOError:
-        break;
-    return sData;
+        sChar = str(sbData, 'utf-8');
+      except UnicodeDecodeError:
+        # We may have read some but not all of the bytes that encode a Unicode char, so this
+        # exception can be expected in some cases.
+        pass;
+      else:
+        sbData = b""; # reset utf-8 buffer.
+        if sChar == "\n": # newline: stop reading.
+          break;
+        sData += sChar # add character to data.
+    # If there is anything left in the buffer, make sure we parse it and add it to the data.
+    # If the remote has sent us invalid utf-8 encoded data, this will throw a UnicodeDecodeError
+    sData += str(sbData, 'utf-8');
+    return sData.rstrip("\r"); # If EOF was CRLF, strip CR:
   
-  def fWriteBytes(oSelf, sData):
+  @ShowDebugOutput
+  def fWriteBytes(oSelf, sbData):
+    assert isinstance(sbData, bytes), \
+        "sbData must be bytes, not %s (%s)" % (repr(sbData.__class__), repr(sbData));
     odwBytesWritten = DWORD(0);
-    opBuffer = PCHAR(sData).foCastTo(LPVOID);
+    opBuffer = PCHAR(sbData).foCastTo(LPVOID);
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365747(v=vs.85).aspx
     oKernel32 = foLoadKernel32DLL();
     if not oKernel32.WriteFile(
       oSelf.__ohInput, # hFile # We write to the pipe's input handle
       opBuffer, # lpBuffer
-      len(sData), # nNumberOfBytesToWrite (without trailing '\0')
+      len(sbData), # nNumberOfBytesToWrite (without trailing '\0')
       odwBytesWritten.foCreatePointer(), # lpNumberOfBytesWritten
       NULL, # lpOverlapped
     ):
       if not fbLastErrorIs(ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE):
-        fThrowLastError("WriteFile(0x%08X, ..., 0x%X, ..., NULL)" % (oSelf.__ohInput.value, len(sData)));
+        fThrowLastError("WriteFile(0x%08X, ..., 0x%X, ..., NULL)" % (oSelf.__ohInput.value, len(sbData)));
       # The pipe had been closed; throw an IOError.
       raise IOError("Pipe closed");
-    assert odwBytesWritten.value == len(sData), \
+    assert odwBytesWritten.value == len(sbData), \
         "WriteFile(0x%08X, ..., 0x%X, ..., NULL) => wrote 0x%X bytes" % \
-        (oSelf.__ohInput.value, len(sData), odwBytesWritten.value);
-
+        (oSelf.__ohInput.value, len(sbData), odwBytesWritten.value);
+  
+  @ShowDebugOutput
+  def fWrite(oSelf, sData):
+    oSelf.fWriteBytes(bytes(sData, "utf-8"));
+  
+  @ShowDebugOutput
   def fWriteLine(oSelf, sData):
     assert "\n" not in sData, \
         "Cannot have '\\n' in data!";
-    oSelf.fWriteBytes(sData + "\r\n");
+    oSelf.fWriteBytes(bytes(sData, "utf-8") + b"\r\n");
+  

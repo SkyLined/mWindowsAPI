@@ -8,7 +8,7 @@ def fbWaitForSingleObject(ohSubject, nTimeoutInSeconds = None, bInvalidHandleMea
       "%s is not a HANDLE" % repr(ohSubject);
   assert fbIsValidHandle(ohSubject), \
       "%s is not a valid handle" % repr(ohSubject);
-  odwMilliseconds = DWORD(INFINITE if nTimeoutInSeconds is None else long(nTimeoutInSeconds * 1000));
+  odwMilliseconds = DWORD(INFINITE if nTimeoutInSeconds is None else int(nTimeoutInSeconds * 1000));
   oKernel32 = foLoadKernel32DLL();
   odwResult = oKernel32.WaitForSingleObject(ohSubject, odwMilliseconds);
   if odwResult == WAIT_OBJECT_0:

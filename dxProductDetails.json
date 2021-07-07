@@ -1,24 +1,28 @@
 {
-  "asDependentOnProductNames": [
-    "mRegistry", 
+  "a0sDebugAdditionalProductNames": [
+    "mFileSystemItem",
+    "mNotProvided",
+    "mDebugOutput",
+    "mConsole"
+  ],
+  "a0sDependentOnProductNames": [
+    "mRegistry",
     "mWindowsSDK"
-  ], 
-  "asJavaScriptModuleNames": [], 
-  "asOptionalProductNames": [], 
-  "asPHPModuleNames": [], 
+  ],
   "asProductTypes": [
     "Python module"
-  ], 
-  "asPythonApplicationNames": [], 
-  "oProductVersion": "2021-04-15 11:36", 
-  "oRepository": {
-    "sBranch": "master", 
-    "sRepositoryName": "mWindowsAPI", 
-    "sType": "GitHub", 
-    "sUserName": "SkyLined"
-  }, 
-  "sProductAuthor": "SkyLined", 
-  "sProductName": "mWindowsAPI", 
-  "sProductURL": "https://github.com/SkyLined/mWindowsAPI", 
-  "sPythonModuleName": "mWindowsAPI"
+  ],
+  "o0Repository": {
+    "sStructureVersion": "2021-07-02 11:16",
+    "sType": "GitHub",
+    "sbBranch": "master",
+    "sbRepositoryName": "mWindowsAPI",
+    "sbUserName": "SkyLined"
+  },
+  "oProductVersion": "2021-07-07 12:49",
+  "s0PythonModuleName": "mWindowsAPI",
+  "sProductAuthor": "SkyLined",
+  "sProductName": "mWindowsAPI",
+  "sStructureVersion": "2021-07-02 11:16",
+  "sb0ProductURL": "https://github.com/SkyLined/mWindowsAPI"
 }
