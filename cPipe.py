@@ -235,6 +235,19 @@ class cPipe(object):
     return bytes(auData);
   
   @ShowDebugOutput
+  def fsb0ReadLine(oSelf):
+    auData = [];
+    while True:
+      u0Byte = oSelf.__fu0ReadByte();
+      if u0Byte is None or u0Byte == 0x0A: # EOL = LF
+        break;
+      if u0Byte != 0x0D: # ignore CR
+        auData.append(u0Byte);
+    if u0Byte is None and len(auData) == 0:
+      return None;
+    return bytes(auData);
+  
+  @ShowDebugOutput
   def fsRead(oSelf, uNumberOfChars = None):
     sbData = b"";
     sData = "";
