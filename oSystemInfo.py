@@ -2,22 +2,22 @@ from mWindowsSDK import *;
 from .fThrowLastError import fThrowLastError;
 from mRegistry import cRegistryValue;
 
-def fxHKLMValue(sKeyName, sValueName, sTypeName, bRequired = True):
-  oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyName = sKeyName, sValueName = sValueName);
+def fxHKLMValue(sKeyPath, sValueName, sTypeName, bRequired = True):
+  oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyPath = sKeyPath, sValueName = sValueName);
   if not oRegistryValue:
-    oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyName = sKeyName, sValueName = sValueName, uRegistryBits = 64);
+    oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyPath = sKeyPath, sValueName = sValueName, uRegistryBits = 64);
     if not oRegistryValue:
       assert not bRequired, \
-          "Cannot read HKLM\%s\%s" % (sKeyName, sValueName);
+          "Cannot read HKLM\%s\%s" % (sKeyPath, sValueName);
       return None;
   assert oRegistryValue.sTypeName == sTypeName, \
-      r"Expected HKLM\%s\%s to be %s, got %s" % (sKeyName, sValueName, sTypeName, oRegistryValue.sTypeName);
+      r"Expected HKLM\%s\%s to be %s, got %s" % (sKeyPath, sValueName, sTypeName, oRegistryValue.sTypeName);
   return oRegistryValue.xValue;
 
-def fsHKLMValue(sKeyName, sValueName, bRequired = True):
-  return fxHKLMValue(sKeyName, sValueName, "REG_SZ", bRequired);
-def fuHKLMValue(sKeyName, sValueName, bRequired = True):
-  return fxHKLMValue(sKeyName, sValueName, "REG_DWORD_LITTLE_ENDIAN", bRequired);
+def fsHKLMValue(sKeyPath, sValueName, bRequired = True):
+  return fxHKLMValue(sKeyPath, sValueName, "REG_SZ", bRequired);
+def fuHKLMValue(sKeyPath, sValueName, bRequired = True):
+  return fxHKLMValue(sKeyPath, sValueName, "REG_DWORD_LITTLE_ENDIAN", bRequired);
 
 class cSystemInfo(object):
   def __init__(oSelf):
