@@ -31,6 +31,7 @@ class cConsoleProcess(cProcess):
     bMinimizedWindow = False,
     bNormalWindow = False,
     bMaximizedWindow = False,
+    bTerminateAutomatically = True,
   ):
     # Default to hidden of no visibility flags are provided.
     asWindowSpecificFlags = [sFlagName for (bValue, sFlagName) in {
@@ -113,6 +114,7 @@ class cConsoleProcess(cProcess):
             oStdErrPipe = oStdErrPipe,
             ohProcess = oProcessInformation.hProcess,
             uProcessHandleFlags = PROCESS_ALL_ACCESS,
+            bTerminateAutomatically = bTerminateAutomatically,
           );
         except:
           oStdErrPipe and oStdErrPipe.fClose();
@@ -125,8 +127,8 @@ class cConsoleProcess(cProcess):
       raise;
   
   @ShowDebugOutput
-  def __init__(oSelf, uId, oStdInPipe, oStdOutPipe, oStdErrPipe, ohProcess = None, uProcessHandleFlags = None):
-    cProcess.__init__(oSelf, uId, ohProcess = ohProcess, uProcessHandleFlags = uProcessHandleFlags);
+  def __init__(oSelf, uId, oStdInPipe, oStdOutPipe, oStdErrPipe, ohProcess = None, uProcessHandleFlags = None, bTerminateAutomatically = True):
+    cProcess.__init__(oSelf, uId, ohProcess = ohProcess, uProcessHandleFlags = uProcessHandleFlags, bTerminateAutomatically = bTerminateAutomatically);
     oSelf.oStdInPipe = oStdInPipe;
     oSelf.oStdOutPipe = oStdOutPipe;
     oSelf.oStdErrPipe = oStdErrPipe;

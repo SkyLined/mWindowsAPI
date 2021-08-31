@@ -5,6 +5,7 @@ from .fbIsRunningForProcessHandle import fbIsRunningForProcessHandle;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fbTerminateForProcessHandle import fbTerminateForProcessHandle;
+from .fbTerminateForProcessId import fbTerminateForProcessId;
 from .fbWaitForTerminationForProcessHandle import fbWaitForTerminationForProcessHandle;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fuCreateThreadForProcessIdAndAddress import fuCreateThreadForProcessIdAndAddress;
@@ -56,6 +57,7 @@ class cProcess(object):
     bMinimizedWindow = False,
     bNormalWindow = False,
     bMaximizedWindow = False,
+    bTerminateAutomatically = True,
   ):
     # Default to hidden of no visibility flags are provided.
     asWindowSpecificFlags = [sFlagName for (bValue, sFlagName) in {
@@ -116,10 +118,11 @@ class cProcess(object):
     return cClass(
       oProcessInformation.dwProcessId.fuGetValue(),
       ohProcess = oProcessInformation.hProcess,
-      uProcessHandleFlags = PROCESS_ALL_ACCESS
+      uProcessHandleFlags = PROCESS_ALL_ACCESS,
+      bTerminateAutomatically = bTerminateAutomatically,
     );
   
-  def __init__(oSelf, uId, ohProcess = None, uProcessHandleFlags = None):
+  def __init__(oSelf, uId, ohProcess = None, uProcessHandleFlags = None, bTerminateAutomatically = True):
     assert isinstance(uId, int), \
         "uId must be an integer not %s" % repr(uId);
     oSelf.uId = uId;
@@ -134,6 +137,7 @@ class cProcess(object):
     else:
       oSelf.__uProcessHandleFlags = 0;
       oSelf.__ohProcess = None;
+    oSelf.bTerminateAutomatically = bTerminateAutomatically;
     # If we are running in 64-bit Python, NtQueryInformationProcess will return a pointer to the 64-bit PEB of
     # another process in the PROCESS_BASIC_INFORMATION struct. If we are running in 32-bit Python, we cannot get
     # information on a 64-bit process unless we start doing some dirty hacks, which I'd rather not. To find out if
@@ -274,6 +278,16 @@ class cProcess(object):
     return oSelf.__sCommandLine;
   
   def __del__(oSelf):
+    if oSelf.bTerminateAutomatically:
+      # See if we have an open handle with PROCESS_TERMINATE rights and use that to terminate.
+      # Otherwise terminate by process id.
+      if (
+        oSelf.__ohProcess and oSelf.__ohProcess != INVALID_HANDLE_VALUE
+        and oSelf.__uProcessHandleFlags & PROCESS_TERMINATE == PROCESS_TERMINATE
+      ):
+        fbTerminateForProcessHandle(oSelf.__ohProcess);
+      else:
+        fbTerminateForProcessId(oSelf.uId);
     try:
       ohProcess = oSelf.__ohProcess;
     except AttributeError:
