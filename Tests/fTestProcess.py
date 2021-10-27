@@ -81,14 +81,14 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
         "Test process %d/0x%X integrity level could not be determined!" % (oTestProcess.uId, oTestProcess.uId);
     oConsole.fOutput("    + IntegrityLevel = 0x%X." % uProcessIntegrityLevel);
     # fuGetMemoryUsageForProcessId
-    # cVirtualAllocation.foCreateForProcessId()
-    # cVirtualAllocation.fAllocate()
+    # cVirtualAllocation.fo0CreateForProcessId()
+    # cVirtualAllocation.fCommit()
     # cVirtualAllocation.fFree()
     oConsole.fOutput("  * Testing Memory management functions...");
     uProcessMemoryUsage = fuGetMemoryUsageForProcessId(oTestProcess.uId);
     oConsole.fOutput("    + Memory usage = 0x%X." % uProcessMemoryUsage);
     uMemoryAllocationSize = 0x1230000;
-    oVirtualAllocation = cVirtualAllocation.foCreateForProcessId(oTestProcess.uId, uMemoryAllocationSize, bReserved = True);
+    oVirtualAllocation = cVirtualAllocation.fo0CreateForProcessId(oTestProcess.uId, uMemoryAllocationSize, bReserved = True);
     assert oVirtualAllocation is not None, \
         "Attempt to reserve 0x%X bytes failed" % uMemoryAllocationSize;
     assert oVirtualAllocation.uSize == uMemoryAllocationSize, \
@@ -100,7 +100,7 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
   #    assert uProcessMemoryUsageAfterReservation >= uProcessMemoryUsage, \
   #        "Process memory usage was expected to be at least 0x%X after reservation, but is 0x%X" % \
   #        (uProcessMemoryUsage, uProcessMemoryUsageAfterReservation);
-    oVirtualAllocation.fAllocate();
+    oVirtualAllocation.fCommit();
     uProcessMemoryUsageAfterAllocation = oTestProcess.uMemoryUsage;
     oConsole.fOutput("    + Memory usage after allocating 0x%X bytes = 0x%X." % \
         (oVirtualAllocation.uSize, uProcessMemoryUsageAfterAllocation));
@@ -120,7 +120,7 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
     oJobObject = cJobObject(oTestProcess.uId);
     oJobObject.fSetMaxTotalMemoryUse(uProcessMemoryUsageAfterFree + uMemoryAllocationSize / 2);
     try:
-      cVirtualAllocation.foCreateForProcessId(oTestProcess.uId, uMemoryAllocationSize);
+      cVirtualAllocation.fo0CreateForProcessId(oTestProcess.uId, uMemoryAllocationSize);
     except MemoryError as oMemoryError:
       pass;
     else:

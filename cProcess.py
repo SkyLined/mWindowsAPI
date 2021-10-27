@@ -372,8 +372,8 @@ class cProcess(object):
     uEndTime = (oExitTime.dwHighDateTime << 32) + oExitTime.dwLowDateTime;
     oSelf.__n0RunDurationInSeconds = (uEndTime - uStartTime) * 0.0000001;
   
-  def foCreateVirtualAllocation(oSelf, uSize, uAddress = None, bReserved = False, uProtection = None):
-    return cVirtualAllocation.foCreateForProcessId(
+  def fo0CreateVirtualAllocation(oSelf, uSize, uAddress = None, bReserved = False, uProtection = None):
+    return cVirtualAllocation.fo0CreateForProcessId(
       oSelf.uId,
       uSize,
       uAddress,
@@ -381,12 +381,16 @@ class cProcess(object):
       uProtection
     );
   
-  def foGetVirtualAllocationForAddress(oSelf, uAddress):
-    return cVirtualAllocation(oSelf.uId, uAddress);
+  def fo0GetVirtualAllocationForAddress(oSelf, uAddress):
+    oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
+    return oVirtualAllocation if oVirtualAllocation.bIsValid else None;
   
-  def foGetAllocatedVirtualAllocationWithSizeCheck(oSelf, uAddress, uSize, sNameInError):
+  def fo0GetAllocatedVirtualAllocationWithSizeCheck(oSelf, uAddress, uSize, sNameInError):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
     # Make sure it is allocated
+    assert oVirtualAllocation.bIsValid, \
+        "Allocation for %s (0x%X bytes) at invalid address 0x%08X." % \
+        (sNameInError, uSize, uAddress);
     assert oVirtualAllocation.bAllocated, \
         "Allocation for %s (0x%X bytes) at address 0x%08X not found:\r\n%s" % \
         (sNameInError, uSize, uAddress, "\r\n".join(oVirtualAllocation.fasDump()));
@@ -397,48 +401,48 @@ class cProcess(object):
   
   def fs0ReadBytesForAddressAndSize(oSelf, uAddress, uSize):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
-    if not oVirtualAllocation.bAllocated:
+    if not oVirtualAllocation.bIsValid or not oVirtualAllocation.bAllocated:
       return None; # TOCTOU
     uOffset = uAddress - oVirtualAllocation.uStartAddress;
     return oVirtualAllocation.fsReadBytesForAddressAndSize(uOffset, uSize);  
   
   def fs0ReadStringForAddressAndLength(oSelf, uAddress, uLength, bUnicode = False):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
-    if not oVirtualAllocation.bAllocated:
+    if not oVirtualAllocation.bIsValid or not oVirtualAllocation.bAllocated:
       return None; # TOCTOU
     uOffset = uAddress - oVirtualAllocation.uStartAddress;
     return oVirtualAllocation.fsReadStringForOffsetAndLength(uOffset, uLength, bUnicode = bUnicode);  
   
   def fs0ReadNullTerminatedStringForAddress(oSelf, uAddress, bUnicode = False):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
-    if not oVirtualAllocation.bAllocated:
+    if not oVirtualAllocation.bIsValid or not oVirtualAllocation.bAllocated:
       return None; # TOCTOU
     uOffset = uAddress - oVirtualAllocation.uStartAddress;
     return oVirtualAllocation.fs0ReadNullTerminatedStringForOffset(uOffset, bUnicode);  
   
   def fu0ReadValueForAddressAndSize(oSelf, uAddress, uSize):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
-    if not oVirtualAllocation.bAllocated:
+    if not oVirtualAllocation.bIsValid or not oVirtualAllocation.bAllocated:
       return None; # TOCTOU
     uOffset = uAddress - oVirtualAllocation.uStartAddress;
     return oVirtualAllocation.fuReadValueForOffsetAndSize(uOffset, uSize);  
   
   def fa0uReadValuesForOffsetSizeAndCount(oSelf, uOffset, uSize, uCount):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
-    if not oVirtualAllocation.bAllocated:
+    if not oVirtualAllocation.bIsValid or not oVirtualAllocation.bAllocated:
       return None; # TOCTOU
     return oVirtualAllocation.fauReadValuesForOffsetSizeAndCount(uOffset, uSize, uCount);  
   
   def fu0ReadPointerForAddress(oSelf, uAddress):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
-    if not oVirtualAllocation.bAllocated:
+    if not oVirtualAllocation.bIsValid or not oVirtualAllocation.bAllocated:
       return None; # TOCTOU
     uOffset = uAddress - oVirtualAllocation.uStartAddress;
     return oVirtualAllocation.fuReadPointerForOffset(uOffset);  
   
   def fa0uReadPointersForAddressAndCount(oSelf, uAddress, uCount):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
-    if not oVirtualAllocation.bAllocated:
+    if not oVirtualAllocation.bIsValid or not oVirtualAllocation.bAllocated:
       return None; # TOCTOU
     uOffset = uAddress - oVirtualAllocation.uStartAddress;
     return oVirtualAllocation.fauReadPointersForOffsetAndCount(uOffset, uCount);  
@@ -450,7 +454,7 @@ class cProcess(object):
     );
   def fo0ReadStructureForAddress(oSelf, cStructure, uAddress):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
-    if not oVirtualAllocation.bAllocated:
+    if not oVirtualAllocation.bIsValid or not oVirtualAllocation.bAllocated:
       return None; # TOCTOU
     uOffset = uAddress - oVirtualAllocation.uStartAddress;
     if gbDebugOutput:
@@ -464,7 +468,7 @@ class cProcess(object):
   
   def fbWriteBytesForAddress(oSelf, sData, uAddress):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
-    if not oVirtualAllocation.bAllocated:
+    if not oVirtualAllocation.bIsValid or not oVirtualAllocation.bAllocated:
       return False; # TOCTOU
     uOffset = uAddress - oVirtualAllocation.uStartAddress;
     oVirtualAllocation.fWriteBytesForOffset(sData, uOffset);  
@@ -472,7 +476,7 @@ class cProcess(object):
   
   def fbWriteStringForAddress(oSelf, sData, uAddress, bUnicode = False):
     oVirtualAllocation = cVirtualAllocation(oSelf.uId, uAddress);
-    if not oVirtualAllocation.bAllocated:
+    if not oVirtualAllocation.bIsValid or not oVirtualAllocation.bAllocated:
       return False; # TOCTOU
     uOffset = uAddress - oVirtualAllocation.uStartAddress;
     oVirtualAllocation.fWriteStringForOffset(sData, uOffset, bUnicode);  
