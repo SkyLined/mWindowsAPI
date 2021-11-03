@@ -3,16 +3,16 @@ from .fThrowLastError import fThrowLastError;
 from mRegistry import cRegistryValue;
 
 def fxHKLMValue(sKeyPath, sValueName, sTypeName, bRequired = True):
-  oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyPath = sKeyPath, sValueName = sValueName);
-  if not oRegistryValue:
-    oRegistryValue = cRegistryValue.foGet(sHiveName = "HKLM", sKeyPath = sKeyPath, sValueName = sValueName, uRegistryBits = 64);
-    if not oRegistryValue:
+  o0RegistryValue = cRegistryValue.fo0Get(sHiveName = "HKLM", sKeyPath = sKeyPath, sValueName = sValueName);
+  if not o0RegistryValue:
+    o0RegistryValue = cRegistryValue.fo0Get(sHiveName = "HKLM", sKeyPath = sKeyPath, sValueName = sValueName, uRegistryBits = 64);
+    if not o0RegistryValue:
       assert not bRequired, \
           "Cannot read HKLM\%s\%s" % (sKeyPath, sValueName);
       return None;
-  assert oRegistryValue.sTypeName == sTypeName, \
-      r"Expected HKLM\%s\%s to be %s, got %s" % (sKeyPath, sValueName, sTypeName, oRegistryValue.sTypeName);
-  return oRegistryValue.xValue;
+  assert o0RegistryValue.sTypeName == sTypeName, \
+      r"Expected HKLM\%s\%s to be %s, got %s" % (sKeyPath, sValueName, sTypeName, o0RegistryValue.sTypeName);
+  return o0RegistryValue.xValue;
 
 def fsHKLMValue(sKeyPath, sValueName, bRequired = True):
   return fxHKLMValue(sKeyPath, sValueName, "REG_SZ", bRequired);
