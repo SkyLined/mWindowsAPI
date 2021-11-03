@@ -207,7 +207,7 @@ class cVirtualAllocation(object):
     return oSelf.__u0AllocationProtection;
   @property
   def sAllocationProtection(oSelf):
-    return fsProtection(oSelf.u0AllocationProtection);
+    return fsProtection(oSelf.__u0AllocationProtection);
   
   # Start/End address and size
   @property
