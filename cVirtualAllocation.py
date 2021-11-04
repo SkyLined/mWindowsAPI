@@ -170,7 +170,7 @@ class cVirtualAllocation(object):
         oSelf.__u0AllocationProtection = oMemoryBasicInformation.AllocationProtect.fuGetValue();
         oSelf.__u0StartAddress = oMemoryBasicInformation.BaseAddress.fuGetValue();
         oSelf.__u0Size = oMemoryBasicInformation.RegionSize.fuGetValue();
-        oSelf.__u0Protection = oMemoryBasicInformation.Protect.fuGetValue() or None;
+        oSelf.__u0Protection = oMemoryBasicInformation.Protect.fuGetValue();
         oSelf.__u0Type = oMemoryBasicInformation.Type.fuGetValue();
       oSelf.__s0Bytes = None;
     finally:
