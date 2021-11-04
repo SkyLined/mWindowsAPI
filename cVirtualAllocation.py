@@ -17,7 +17,6 @@ guStringReadAheadBlockSize = 0x400;
 uBasicProtectionFlagsMask = 0xFF;
 
 def fsProtection(uProtection):
-  if uProtection is None: return None;
   return " | ".join([s for s in [
     {
       PAGE_NOACCESS: "PAGE_NOACCESS",
@@ -30,7 +29,7 @@ def fsProtection(uProtection):
       PAGE_EXECUTE_WRITECOPY: "PAGE_EXECUTE_WRITECOPY",
     }[uProtection & uBasicProtectionFlagsMask] if uProtection else None,
     "PAGE_GUARD" if uProtection & PAGE_GUARD else None,
-  ] if s]);
+  ] if s]) or "?";
 
 def fasAllowedAccessTypesForProtection(uProtection):
   return {
@@ -78,7 +77,7 @@ class cVirtualAllocation(object):
     if uProtection is None:
       uProtection = PAGE_NOACCESS;
     else:
-      assert fsProtection(uProtection), \
+      assert fsProtection(uProtection) != "?", \
           "Unknown uProtection values 0x%08X" % uProtection;
     # Try to open the process...
     ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_VM_OPERATION);
@@ -542,7 +541,7 @@ class cVirtualAllocation(object):
     if uProtection is None:
       uProtection = PAGE_NOACCESS;
     else:
-      assert fsProtection(uProtection), \
+      assert fsProtection(uProtection) != "?", \
           "Unknown uProtection values 0x%08X" % uProtection;
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_OPERATION);
     try:
