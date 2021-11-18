@@ -209,11 +209,11 @@ class cPipe(object):
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365467(v=vs.85).aspx
     oKernel32 = foLoadKernel32DLL();
     if not oKernel32.ReadFile(
-      oSelf.__ohOutput, # hFile # We read from the pipe's output handle
-      oByte.foCreatePointer(), # lpBuffer
-      oByte.fuGetSize(), # nNumberOfBytesToRead
-      odwBytesRead.foCreatePointer(), # lpNumberOfBytesRead
-      NULL, # lpOverlapped
+      oSelf.__ohOutput,                         # HANDLE       hFile    # We read from the pipe's output handle
+      oByte.foCreatePointer().foCastTo(LPVOID), # LPVOID       lpBuffer
+      oByte.fuGetSize(),                        # DWORD        nNumberOfBytesToRead
+      odwBytesRead.foCreatePointer(),           # LPDWORD      lpNumberOfBytesRead
+      NULL,                                     # LPOVERLAPPED lpOverlapped
     ):
       if not fbLastErrorIs(ERROR_INVALID_HANDLE, ERROR_BROKEN_PIPE):
         fThrowLastError("ReadFile(hFile=%s, lpBuffer=0x%X, nNumberOfBytesToRead=0x%X, lpNumberOfBytesRead=0x%X, lpOverlapped=NULL)" % \
