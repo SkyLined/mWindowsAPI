@@ -128,10 +128,10 @@ class cConsoleProcess(cProcess):
   
   @ShowDebugOutput
   def __init__(oSelf, uId, oStdInPipe, oStdOutPipe, oStdErrPipe, ohProcess = None, uProcessHandleFlags = None, bTerminateAutomatically = True):
-    cProcess.__init__(oSelf, uId, ohProcess = ohProcess, uProcessHandleFlags = uProcessHandleFlags, bTerminateAutomatically = bTerminateAutomatically);
     oSelf.oStdInPipe = oStdInPipe;
     oSelf.oStdOutPipe = oStdOutPipe;
     oSelf.oStdErrPipe = oStdErrPipe;
+    cProcess.__init__(oSelf, uId, ohProcess = ohProcess, uProcessHandleFlags = uProcessHandleFlags, bTerminateAutomatically = bTerminateAutomatically);
   
   def __del__(oSelf):
     # Make sure all pipes are closed, so as not to cause a handle leak
