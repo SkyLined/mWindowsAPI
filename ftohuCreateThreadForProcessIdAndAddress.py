@@ -6,11 +6,11 @@ from .fThrowLastError import fThrowLastError;
 def ftohuCreateThreadForProcessIdAndAddress(uProcessId, uAddress, uParameterAddress = 0, bSuspended = False):
   ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ);
   bSuccess = False;
-  oKernel32 = foLoadKernel32DLL();
+  from mWindowsSDK.mKernel32 import oKernel32DLL;
   try:
     odwThreadId = DWORD();
     odwCreationFlags = DWORD(CREATE_SUSPENDED if bSuspended else 0);
-    ohThread = oKernel32.CreateRemoteThread(
+    ohThread = oKernel32DLL.CreateRemoteThread(
       ohProcess,
       NULL, # lpThreadAttributes
       0,  # dwStackSize
@@ -25,6 +25,6 @@ def ftohuCreateThreadForProcessIdAndAddress(uProcessId, uAddress, uParameterAddr
     bSuccess = True;
   finally:
     # Only throw an exception if one isn't already being thrown:
-    if not oKernel32.CloseHandle(ohProcess) and bSuccess:
+    if not oKernel32DLL.CloseHandle(ohProcess) and bSuccess:
       fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
   return (ohThread, odwThreadId.fuGetValue());

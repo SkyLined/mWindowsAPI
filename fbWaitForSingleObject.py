@@ -4,13 +4,13 @@ from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
 
 def fbWaitForSingleObject(ohSubject, nTimeoutInSeconds = None, bInvalidHandleMeansSignaled = False):
+  from mWindowsSDK.mKernel32 import oKernel32DLL;
   assert isinstance(ohSubject, HANDLE), \
       "%s is not a HANDLE" % repr(ohSubject);
   assert fbIsValidHandle(ohSubject), \
       "%s is not a valid handle" % repr(ohSubject);
   odwMilliseconds = DWORD(INFINITE if nTimeoutInSeconds is None else int(nTimeoutInSeconds * 1000));
-  oKernel32 = foLoadKernel32DLL();
-  odwResult = oKernel32.WaitForSingleObject(ohSubject, odwMilliseconds);
+  odwResult = oKernel32DLL.WaitForSingleObject(ohSubject, odwMilliseconds);
   if odwResult == WAIT_OBJECT_0:
     return True; # Object was signaled.
   if odwResult == WAIT_TIMEOUT:

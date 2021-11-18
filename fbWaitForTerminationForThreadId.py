@@ -16,7 +16,7 @@ def fbWaitForTerminationForThreadId(uThreadId, nTimeoutInSeconds = None):
     bSuccess = True;
   finally:
     # Only throw an exception if one isn't already being thrown:
-    oKernel32 = foLoadKernel32DLL();
-    if not oKernel32.CloseHandle(ohThread) and bSuccess:
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
+    if not oKernel32DLL.CloseHandle(ohThread) and bSuccess:
       fThrowLastError("CloseHandle(%s)" % (repr(ohThread),));
   return bResult;

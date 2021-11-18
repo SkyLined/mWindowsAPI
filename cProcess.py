@@ -75,7 +75,7 @@ class cProcess(object):
     # The input of oStdOutPipe and oStdErrPipe are inherited so the the application can write to them.
     # The input of oStdOutPipe and oStdErrPipe are closed by us after the application is started, as we do
     # not use them and want Windows to clean them up when the application terminates.
-    oKernel32 = foLoadKernel32DLL();
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     sCommandLine = " ".join([
       (s and (s[0] == '"' or s.find(" ") == -1)) and s or '"%s"' % s.replace('"', '\\"')
       for s in [sBinaryPath] + asArguments
@@ -94,11 +94,11 @@ class cProcess(object):
     oStartupInfo.lpDesktop = NULL;
     oStartupInfo.dwFlags = STARTF_USESTDHANDLES | (STARTF_USESHOWWINDOW if bSeparateWindow else 0);
     oStartupInfo.wShowWindow = SW_HIDE if bHidden else SW_SHOWMINNOACTIVE if bMinimizedWindow else SW_SHOWMAXIMIZED if bMaximizedWindow else SW_SHOW;
-    oStartupInfo.hStdInput = oKernel32.GetStdHandle(STD_INPUT_HANDLE);
-    oStartupInfo.hStdOutput = oKernel32.GetStdHandle(STD_OUTPUT_HANDLE);
-    oStartupInfo.hStdError = oKernel32.GetStdHandle(STD_ERROR_HANDLE);
+    oStartupInfo.hStdInput = oKernel32DLL.GetStdHandle(STD_INPUT_HANDLE);
+    oStartupInfo.hStdOutput = oKernel32DLL.GetStdHandle(STD_OUTPUT_HANDLE);
+    oStartupInfo.hStdError = oKernel32DLL.GetStdHandle(STD_ERROR_HANDLE);
     oProcessInformation = PROCESS_INFORMATION();
-    if not oKernel32.CreateProcessW(
+    if not oKernel32DLL.CreateProcessW(
       opBinaryPath, # lpApplicationName,
       opCommandLine, # lpCommandLine,
       NULL, # lpProcessAttributes
@@ -113,7 +113,7 @@ class cProcess(object):
       fThrowLastError("CreateProcessW(%s, %s, NULL, NULL, FALSE, %s, NULL, %s, ..., ...)" % \
           (repr(opBinaryPath), repr(opCommandLine), repr(odwCreationFlags), repr(olpCurrentDirectory)));
     # Close all handles that we no longer need:
-    if not oKernel32.CloseHandle(oProcessInformation.hThread):
+    if not oKernel32DLL.CloseHandle(oProcessInformation.hThread):
       fThrowLastError("CloseHandle(%s)" % (repr(oProcessInformation.hThread),));
     return cClass(
       oProcessInformation.dwProcessId.fuGetValue(),
@@ -169,8 +169,8 @@ class cProcess(object):
     oSelf.__uProcessHandleFlags = uFlags if ohProcess != INVALID_HANDLE_VALUE else 0;
     if ohOldProcessHandle:
       # Close the old process handle:
-      oKernel32 = foLoadKernel32DLL();
-      if not oKernel32.CloseHandle(ohOldProcessHandle):
+      from mWindowsSDK.mKernel32 import oKernel32DLL;
+      if not oKernel32DLL.CloseHandle(ohOldProcessHandle):
         fThrowLastError("CloseHandle(%s)" % (repr(ohOldProcessHandle),));
     return ohProcess;
   
@@ -292,8 +292,8 @@ class cProcess(object):
       ohProcess = oSelf.__ohProcess;
     except AttributeError:
       return;
-    oKernel32 = foLoadKernel32DLL();
-    if ohProcess != INVALID_HANDLE_VALUE and not oKernel32.CloseHandle(ohProcess):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
+    if ohProcess != INVALID_HANDLE_VALUE and not oKernel32DLL.CloseHandle(ohProcess):
       # If the process is already terminated we can see a ERROR_INVALID_HANDLE error, which we'll ignore.
       # Any other, unexpected errors are reported:
       if not fbLastErrorIs(ERROR_INVALID_HANDLE):
@@ -345,7 +345,7 @@ class cProcess(object):
     return oSelf.__n0RunDurationInSeconds;
   
   def __fGetProcessTimes(oSelf):
-    oKernel32 = foLoadKernel32DLL();
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     ohProccess = oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION);
     # FILETIME has two 32-bit values that represent to lower and higher parts of a 64-bit count of 100 nanosecond
     # intervals.
@@ -353,7 +353,7 @@ class cProcess(object):
     oExitTime = FILETIME();
     oKernelTime = FILETIME();
     oUserTime = FILETIME();
-    if not oKernel32.GetProcessTimes(
+    if not oKernel32DLL.GetProcessTimes(
       ohProccess, 
       oCreationTime.foCreatePointer(),
       oExitTime.foCreatePointer(),
@@ -491,26 +491,26 @@ class cProcess(object):
     return fuGetMemoryUsageForProcessId(oSelf.uId);
   
   def faoGetThreads(oSelf):
-    oKernel32 = foLoadKernel32DLL();
-    ohThreadsSnapshot = oKernel32.CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
+    ohThreadsSnapshot = oKernel32DLL.CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
     if not fbIsValidHandle(ohThreadsSnapshot):
       fThrowLastError("CreateToolhelp32Snapshot(0x%08X, 0)", TH32CS_SNAPTHREAD);
     
     oThreadEntry32 = THREADENTRY32();
     oThreadEntry32.dwSize = oThreadEntry32.fuGetSize();
     opoThreadEntry32 = oThreadEntry32.foCreatePointer();
-    bGotThread = oKernel32.Thread32First(ohThreadsSnapshot, opoThreadEntry32)
+    bGotThread = oKernel32DLL.Thread32First(ohThreadsSnapshot, opoThreadEntry32)
     bFirstThread = True;
     aoThreads = [];
     while bGotThread:
       bFirstThread = False;
       if oThreadEntry32.th32OwnerProcessID == oSelf.uId:
         aoThreads.append(cThread(oSelf, oThreadEntry32.th32ThreadID.fuGetValue()));
-      bGotThread = oKernel32.Thread32Next(ohThreadsSnapshot, opoThreadEntry32);
+      bGotThread = oKernel32DLL.Thread32Next(ohThreadsSnapshot, opoThreadEntry32);
     if not fbLastErrorIs(ERROR_NO_MORE_FILES):
       sFunctionName = "Thread32%s" % ("First" if bFirstThread else "Next",);
       fThrowLastError("%s(%s, %s)" % (sFunctionName, repr(ohThreadsSnapshot), repr(opoThreadEntry32)));
-    if not oKernel32.CloseHandle(ohThreadsSnapshot):
+    if not oKernel32DLL.CloseHandle(ohThreadsSnapshot):
       fThrowLastError("CloseHandle(%s)" % (repr(ohThreadsSnapshot),));
     return aoThreads;
   

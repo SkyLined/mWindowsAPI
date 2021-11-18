@@ -4,14 +4,14 @@ from .fsGetThreadAccessRightsFlagsDescription import fsGetThreadAccessRightsFlag
 from .fThrowWin32Error import fThrowWin32Error;
 
 def foh0OpenForThreadIdAndDesiredAccess(uThreadId, uDesiredAccess, bInheritHandle = False, bMustExist = True, bMustGetAccess = True):
-  oKernel32 = foLoadKernel32DLL();
+  from mWindowsSDK.mKernel32 import oKernel32DLL;
   odwDesiredAccess = DWORD(uDesiredAccess);
   obInheritHandle = BOOL(bInheritHandle);
   odwThreadId = DWORD(uThreadId);
-  ohThread = oKernel32.OpenThread(odwDesiredAccess, obInheritHandle, odwThreadId);
+  ohThread = oKernel32DLL.OpenThread(odwDesiredAccess, obInheritHandle, odwThreadId);
   if not fbIsValidHandle(ohThread):
     # Save the last error because want to check if the thread exists, which may fail and modify it.
-    uLastError = oKernel32.GetLastError().fuGetValue();
+    uLastError = oKernel32DLL.GetLastError().fuGetValue();
     if not bMustGetAccess and uLastError == ERROR_ACCESS_DENIED:
       return HANDLE(INVALID_HANDLE_VALUE); # Cannot get the requested access to the thread; return an invalid handle
     if not bMustExist and uLastError == ERROR_INVALID_PARAMETER:

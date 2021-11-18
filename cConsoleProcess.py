@@ -52,7 +52,7 @@ class cConsoleProcess(cProcess):
     # The input of oStdOutPipe and oStdErrPipe are inherited so the the application can write to them.
     # The input of oStdOutPipe and oStdErrPipe are closed by us after the application is started, as we do
     # not use them and want Windows to clean them up when the application terminates.
-    oKernel32 = foLoadKernel32DLL();
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     oStdInPipe = bRedirectStdIn and cPipe.foCreate("StdIn", bInheritableInput = False) or None;
     try:
       oStdOutPipe = bRedirectStdOut and cPipe.foCreate("StdOut", bInheritableOutput = False) or None;
@@ -76,14 +76,14 @@ class cConsoleProcess(cProcess):
           oStartupInfo.lpDesktop = NULL;
           oStartupInfo.dwFlags = STARTF_USESTDHANDLES | (STARTF_USESHOWWINDOW if bSeparateWindow else 0);
           oStartupInfo.wShowWindow = SW_HIDE if bHidden else SW_SHOWMINNOACTIVE if bMinimizedWindow else SW_SHOWMAXIMIZED if bMaximizedWindow else 0;
-          oStartupInfo.hStdInput = oStdInPipe.ohOutput if oStdInPipe else oKernel32.GetStdHandle(STD_INPUT_HANDLE);
-          oStartupInfo.hStdOutput = oStdOutPipe.ohInput if oStdOutPipe else oKernel32.GetStdHandle(STD_OUTPUT_HANDLE);
-          oStartupInfo.hStdError = oStdErrPipe.ohInput if oStdErrPipe else oKernel32.GetStdHandle(STD_ERROR_HANDLE);
+          oStartupInfo.hStdInput = oStdInPipe.ohOutput if oStdInPipe else oKernel32DLL.GetStdHandle(STD_INPUT_HANDLE);
+          oStartupInfo.hStdOutput = oStdOutPipe.ohInput if oStdOutPipe else oKernel32DLL.GetStdHandle(STD_OUTPUT_HANDLE);
+          oStartupInfo.hStdError = oStdErrPipe.ohInput if oStdErrPipe else oKernel32DLL.GetStdHandle(STD_ERROR_HANDLE);
           oProcessInformation = PROCESS_INFORMATION();
           opBinaryPath = PCWSTR(sBinaryPath);
           opCommandLine = PWSTR(sCommandLine);
           olpCurrentDirectory = PCWSTR(sWorkingDirectory if sWorkingDirectory else NULL);
-          if not oKernel32.CreateProcessW(
+          if not oKernel32DLL.CreateProcessW(
             opBinaryPath, # lpApplicationName
             opCommandLine, # lpCommandLine
             NULL, # lpProcessAttributes
@@ -98,7 +98,7 @@ class cConsoleProcess(cProcess):
             fThrowLastError("CreateProcessW(%s, %s, NULL, NULL, FALSE, %s, NULL, %s, ..., ...)" % \
                 (repr(opBinaryPath), repr(opCommandLine), repr(odwCreationFlags), repr(olpCurrentDirectory)));
           # Close all handles that we no longer need:
-          if not oKernel32.CloseHandle(oProcessInformation.hThread):
+          if not oKernel32DLL.CloseHandle(oProcessInformation.hThread):
             fThrowLastError("CloseHandle(%s)" % (repr(oProcessInformation.hThread),));
           # Close the ends of the stdin/out/err pipes that we do not use; the child will keep them open until it dies
           # at which point they can be cleaned up because we are not keeping them open ourselves.

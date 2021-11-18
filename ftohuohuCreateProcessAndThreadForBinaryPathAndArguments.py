@@ -13,8 +13,8 @@ def ftohuohuCreateProcessAndThreadForBinaryPathAndArguments(sBinaryPath, asArgum
   oStartupInfo.lpDesktop = NULL;
   oStartupInfo.dwFlags = 0;
   oProcessInformation = PROCESS_INFORMATION();
-  oKernel32 = foLoadKernel32DLL();
-  if not oKernel32.CreateProcessW(
+  from mWindowsSDK.mKernel32 import oKernel32DLL;
+  if not oKernel32DLL.CreateProcessW(
     PCWSTR(sBinaryPath), # lpApplicationName
     PWSTR(sCommandLine), # lpCommandLine
     NULL, # lpProcessAttributes

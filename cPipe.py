@@ -27,6 +27,7 @@ class cPipe(object):
   @classmethod
   @ShowDebugOutput
   def foCreateNamed(cPipe, sName, bReadableInput = True, bWritableOutput = True, bInheritable = True, nConnectTimeoutInSeconds = None):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert not sName.startswith(gsPipeNameHeader), \
         "The %s header should not be provided in the name!" % repr(gsPipeNameHeader);
     assert r"\\" not in sName, \
@@ -46,8 +47,7 @@ class cPipe(object):
       | PIPE_REJECT_REMOTE_CLIENTS # Local connections only for now.
     );
     nDefaultTimeout = int(1000 * (nConnectTimeoutInSeconds if nConnectTimeoutInSeconds is not None else gnDefaultConnectTimeoutInSeconds));
-    oKernel32 = foLoadKernel32DLL();
-    ohHandle = oKernel32.CreateNamedPipeW(
+    ohHandle = oKernel32DLL.CreateNamedPipeW(
       gsPipeNameHeader + sName, # lpName
       odwOpenMode,
       odwPipeMode,
@@ -64,21 +64,22 @@ class cPipe(object):
     try:
       if not bInheritable:
         uFlags = HANDLE_FLAG_INHERIT;
-        if not oKernel32.SetHandleInformation(ohHandle, uFlags, FALSE):
+        if not oKernel32DLL.SetHandleInformation(ohHandle, uFlags, FALSE):
           fThrowLastError("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % (ohHandle.value, uFlags,));
-      if not oKernel32.ConnectNamedPipe(ohHandle, NULL):
+      if not oKernel32DLL.ConnectNamedPipe(ohHandle, NULL):
         if not fbLastErrorIs(ERROR_PIPE_CONNECTED):
           fThrowLastError("ConnectNamedPipe(0x%08X, NULL)" % (ohHandle.value,));
       bSuccess = True;
     finally:
       # Only throw an exception if one isn't already being thrown:
-      if not oKernel32.CloseHandle(ohProcess) and bSuccess:
+      if not oKernel32DLL.CloseHandle(ohProcess) and bSuccess:
         fThrowLastError("CloseHandle(0x%X)" % (ohProcess.value,));
     return cPipe(sName, ohHandle, ohHandle);
   
   @classmethod
   @ShowDebugOutput
   def foConnectNamed(cPipe, sName, bReadableInput = True, bWritableOutput = True, bInheritable = True, nConnectTimeoutInSeconds = None):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert not sName.startswith(gsPipeNameHeader), \
         "The %s header should not be provided in the name!" % repr(gsPipeNameHeader);
     assert r"\\" not in sName, \
@@ -90,9 +91,8 @@ class cPipe(object):
       | GENERIC_WRITE if bWritableOutput else 0
     );
     nEndTimeStamp = time.time() + (nConnectTimeoutInSeconds if nConnectTimeoutInSeconds is not None else gnDefaultConnectTimeoutInSeconds);
-    oKernel32 = foLoadKernel32DLL();
     while 1:
-      ohHandle = oKernel32.CreateFileW(
+      ohHandle = oKernel32DLL.CreateFileW(
         gsPipeNameHeader + sName, # lpName
         odwDesiredAccess,
         0, # dwShareMode
@@ -108,7 +108,7 @@ class cPipe(object):
       if time.time() >= nEndTimeStamp:
         return None;
     odwMode = DWORD(PIPE_READMODE_BYTE | PIPE_WAIT);
-    if not oKernel32.SetNamedPipeHandleState(
+    if not oKernel32DLL.SetNamedPipeHandleState(
       ohHandle, # hNamedPipe
       odwMode.foCreatePointer(), # lpMode
       NULL, # lpMaxCollectionCount
@@ -120,10 +120,10 @@ class cPipe(object):
   @classmethod
   @ShowDebugOutput
   def foCreate(cPipe, sDescription = None, bInheritableInput = True, bInheritableOutput = True):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     ohInput = HANDLE(); # We write to the pipe's input handle
     ohOutput = HANDLE(); # We read from the pipe's output handle
-    oKernel32 = foLoadKernel32DLL();
-    if not oKernel32.CreatePipe(
+    if not oKernel32DLL.CreatePipe(
       ohOutput.foCreatePointer(), # hReadPipe
       ohInput.foCreatePointer(), # hWritePipe
       cPipe.__foSecurityAttributes().foCreatePointer(), # lpPipeAttributes
@@ -134,16 +134,16 @@ class cPipe(object):
     try:
       uFlags = HANDLE_FLAG_INHERIT;
       if not bInheritableInput:
-        if not oKernel32.SetHandleInformation(ohInput, uFlags, FALSE):
+        if not oKernel32DLL.SetHandleInformation(ohInput, uFlags, FALSE):
           fThrowLastError("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % (ohInput.value, uFlags));
       if not bInheritableOutput:
-        if not oKernel32.SetHandleInformation(ohOutput, uFlags, FALSE):
+        if not oKernel32DLL.SetHandleInformation(ohOutput, uFlags, FALSE):
           fThrowLastError("SetHandleInformation(0x%08X, 0x%08X, FALSE)" % (ohOutput.value, uFlags));
       bSuccess = True;
     finally:
       if not bSuccess:
-        oKernel32.CloseHandle(ohInput);
-        oKernel32.CloseHandle(ohOutput);
+        oKernel32DLL.CloseHandle(ohInput);
+        oKernel32DLL.CloseHandle(ohOutput);
     return cPipe(sDescription, ohInput, ohOutput);
   
   @ShowDebugOutput
@@ -171,11 +171,11 @@ class cPipe(object):
   
   @ShowDebugOutput
   def fClose(oSelf, bInput = None, bOutput = None):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     if bInput is None and bOutput is None:
       # If nothing is specified, close both. Otherwise close only those for which the value is True-ish.
       bInput = True;
       bOutput = True;
-    oKernel32 = foLoadKernel32DLL();
     try:
       if bInput:
         # Named pipes do not have separate input and output handles, so we cannot close them individually.
@@ -183,7 +183,7 @@ class cPipe(object):
             "Cannot close only input on a named pipe!";
         if oSelf.__ohInput is not INVALID_HANDLE_VALUE:
           fShowDebugOutput("Closing pipe input (writing will no longer be possible)");
-          if not oKernel32.CloseHandle(oSelf.__ohInput):
+          if not oKernel32DLL.CloseHandle(oSelf.__ohInput):
             # It is OK if we cannot close this HANDLE because it is already closed, otherwise we throw an exception.
             if not fbLastErrorIs(ERROR_INVALID_HANDLE):
               fThrowLastError("CloseHandle(0x%08X)" % (oSelf.__ohInput.value,));
@@ -193,7 +193,7 @@ class cPipe(object):
       if bOutput and (not bInput or oSelf.__ohInput != oSelf.__ohOutput):
         if oSelf.__ohOutput is not INVALID_HANDLE_VALUE:
           fShowDebugOutput("Closing pipe output (reading will no longer be possible)");
-          if not oKernel32.CloseHandle(oSelf.__ohOutput):
+          if not oKernel32DLL.CloseHandle(oSelf.__ohOutput):
             if not fbLastErrorIs(ERROR_INVALID_HANDLE):
               fThrowLastError("CloseHandle(0x%08X)" % (oSelf.__ohOutput.value,));
           oSelf.__ohOutput = INVALID_HANDLE_VALUE;
@@ -204,11 +204,11 @@ class cPipe(object):
   def fu0ReadByte(oSelf):
     return oSelf.__fu0ReadByte();
   def __fu0ReadByte(oSelf):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     oByte = BYTE();
     odwBytesRead = DWORD();
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365467(v=vs.85).aspx
-    oKernel32 = foLoadKernel32DLL();
-    if not oKernel32.ReadFile(
+    if not oKernel32DLL.ReadFile(
       oSelf.__ohOutput,                         # HANDLE       hFile    # We read from the pipe's output handle
       oByte.foCreatePointer().foCastTo(LPVOID), # LPVOID       lpBuffer
       oByte.fuGetSize(),                        # DWORD        nNumberOfBytesToRead
@@ -302,13 +302,13 @@ class cPipe(object):
   
   @ShowDebugOutput
   def fWriteBytes(oSelf, sbData):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert isinstance(sbData, bytes), \
         "sbData must be bytes, not %s (%s)" % (repr(sbData.__class__), repr(sbData));
     odwBytesWritten = DWORD(0);
     opBuffer = PCHAR(sbData).foCastTo(LPVOID);
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365747(v=vs.85).aspx
-    oKernel32 = foLoadKernel32DLL();
-    if not oKernel32.WriteFile(
+    if not oKernel32DLL.WriteFile(
       oSelf.__ohInput, # hFile # We write to the pipe's input handle
       opBuffer, # lpBuffer
       len(sbData), # nNumberOfBytesToWrite (without trailing '\0')

@@ -4,14 +4,14 @@ from .fdsGetProcessesExecutableName_by_uId import fdsGetProcessesExecutableName_
 from .fThrowWin32Error import fThrowWin32Error;
 
 def fohOpenForProcessIdAndDesiredAccess(uProcessId, uDesiredAccess, bInheritHandle = False, bMustExist = True):
-  oKernel32 = foLoadKernel32DLL();
+  from mWindowsSDK.mKernel32 import oKernel32DLL;
   odwDesiredAccess = DWORD(uDesiredAccess);
   obInheritHandle = BOOLEAN(bInheritHandle);
   odwProcessId = DWORD(uProcessId);
-  ohProcess = oKernel32.OpenProcess(odwDesiredAccess, bInheritHandle, odwProcessId);
+  ohProcess = oKernel32DLL.OpenProcess(odwDesiredAccess, bInheritHandle, odwProcessId);
   if not fbIsValidHandle(ohProcess):
     # Save the last error because want to check if the process is running, which may fail and modify it.
-    uLastError = oKernel32.GetLastError().fuGetValue()
+    uLastError = oKernel32DLL.GetLastError().fuGetValue()
     if not bMustExist and uProcessId not in fdsGetProcessesExecutableName_by_uId():
       return HANDLE(INVALID_HANDLE_VALUE); # No process exists; return an invalid handle
     # The process exists; report an error:

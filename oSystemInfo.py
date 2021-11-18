@@ -21,9 +21,9 @@ def fuHKLMValue(sKeyPath, sValueName, bRequired = True):
 
 class cSystemInfo(object):
   def __init__(oSelf):
-    oKernel32 = foLoadKernel32DLL();
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     oSystemInfo = SYSTEM_INFO();
-    oKernel32.GetNativeSystemInfo(oSystemInfo.foCreatePointer());
+    oKernel32DLL.GetNativeSystemInfo(oSystemInfo.foCreatePointer());
     oSelf.sOSISA = {
       PROCESSOR_ARCHITECTURE_INTEL: "x86",
       PROCESSOR_ARCHITECTURE_AMD64: "x64",
@@ -95,9 +95,9 @@ class cSystemInfo(object):
   @property
   def sOSPath(oSelf):
     if oSelf.__sOSPath is None:
-      oKernel32 = foLoadKernel32DLL();
+      from mWindowsSDK.mKernel32 import oKernel32DLL;
       osBuffer = WCHAR[MAX_PATH]();
-      ouPathSize = oKernel32.GetWindowsDirectoryW(
+      ouPathSize = oKernel32DLL.GetWindowsDirectoryW(
         osBuffer.foCreatePointer().foCastTo(PWSTR),
         MAX_PATH
       );

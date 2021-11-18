@@ -73,7 +73,7 @@ class cVirtualAllocation(object):
     bReserved = False,
     uProtection = None,
   ):
-    oKernel32 = foLoadKernel32DLL();
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     if uProtection is None:
       uProtection = PAGE_NOACCESS;
     else:
@@ -82,7 +82,7 @@ class cVirtualAllocation(object):
     # Try to open the process...
     ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_VM_OPERATION);
     try:
-      opBaseAddress = oKernel32.VirtualAllocEx(
+      opBaseAddress = oKernel32DLL.VirtualAllocEx(
           ohProcess,
           LPVOID(uAddress or 0), # lpAddress
           uSize, # dwSize
@@ -98,7 +98,7 @@ class cVirtualAllocation(object):
         return None; # invalid address.
       return oVirtualAllocation;
     finally:
-      if not oKernel32.CloseHandle(ohProcess):
+      if not oKernel32DLL.CloseHandle(ohProcess):
         fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
   
   def __init__(oSelf, uProcessId, uAddress):
@@ -119,7 +119,7 @@ class cVirtualAllocation(object):
     return oSelf.__u0PointerSize;
   
   def __fUpdate(oSelf, u0Address = None):
-    oKernel32 = foLoadKernel32DLL();
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     # Address is only supplied the first time (by __init__). After that, we know the start address and use that:
     uAddress = (
       u0Address if u0Address is not None
@@ -142,7 +142,7 @@ class cVirtualAllocation(object):
         "uAddress 0x%X is not a valid %d-bit pointer!" % (uAddress, oSelf.__u0PointerSize * 8);
     try:
       oMemoryBasicInformation = MEMORY_BASIC_INFORMATION();
-      oStoredBytes = oKernel32.VirtualQueryEx(
+      oStoredBytes = oKernel32DLL.VirtualQueryEx(
         ohProcess,
         LPCVOID(uAddress), # lpAddress
         oMemoryBasicInformation.foCreatePointer(), # lpBuffer,
@@ -174,7 +174,7 @@ class cVirtualAllocation(object):
         oSelf.__u0Type = oMemoryBasicInformation.Type.fuGetValue();
       oSelf.__s0Bytes = None;
     finally:
-      if not oKernel32.CloseHandle(ohProcess):
+      if not oKernel32DLL.CloseHandle(ohProcess):
         fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
   
   def fbContainsAddress(oSelf, uAddress, uSize = 1):
@@ -287,18 +287,18 @@ class cVirtualAllocation(object):
   
   @uProtection.setter
   def uProtection(oSelf, uNewProtection):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert oSelf.bIsValid and not oSelf.bFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
         (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
     assert isinstance(uNewProtection, int) and uNewProtection > 0, \
         "Cannot set uProtection to %s" % repr(uNewProtection);
-    oKernel32 = foLoadKernel32DLL();
     assert oSelf.bAllocated, \
         "Cannot modify protection on a virtual allocation that is not allocated";
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_OPERATION);
     try:
       flOldProtection = DWORD();
-      if not oKernel32.VirtualProtectEx(
+      if not oKernel32DLL.VirtualProtectEx(
         ohProcess,
         LPVOID(oSelf.__u0StartAddress), # lpAddress,
         SIZE_T(oSelf.__u0Size), # nSize
@@ -309,7 +309,7 @@ class cVirtualAllocation(object):
             (repr(ohProcess), oSelf.__u0StartAddress, oSelf.__u0Size, uNewProtection,));
       oSelf.__u0Protection = uNewProtection;
     finally:
-      if not oKernel32.CloseHandle(ohProcess):
+      if not oKernel32DLL.CloseHandle(ohProcess):
         fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
   
   @sProtection.setter
@@ -357,12 +357,12 @@ class cVirtualAllocation(object):
     # Read bytes without NULL terminator.
     return oSelf.fsReadStringForOffsetAndLength(uOffset, uSize, bUnicode = False, bNullTerminated = False, bBytes = True);
   def fsReadStringForOffsetAndLength(oSelf, uOffset, uLength, bUnicode = False, bNullTerminated = False, bBytes = False):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert oSelf.bIsValid and not oSelf.bFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
         (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
     assert not bUnicode or not bBytes, \
         "Unicode strings cannot be returned as a string of bytes";
-    oKernel32 = foLoadKernel32DLL();
     # Sanity checks
     uSize = uLength * (2 if bUnicode else 1);
     assert oSelf.bAllocated, \
@@ -389,7 +389,7 @@ class cVirtualAllocation(object):
       ouBytesRead = SIZE_T(0);
       opsBuffer = LPVOID(osBuffer, bCast = True);
       opuBytesRead = ouBytesRead.foCreatePointer();
-      if not oKernel32.ReadProcessMemory(
+      if not oKernel32DLL.ReadProcessMemory(
         ohProcess,
         oSelf.__u0StartAddress + uOffset, # lpBaseAddress
         opsBuffer, # lpBuffer
@@ -406,7 +406,7 @@ class cVirtualAllocation(object):
         return osBuffer.fsbGetNullTerminatedBytesString() if bBytes else osBuffer.fsGetNullTerminatedString();
       return osBuffer.fsbGetValue() if bBytes else osBuffer.fsGetValue();
     finally:
-      if not oKernel32.CloseHandle(ohProcess):
+      if not oKernel32DLL.CloseHandle(ohProcess):
         fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
       # Restore original protection if needed
       if uOriginalProtection in [PAGE_NOACCESS, PAGE_EXECUTE]:
@@ -464,10 +464,10 @@ class cVirtualAllocation(object):
   def fWriteBytesForOffset(oSelf, sBytes, uOffset):
     return oSelf.fWriteStringForOffset(sBytes, uOffset, bUnicode = False);
   def fWriteStringForOffset(oSelf, sString, uOffset, bUnicode = False):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert oSelf.bIsValid and not oSelf.bFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
         (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
-    oKernel32 = foLoadKernel32DLL();
     # Sanity checks
     assert oSelf.bAllocated, \
         "Cannot write memory that is not allocated!";
@@ -493,7 +493,7 @@ class cVirtualAllocation(object):
     try:
       oBuffer = (PWCHAR if bUnicode else PCHAR)(sString);
       ouBytesWritten = SIZE_T(0);
-      if not oKernel32.WriteProcessMemory(
+      if not oKernel32DLL.WriteProcessMemory(
         ohProcess,
         oSelf.__u0StartAddress + uOffset, # lpBaseAddress
         LPVOID(oBuffer, bCast = True), # lpBuffer
@@ -506,7 +506,7 @@ class cVirtualAllocation(object):
           "WriteProcessMemory(%s, 0x%08X, ..., 0x%X, ...) => 0x%X bytes written" % \
           (repr(ohProcess), oSelf.__u0StartAddress + uOffset, uSize, ouBytesWritten.fuGetValue());
     finally:
-      if not oKernel32.CloseHandle(ohProcess):
+      if not oKernel32DLL.CloseHandle(ohProcess):
         fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
       # Restore original protection if needed
       if uOriginalProtection in [PAGE_NOACCESS, PAGE_READONLY, PAGE_EXECUTE, PAGE_EXECUTE_READ]:
@@ -529,12 +529,12 @@ class cVirtualAllocation(object):
     ];
   
   def fCommit(oSelf, uProtection = None):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     # This function can be used to commit memory to a reserved virtual allocation.
     # It cannot be used on a freed virtual allocation; since it has no size defined.
     assert oSelf.bIsValid and not oSelf.bFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
         (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
-    oKernel32 = foLoadKernel32DLL();
     # Commit this virtual allocation if it is reserved
     assert oSelf.bReserved, \
         "You can only allocate a reserved virtual allocation";
@@ -545,7 +545,7 @@ class cVirtualAllocation(object):
           "Unknown uProtection values 0x%08X" % uProtection;
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_OPERATION);
     try:
-      opBaseAddress = oKernel32.VirtualAllocEx(
+      opBaseAddress = oKernel32DLL.VirtualAllocEx(
         ohProcess,
         LPVOID(oSelf.__u0StartAddress), # lpAddress
         oSelf.__u0Size, # dwSize
@@ -561,22 +561,22 @@ class cVirtualAllocation(object):
           (oSelf.__u0StartAddress, uBaseAddress);
     finally:
       try:
-        if not oKernel32.CloseHandle(ohProcess):
+        if not oKernel32DLL.CloseHandle(ohProcess):
           fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
       finally:
         oSelf.__fUpdate();
   
   def fReserve(oSelf):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert oSelf.bIsValid and not oSelf.bFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
         (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
-    oKernel32 = foLoadKernel32DLL();
     # Decommit this virtual allocation if it is committed
     assert oSelf.bAllocated, \
         "You can only reserve an allocated virtual allocation";
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_OPERATION);
     try:
-      if not oKernel32.VirtualFreeEx(
+      if not oKernel32DLL.VirtualFreeEx(
         ohProcess,
         LPVOID(oSelf.__u0StartAddress), # lpAddress
         oSelf.__u0Size, # dwSize
@@ -586,19 +586,19 @@ class cVirtualAllocation(object):
           (repr(ohProcess), oSelf.__u0StartAddress, MEM_DECOMMIT,));
     finally:
       try:
-        if not oKernel32.CloseHandle(ohProcess):
+        if not oKernel32DLL.CloseHandle(ohProcess):
           fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
       finally:
         oSelf.__fUpdate();
   
   def fFree(oSelf):
+    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert oSelf.bIsValid, \
         "The virtual allocation is not valid, please check 'oSelf.bIsValid' before making this call!";
-    oKernel32 = foLoadKernel32DLL();
     # Free this virtual allocation if it is reserved or committed
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_OPERATION);
     try:
-      if not oKernel32.VirtualFreeEx(
+      if not oKernel32DLL.VirtualFreeEx(
         ohProcess,
         LPVOID(oSelf.__u0StartAddress), # lpAddress
         0, # dwSize
@@ -608,7 +608,7 @@ class cVirtualAllocation(object):
             (repr(ohProcess), oSelf.__u0StartAddress, MEM_RELEASE,));
     finally:
       try:
-        if not oKernel32.CloseHandle(ohProcess):
+        if not oKernel32DLL.CloseHandle(ohProcess):
           fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
       finally:
         oSelf.__fUpdate();

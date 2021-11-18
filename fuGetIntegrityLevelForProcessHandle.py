@@ -4,13 +4,13 @@ from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
 
 def fuGetIntegrityLevelForProcessHandle(ohProcess):
-  oKernel32 = foLoadKernel32DLL();
+  from mWindowsSDK.mKernel32 import oKernel32DLL;
   oAdvAPI32 = foLoadAdvAPI32DLL();
   assert isinstance(ohProcess, HANDLE), \
       "%s is not a HANDLE" % repr(ohProcess);
   odwDesiredAccess = DWORD(TOKEN_QUERY);
   ohToken = HANDLE();
-  if not oKernel32.OpenProcessToken(ohProcess, odwDesiredAccess, ohToken.foCreatePointer()):
+  if not oKernel32DLL.OpenProcessToken(ohProcess, odwDesiredAccess, ohToken.foCreatePointer()):
     fThrowLastError("OpenProcessToken(%s, %s, 0x%X)" % \
         (repr(ohProcess), repr(odwDesiredAccess), ohToken.fuGetAddress()));
   bSuccess = False;
@@ -65,6 +65,6 @@ def fuGetIntegrityLevelForProcessHandle(ohProcess):
     bSuccess = True;
   finally:
     # Only throw an exception if one isn't already being thrown:
-    if not oKernel32.CloseHandle(ohToken) and bSuccess:
+    if not oKernel32DLL.CloseHandle(ohToken) and bSuccess:
       fThrowLastError("CloseHandle(%s)" % (repr(ohToken),));
   return odwIntegrityLevel.fuGetValue();
