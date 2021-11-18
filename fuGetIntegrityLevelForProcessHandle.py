@@ -36,7 +36,7 @@ def fuGetIntegrityLevelForProcessHandle(ohProcess):
     if not oAdvAPI32.GetTokenInformation(
       ohToken,
       xTokenInformationClass,
-      poTokenMandatoryLabel,
+      poTokenMandatoryLabel.foCastTo(PVOID),
       odwTokenMandatoryLabelSize,
       odwTokenMandatoryLabelSize.foCreatePointer()
     ):
