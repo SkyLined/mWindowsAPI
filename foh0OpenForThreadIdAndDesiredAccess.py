@@ -6,7 +6,7 @@ from .fThrowWin32Error import fThrowWin32Error;
 def foh0OpenForThreadIdAndDesiredAccess(uThreadId, uDesiredAccess, bInheritHandle = False, bMustExist = True, bMustGetAccess = True):
   oKernel32 = foLoadKernel32DLL();
   odwDesiredAccess = DWORD(uDesiredAccess);
-  obInheritHandle = BOOLEAN(bInheritHandle);
+  obInheritHandle = BOOL(bInheritHandle);
   odwThreadId = DWORD(uThreadId);
   ohThread = oKernel32.OpenThread(odwDesiredAccess, obInheritHandle, odwThreadId);
   if not fbIsValidHandle(ohThread):
