@@ -98,7 +98,7 @@ class cSystemInfo(object):
       oKernel32 = foLoadKernel32DLL();
       osBuffer = WCHAR[MAX_PATH]();
       ouPathSize = oKernel32.GetWindowsDirectoryW(
-        osBuffer.foCreatePointer(),
+        osBuffer.foCreatePointer().foCastTo(PWSTR),
         MAX_PATH
       );
       if ouPathSize == 0:
