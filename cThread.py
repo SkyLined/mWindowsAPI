@@ -580,7 +580,7 @@ class cThread(object):
     else:
       sSetThreadContextFunctionName = "SetThreadContext";
     from mWindowsSDK.mKernel32 import oKernel32DLL;
-    fbSetThreadContext = getattr(oKernel32, sSetThreadContextFunctionName);
+    fbSetThreadContext = getattr(oKernel32DLL, sSetThreadContextFunctionName);
     if not fbSetThreadContext(
       oh0Thread,# hThread
       o0ThreadContext.foCreatePointer(), # lpContext
