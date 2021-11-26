@@ -1,10 +1,10 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fThrowLastError import fThrowLastError;
 from .fuGetIntegrityLevelForProcessHandle import fuGetIntegrityLevelForProcessHandle;
 
 def fuGetIntegrityLevelForProcessId(uProcessId):
-  from mWindowsSDK.mKernel32 import oKernel32DLL;
   ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_QUERY_INFORMATION);
   bSuccess = False;
   try:

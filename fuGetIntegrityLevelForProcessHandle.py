@@ -1,10 +1,10 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fbLastErrorFailed import fbLastErrorFailed;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
 
 def fuGetIntegrityLevelForProcessHandle(ohProcess):
-  from mWindowsSDK.mKernel32 import oKernel32DLL;
   oAdvAPI32 = foLoadAdvAPI32DLL();
   assert isinstance(ohProcess, HANDLE), \
       "%s is not a HANDLE" % repr(ohProcess);

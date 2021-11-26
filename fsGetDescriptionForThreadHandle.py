@@ -1,9 +1,9 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
 from .fThrowLastError import fThrowLastError;
 
 def fsGetDescriptionForThreadHandle(ohThread):
-  from mWindowsSDK.mKernel32 import oKernel32DLL;
   if not oKernel32DLL.GetThreadDescription:
     # This functions is new to Windows 10, so it may not exist.
     return None;

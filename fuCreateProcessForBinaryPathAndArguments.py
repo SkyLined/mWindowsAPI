@@ -1,9 +1,9 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fThrowLastError import fThrowLastError;
 from .ftohuCreateProcessForBinaryPathAndArguments import ftohuCreateProcessForBinaryPathAndArguments;
 
 def fuCreateProcessForBinaryPathAndArguments(*txArguments, **dxArguments):
-  from mWindowsSDK.mKernel32 import oKernel32DLL;
   (ohProcess, uProcessId) = ftohuCreateProcessForBinaryPathAndArguments(*txArguments, **dxArguments);
   if ohProcess is None: # Cannot start because path is invalid or not found.
     return None;

@@ -1,4 +1,5 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fbIsRunningForProcessHandle import fbIsRunningForProcessHandle;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
@@ -14,7 +15,6 @@ def fbIsRunningForProcessId(uProcessId):
     bSuccess = True;
   finally:
     # Only throw an exception if one isn't already being thrown:
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     if not oKernel32DLL.CloseHandle(ohProcess) and bSuccess:
       fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
   return bResult;

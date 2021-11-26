@@ -1,6 +1,8 @@
 import os;
 
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
+
 from .fbIsRunningForProcessHandle import fbIsRunningForProcessHandle;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
@@ -75,7 +77,6 @@ class cProcess(object):
     # The input of oStdOutPipe and oStdErrPipe are inherited so the the application can write to them.
     # The input of oStdOutPipe and oStdErrPipe are closed by us after the application is started, as we do
     # not use them and want Windows to clean them up when the application terminates.
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     sCommandLine = " ".join([
       (s and (s[0] == '"' or s.find(" ") == -1)) and s or '"%s"' % s.replace('"', '\\"')
       for s in [sBinaryPath] + asArguments
@@ -169,7 +170,6 @@ class cProcess(object):
     oSelf.__uProcessHandleFlags = uFlags if ohProcess != INVALID_HANDLE_VALUE else 0;
     if ohOldProcessHandle:
       # Close the old process handle:
-      from mWindowsSDK.mKernel32 import oKernel32DLL;
       if not oKernel32DLL.CloseHandle(ohOldProcessHandle):
         fThrowLastError("CloseHandle(%s)" % (repr(ohOldProcessHandle),));
     return ohProcess;
@@ -292,7 +292,6 @@ class cProcess(object):
       ohProcess = oSelf.__ohProcess;
     except AttributeError:
       return;
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     if ohProcess != INVALID_HANDLE_VALUE and not oKernel32DLL.CloseHandle(ohProcess):
       # If the process is already terminated we can see a ERROR_INVALID_HANDLE error, which we'll ignore.
       # Any other, unexpected errors are reported:
@@ -345,7 +344,6 @@ class cProcess(object):
     return oSelf.__n0RunDurationInSeconds;
   
   def __fGetProcessTimes(oSelf):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     ohProccess = oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION);
     # FILETIME has two 32-bit values that represent to lower and higher parts of a 64-bit count of 100 nanosecond
     # intervals.
@@ -491,7 +489,6 @@ class cProcess(object):
     return fuGetMemoryUsageForProcessId(oSelf.uId);
   
   def faoGetThreads(oSelf):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     ohThreadsSnapshot = oKernel32DLL.CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
     if not fbIsValidHandle(ohThreadsSnapshot):
       fThrowLastError("CreateToolhelp32Snapshot(0x%08X, 0)", TH32CS_SNAPTHREAD);

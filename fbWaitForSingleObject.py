@@ -1,10 +1,10 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
 
 def fbWaitForSingleObject(ohSubject, nTimeoutInSeconds = None, bInvalidHandleMeansSignaled = False):
-  from mWindowsSDK.mKernel32 import oKernel32DLL;
   assert isinstance(ohSubject, HANDLE), \
       "%s is not a HANDLE" % repr(ohSubject);
   assert fbIsValidHandle(ohSubject), \

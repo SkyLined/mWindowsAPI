@@ -1,4 +1,6 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
+
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
@@ -13,7 +15,6 @@ JOBOBJECT_EXTENDED_LIMIT_INFORMATION = {
 
 class cJobObject(object):
   def __init__(oSelf, *auProcessIds):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     oSelf.__ohJob = oKernel32DLL.CreateJobObjectW(NULL, NULL);
     if not fbIsValidHandle(oSelf.__ohJob):
       fThrowLastError("CreateJobObject(NULL, NULL)");
@@ -22,7 +23,6 @@ class cJobObject(object):
           "Yeah, well, you know, that's just like ehh.. your opinion, man.";
   
   def fbAddProcessForId(oSelf, uProcessId, bThrowAllErrors = False):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_SET_QUOTA | PROCESS_TERMINATE);
     try:
       if oKernel32DLL.AssignProcessToJobObject(oSelf.__ohJob, ohProcess):
@@ -44,7 +44,6 @@ class cJobObject(object):
         fThrowLastError("CloseHandle(0x%X)" % (ohProcess,));
   
   def __foQueryExtendedLimitInformation(oSelf):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     oExtendedLimitInformation = JOBOBJECT_EXTENDED_LIMIT_INFORMATION();
     odwReturnLength = DWORD();
     if not oKernel32DLL.QueryInformationJobObject(
@@ -73,7 +72,6 @@ class cJobObject(object):
     return oExtendedLimitInformation;
   
   def __fSetExtendedLimitInformation(oSelf, oExtendedLimitInformation):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     if not oKernel32DLL.SetInformationJobObject(
       oSelf.__ohJob, # hJob
       JobObjectExtendedLimitInformation, # JobObjectInfoClass

@@ -1,5 +1,6 @@
 import re;
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .cVirtualAllocation import cVirtualAllocation;
 from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
 from .fbResumeForThreadHandle import fbResumeForThreadHandle;
@@ -281,7 +282,6 @@ class cThread(object):
     # We have a new HANDLE with more access rights; close the old one if we have it and replace
     # it with the new handle.
     if oSelf.__oh0Thread:
-      from mWindowsSDK.mKernel32 import oKernel32DLL;
       if not oKernel32DLL.CloseHandle(oSelf.__oh0Thread):
         fThrowLastError("CloseHandle(%s)" % (repr(oSelf.__oh0Thread),));
     oSelf.__oh0Thread = ohThread;
@@ -298,7 +298,6 @@ class cThread(object):
     except AttributeError:
       return;
     if oh0Thread:
-      from mWindowsSDK.mKernel32 import oKernel32DLL;
       if not oKernel32DLL.CloseHandle(oh0Thread) and not fbLastErrorIs(ERROR_INVALID_HANDLE):
         fThrowLastError("CloseHandle(%s)" % (repr(oh0Thread),));
   
@@ -447,7 +446,6 @@ class cThread(object):
 #      print "oThreadContext = None (oh0Thread = %s)" % (repr(oh0Thread),);
       return None;
     oThreadContext.ContextFlags = CONTEXT_ALL;
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     fbGetThreadContext = getattr(oKernel32DLL, sGetThreadContextFunctionName);
     opoThreadContext = oThreadContext.foCreatePointer();
     if not fbGetThreadContext(
@@ -579,7 +577,6 @@ class cThread(object):
       sSetThreadContextFunctionName = "Wow64SetThreadContext";
     else:
       sSetThreadContextFunctionName = "SetThreadContext";
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     fbSetThreadContext = getattr(oKernel32DLL, sSetThreadContextFunctionName);
     if not fbSetThreadContext(
       oh0Thread,# hThread

@@ -1,10 +1,10 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fdsGetProcessesExecutableName_by_uId import fdsGetProcessesExecutableName_by_uId;
 from .fThrowWin32Error import fThrowWin32Error;
 
 def fohOpenForProcessIdAndDesiredAccess(uProcessId, uDesiredAccess, bInheritHandle = False, bMustExist = True):
-  from mWindowsSDK.mKernel32 import oKernel32DLL;
   odwDesiredAccess = DWORD(uDesiredAccess);
   obInheritHandle = BOOLEAN(bInheritHandle);
   odwProcessId = DWORD(uProcessId);

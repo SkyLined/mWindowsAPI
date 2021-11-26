@@ -1,5 +1,8 @@
 import time;
+
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
+
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
@@ -27,7 +30,6 @@ class cPipe(object):
   @classmethod
   @ShowDebugOutput
   def foCreateNamed(cPipe, sName, bReadableInput = True, bWritableOutput = True, bInheritable = True, nConnectTimeoutInSeconds = None):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert not sName.startswith(gsPipeNameHeader), \
         "The %s header should not be provided in the name!" % repr(gsPipeNameHeader);
     assert r"\\" not in sName, \
@@ -79,7 +81,6 @@ class cPipe(object):
   @classmethod
   @ShowDebugOutput
   def foConnectNamed(cPipe, sName, bReadableInput = True, bWritableOutput = True, bInheritable = True, nConnectTimeoutInSeconds = None):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert not sName.startswith(gsPipeNameHeader), \
         "The %s header should not be provided in the name!" % repr(gsPipeNameHeader);
     assert r"\\" not in sName, \
@@ -120,7 +121,6 @@ class cPipe(object):
   @classmethod
   @ShowDebugOutput
   def foCreate(cPipe, sDescription = None, bInheritableInput = True, bInheritableOutput = True):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     ohInput = HANDLE(); # We write to the pipe's input handle
     ohOutput = HANDLE(); # We read from the pipe's output handle
     if not oKernel32DLL.CreatePipe(
@@ -171,7 +171,6 @@ class cPipe(object):
   
   @ShowDebugOutput
   def fClose(oSelf, bInput = None, bOutput = None):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     if bInput is None and bOutput is None:
       # If nothing is specified, close both. Otherwise close only those for which the value is True-ish.
       bInput = True;
@@ -204,7 +203,6 @@ class cPipe(object):
   def fu0ReadByte(oSelf):
     return oSelf.__fu0ReadByte();
   def __fu0ReadByte(oSelf):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     oByte = BYTE();
     odwBytesRead = DWORD();
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365467(v=vs.85).aspx
@@ -302,7 +300,6 @@ class cPipe(object):
   
   @ShowDebugOutput
   def fWriteBytes(oSelf, sbData):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert isinstance(sbData, bytes), \
         "sbData must be bytes, not %s (%s)" % (repr(sbData.__class__), repr(sbData));
     odwBytesWritten = DWORD(0);

@@ -1,4 +1,5 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fbWaitForTerminationForProcessHandle import fbWaitForTerminationForProcessHandle;
 from .fThrowLastError import fThrowLastError;
@@ -10,7 +11,6 @@ def fbTerminateForProcessHandle(ohProcess, nTimeoutInSeconds = None, bWait = Tru
       "Cannot terminate a NULL HANDLE";
   assert bWait or nTimeoutInSeconds is None, \
       "Invalid arguments nTimeoutInSeconds = %f and bWait = %s" % (nTimeoutInSeconds, bWait);
-  from mWindowsSDK.mKernel32 import oKernel32DLL;
   bTerminated = oKernel32DLL.TerminateProcess(ohProcess, 0);
   if not bTerminated:
     # ERROR_ACCESS_DENIED may indicate the process is already terminating/terminated.

@@ -1,10 +1,10 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fbIsValidHandle import fbIsValidHandle;
 from .fsGetThreadAccessRightsFlagsDescription import fsGetThreadAccessRightsFlagsDescription;
 from .fThrowWin32Error import fThrowWin32Error;
 
 def foh0OpenForThreadIdAndDesiredAccess(uThreadId, uDesiredAccess, bInheritHandle = False, bMustExist = True, bMustGetAccess = True):
-  from mWindowsSDK.mKernel32 import oKernel32DLL;
   odwDesiredAccess = DWORD(uDesiredAccess);
   obInheritHandle = BOOL(bInheritHandle);
   odwThreadId = DWORD(uThreadId);

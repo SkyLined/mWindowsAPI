@@ -1,4 +1,6 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
+
 from .cPipe import cPipe;
 from .cProcess import cProcess;
 from .fbLastErrorIs import fbLastErrorIs;
@@ -52,7 +54,6 @@ class cConsoleProcess(cProcess):
     # The input of oStdOutPipe and oStdErrPipe are inherited so the the application can write to them.
     # The input of oStdOutPipe and oStdErrPipe are closed by us after the application is started, as we do
     # not use them and want Windows to clean them up when the application terminates.
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     oStdInPipe = bRedirectStdIn and cPipe.foCreate("StdIn", bInheritableInput = False) or None;
     try:
       oStdOutPipe = bRedirectStdOut and cPipe.foCreate("StdOut", bInheritableOutput = False) or None;

@@ -1,9 +1,9 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
 from .fThrowLastError import fThrowLastError;
 
 def fuGetExitCodeForThreadHandle(ohThread):
-  from mWindowsSDK.mKernel32 import oKernel32DLL;
   if fbIsRunningForThreadHandle(ohThread):
     # Still running; no exit code.
     return None;

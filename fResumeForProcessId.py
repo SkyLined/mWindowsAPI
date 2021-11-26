@@ -1,10 +1,10 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fThrowNTStatusError import fThrowNTStatusError;
 from .fThrowLastError import fThrowLastError;
 
 def fResumeForProcessId(uProcessId):
-  from mWindowsSDK.mKernel32 import oKernel32DLL;
   oNTDLL = foLoadNTDLL();
   ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, THREAD_SUSPEND_RESUME);
   oNTStatus = oNTDLL.NtResumeProcess(ohProcess); # NOT RELIABLE!

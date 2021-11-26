@@ -1,6 +1,7 @@
 import math, struct;
 
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fsGetISAForProcessHandle import fsGetISAForProcessHandle;
@@ -73,7 +74,6 @@ class cVirtualAllocation(object):
     bReserved = False,
     uProtection = None,
   ):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     if uProtection is None:
       uProtection = PAGE_NOACCESS;
     else:
@@ -119,7 +119,6 @@ class cVirtualAllocation(object):
     return oSelf.__u0PointerSize;
   
   def __fUpdate(oSelf, u0Address = None):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     # Address is only supplied the first time (by __init__). After that, we know the start address and use that:
     uAddress = (
       u0Address if u0Address is not None
@@ -287,7 +286,6 @@ class cVirtualAllocation(object):
   
   @uProtection.setter
   def uProtection(oSelf, uNewProtection):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert oSelf.bIsValid and not oSelf.bFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
         (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
@@ -357,7 +355,6 @@ class cVirtualAllocation(object):
     # Read bytes without NULL terminator.
     return oSelf.fsReadStringForOffsetAndLength(uOffset, uSize, bUnicode = False, bNullTerminated = False, bBytes = True);
   def fsReadStringForOffsetAndLength(oSelf, uOffset, uLength, bUnicode = False, bNullTerminated = False, bBytes = False):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert oSelf.bIsValid and not oSelf.bFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
         (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
@@ -464,7 +461,6 @@ class cVirtualAllocation(object):
   def fWriteBytesForOffset(oSelf, sBytes, uOffset):
     return oSelf.fWriteStringForOffset(sBytes, uOffset, bUnicode = False);
   def fWriteStringForOffset(oSelf, sString, uOffset, bUnicode = False):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert oSelf.bIsValid and not oSelf.bFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
         (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
@@ -529,7 +525,6 @@ class cVirtualAllocation(object):
     ];
   
   def fCommit(oSelf, uProtection = None):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     # This function can be used to commit memory to a reserved virtual allocation.
     # It cannot be used on a freed virtual allocation; since it has no size defined.
     assert oSelf.bIsValid and not oSelf.bFree, \
@@ -567,7 +562,6 @@ class cVirtualAllocation(object):
         oSelf.__fUpdate();
   
   def fReserve(oSelf):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert oSelf.bIsValid and not oSelf.bFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
         (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
@@ -592,7 +586,6 @@ class cVirtualAllocation(object):
         oSelf.__fUpdate();
   
   def fFree(oSelf):
-    from mWindowsSDK.mKernel32 import oKernel32DLL;
     assert oSelf.bIsValid, \
         "The virtual allocation is not valid, please check 'oSelf.bIsValid' before making this call!";
     # Free this virtual allocation if it is reserved or committed

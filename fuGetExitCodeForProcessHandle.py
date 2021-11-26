@@ -1,9 +1,9 @@
 from mWindowsSDK import *;
+from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fbIsRunningForProcessHandle import fbIsRunningForProcessHandle;
 from .fThrowLastError import fThrowLastError;
 
 def fuGetExitCodeForProcessHandle(ohProcess):
-  from mWindowsSDK.mKernel32 import oKernel32DLL;
   assert isinstance(ohProcess, HANDLE), \
       "%s is not a HANDLE" % repr(ohProcess);
   if fbIsRunningForProcessHandle(ohProcess):
