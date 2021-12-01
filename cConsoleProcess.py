@@ -140,10 +140,14 @@ class cConsoleProcess(cProcess):
       oSelf.oStdInPipe.fClose();
     except:
       pass;
-      try:
-        oSelf.oStdOutPipe and oSelf.oStdOutPipe.fClose();
-      finally:
-        oSelf.oStdErrPipe and oSelf.oStdErrPipe.fClose();
+    try:
+      oSelf.oStdOutPipe.fClose();
+    except:
+      pass;
+    try:
+      oSelf.oStdErrPipe.fClose();
+    except:
+      pass;
   
   @ShowDebugOutput
   def fClose(oSelf):
