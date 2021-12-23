@@ -11,6 +11,7 @@ from .fbTerminateForProcessId import fbTerminateForProcessId;
 from .fbWaitForTerminationForProcessHandle import fbWaitForTerminationForProcessHandle;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fuCreateThreadForProcessIdAndAddress import fuCreateThreadForProcessIdAndAddress;
+from .fs0GetBinaryPathForProcessAndModuleHandle import fs0GetBinaryPathForProcessAndModuleHandle;
 from .fsGetPythonISA import fsGetPythonISA;
 from .fsGetISAForProcessHandle import fsGetISAForProcessHandle;
 from .fSuspendForProcessId import fSuspendForProcessId;
@@ -516,7 +517,13 @@ class cProcess(object):
   
   def fuCreateThreadForAddress(oSelf, uAddress, **dxArguments):
     return fuCreateThreadForProcessIdAndAddress(oSelf.uId, uAddress, **dxArguments);
-
+  
+  def fs0GetBinaryPathForModuleAddress(oSelf, uAddress):
+    return fs0GetBinaryPathForProcessAndModuleHandle(
+      oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION),
+      HMODULE(uAddress), # conveniently, an HMODULE's value is the address where the module is loaded.
+    );
+  
   def fasGetDetails(oSelf):
     # This is done without a property lock, so race-conditions exist and it
     # approximates the real values.
