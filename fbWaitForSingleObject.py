@@ -1,14 +1,15 @@
 from mWindowsSDK import *;
 from mWindowsSDK.mKernel32 import oKernel32DLL;
+
 from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
 
 def fbWaitForSingleObject(ohSubject, nTimeoutInSeconds = None, bInvalidHandleMeansSignaled = False):
   assert isinstance(ohSubject, HANDLE), \
-      "%s is not a HANDLE" % repr(ohSubject);
+      "ohSubject (%s) is not a HANDLE" % repr(ohSubject);
   assert fbIsValidHandle(ohSubject), \
-      "%s is not a valid handle" % repr(ohSubject);
+      "ohSubject (%s) is not a valid handle" % repr(ohSubject);
   odwMilliseconds = DWORD(INFINITE if nTimeoutInSeconds is None else int(nTimeoutInSeconds * 1000));
   odwResult = oKernel32DLL.WaitForSingleObject(ohSubject, odwMilliseconds);
   if odwResult == WAIT_OBJECT_0:
