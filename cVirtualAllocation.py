@@ -1,4 +1,4 @@
-import math, struct;
+﻿import math, struct;
 
 from mWindowsSDK import *;
 from mWindowsSDK.mKernel32 import oKernel32DLL;
@@ -523,6 +523,63 @@ class cVirtualAllocation(object):
       "uProtection            = 0x%X (%s)" % (oSelf.uProtection, oSelf.sProtection),
       "uType                  = 0x%X (%s)" % (oSelf.uType, oSelf.sType),
     ];
+  def fasDumpContents(oSelf, uStartOffset = 0, u0EndOffset = None, u0Size = None):
+    assert uStartOffset >= 0, \
+        "uStartOffset (-0x%X) must not be negative" % (
+          -uStartOffset,
+        );
+    assert uStartOffset < oSelf.uSize, \
+        "uStartOffset (0x%X) must not be greater than the size of the virtual memory (0x%X)" % (
+          uStartOffset, oSelf.uSize,
+        );
+    if u0EndOffset is not None:
+      assert u0Size is None, \
+        "u0EndOffset (0x%X) and u0Size (0x%X) must not both be provided" % (
+          u0EndOffset, u0Size,
+        );
+      assert u0EndOffset <= oSelf.uSize, \
+        "u0EndOffset (0x%X) must not be greater than the size of the virtual memory (0x%X)" % (
+          u0EndOffset, Self.uSize,
+        );
+      assert u0EndOffset > uStartOffset, \
+        "u0EndOffset (0x%X) must be greater than uStartOffset (0x%X)" % (
+          u0EndOffset, uStartOffset,
+        );
+      uSize = u0EndOffset - uStartOffset;
+    elif u0Size is not None:
+      assert u0Size > 0, \
+        "u0Size (0x%X) must be larger than 0" % (
+          u0Size,
+        );
+      assert u0Size <= oSelf.uSize, \
+        "u0Size (0x%X) must not be greater than the size of the virtual memory (0x%X)" % (
+          u0Size, Self.uSize,
+        );
+      uSize = u0Size;
+    else:
+      uSize = oSelf.uSize - uStartOffset;
+    uLineLength = 32;
+    asContents = [("┌──[ offset 0x%X - 0x%X " % (uStartOffset, uStartOffset + uSize)).ljust(80, "─")];
+    asHexBytesBuffer = [];
+    sCharsBuffer = "";
+    uOffset = uStartOffset;
+    def fCopyBuffersToResult():
+      asContents.append("│ %4X  %s  %s" % (
+        uOffset,
+        " ".join(asHexBytesBuffer).ljust(uLineLength * 3 - 1),
+        sCharsBuffer),
+      );
+    for uByte in oSelf.fauReadBytesForOffsetAndSize(uStartOffset, uSize):
+      asHexBytesBuffer.append("%02X" % uByte);
+      sCharsBuffer += chr(uByte) if 0x20 <= uByte <= 0x7E else ".";
+      if len(sCharsBuffer) == uLineLength:
+        fCopyBuffersToResult();
+        asHexBytesBuffer = [];
+        sCharsBuffer = "";
+        uOffset += uLineLength;
+    if len(sCharsBuffer) != 0:
+      fCopyBuffersToResult();
+    return asContents + ["└".ljust(80, "─")];
   
   def fCommit(oSelf, uProtection = None):
     # This function can be used to commit memory to a reserved virtual allocation.
