@@ -382,26 +382,35 @@ class cVirtualAllocation(object):
     # Open process to read memory
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_READ);
     try:
-      osBuffer = (WCHAR if bUnicode else CHAR)[uLength]();
+      osMemoryBuffer = (WCHAR if bUnicode else CHAR)[uLength]();
       ouBytesRead = SIZE_T(0);
-      opsBuffer = LPVOID(osBuffer, bCast = True);
+      opsMemoryBuffer = LPVOID(osMemoryBuffer, bCast = True);
       opuBytesRead = ouBytesRead.foCreatePointer();
       if not oKernel32DLL.ReadProcessMemory(
         ohProcess,
         oSelf.__u0StartAddress + uOffset, # lpBaseAddress
-        opsBuffer, # lpBuffer
+        opsMemoryBuffer, # lpBuffer
         uSize, # nSize
         opuBytesRead, # lpNumberOfBytesRead
       ):
         fThrowLastError("ReadProcessMemory(%s, 0x%08X+0x%X, %s, 0x%X, %s)" % \
-            (repr(ohProcess), oSelf.__u0StartAddress, uOffset, repr(opsBuffer), uSize, repr(opuBytesRead)));
+            (repr(ohProcess), oSelf.__u0StartAddress, uOffset, repr(opsMemoryBuffer), uSize, repr(opuBytesRead)));
       assert ouBytesRead == uSize, \
           "ReadProcessMemory(%s, 0x%08X+0x%X, %s, 0x%X, %s) => %s bytes read" % \
-          (repr(ohProcess), oSelf.__u0StartAddress, uOffset, repr(opsBuffer), uSize, repr(opuBytesRead), ouBytesRead.fuGetValue());
-      # Return read data as a string.
-      if bNullTerminated:
-        return osBuffer.fsbGetNullTerminatedBytesString() if bBytes else osBuffer.fsGetNullTerminatedString();
-      return osBuffer.fsbGetValue() if bBytes else osBuffer.fsGetValue();
+          (repr(ohProcess), oSelf.__u0StartAddress, uOffset, repr(opsMemoryBuffer), uSize, repr(opuBytesRead), ouBytesRead.fuGetValue());
+      # Return all of the data in the appropriate type if we do not need to look for a '\0' terminator.
+      if not bNullTerminated:
+        return osMemoryBuffer.fsbGetValue() if bBytes else osMemoryBuffer.fsGetValue();
+      # Look for a '\0' terminator and assert if none is found.
+      x0String = osMemoryBuffer.fsb0GetNullTerminatedBytesString() if bBytes else osMemoryBuffer.fs0GetNullTerminatedString();
+      assert x0String, \
+          "The %s string at address 0x%X in process %d/0x%X is not NULL terminated: %s." % (
+            oSelf.__u0StartAddress + uOffset,
+            oSelf.__uProcessId, oSelf.__uProcessId,
+            repr(osMemoryBuffer.sbGetValue()),
+          );
+      # Return part of the data in the appropriate type up until, but not including, the '\0' terminator.
+      return x0String;
     finally:
       if not oKernel32DLL.CloseHandle(ohProcess):
         fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));

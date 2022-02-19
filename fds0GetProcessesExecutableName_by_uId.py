@@ -4,8 +4,8 @@ from .fbIsValidHandle import fbIsValidHandle;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fThrowLastError import fThrowLastError;
 
-def fdsGetProcessesExecutableName_by_uId():
-  dsProcessExecutableName_by_uIds = {};
+def fds0GetProcessesExecutableName_by_uId():
+  ds0ProcessExecutableName_by_uIds = {};
   ohProcessesSnapshot = oKernel32DLL.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
   if not fbIsValidHandle(ohProcessesSnapshot):
     fThrowLastError("CreateToolhelp32Snapshot(0x%08X, 0)", TH32CS_SNAPPROCESS);
@@ -16,12 +16,14 @@ def fdsGetProcessesExecutableName_by_uId():
   bFirstProcess = True;
   while obGotProcess.fbGetValue():
     bFirstProcess = False;
-    dsProcessExecutableName_by_uIds[oProcessEntry32.th32ProcessID.fuGetValue()] = oProcessEntry32.szExeFile.fsGetNullTerminatedString();
+    s0ProcessExecutableName = oProcessEntry32.szExeFile.fs0GetNullTerminatedString();
+    uProcessId = oProcessEntry32.th32ProcessID.fuGetValue();
+    ds0ProcessExecutableName_by_uIds[uProcessId] = s0ProcessExecutableName;
     obGotProcess = oKernel32DLL.Process32NextW(ohProcessesSnapshot, opoProcessEntry32);
   if not fbLastErrorIs(ERROR_NO_MORE_FILES):
     sFunction = "Process32%sW" % ("First" if bFirstProcess else "Next");
     fThrowLastError("%s(%s, %s)" % (sFunction, repr(ohProcessesSnapshot), repr(opoProcessEntry32)));
   if not oKernel32DLL.CloseHandle(ohProcessesSnapshot):
     fThrowLastError("CloseHandle(%s)" % (repr(ohProcessesSnapshot),));
-  return dsProcessExecutableName_by_uIds;
+  return ds0ProcessExecutableName_by_uIds;
 

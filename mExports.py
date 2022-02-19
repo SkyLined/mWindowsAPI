@@ -20,7 +20,7 @@ from .fbWaitForTerminationForProcessId import fbWaitForTerminationForProcessId;
 from .fbWaitForTerminationForThreadHandle import fbWaitForTerminationForThreadHandle;
 from .fbWaitForTerminationForThreadId import fbWaitForTerminationForThreadId;
 from .fDebugBreakForProcessId import fDebugBreakForProcessId;
-from .fdsGetProcessesExecutableName_by_uId import fdsGetProcessesExecutableName_by_uId;
+from .fds0GetProcessesExecutableName_by_uId import fds0GetProcessesExecutableName_by_uId;
 from .foh0OpenForThreadIdAndDesiredAccess import foh0OpenForThreadIdAndDesiredAccess;
 from .fResumeForProcessId import fResumeForProcessId;
 from .fs0GetBinaryPathForProcessAndModuleHandle import fs0GetBinaryPathForProcessAndModuleHandle;
@@ -63,7 +63,7 @@ __all__ = [
   "fbWaitForTerminationForThreadHandle",
   "fbWaitForTerminationForThreadId",
   "fDebugBreakForProcessId",
-  "fdsGetProcessesExecutableName_by_uId",
+  "fds0GetProcessesExecutableName_by_uId",
   "foh0OpenForThreadIdAndDesiredAccess",
   "fResumeForProcessId",
   "fSendCtrlCForProcessId",

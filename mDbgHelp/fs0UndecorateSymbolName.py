@@ -16,18 +16,18 @@ def fs0UndecorateSymbolName(sDecoratedSymbolName, bNameOnly = False):
   uSymbolNameBufferLengthInChars = len(sDecoratedSymbolName) * 2; # Let's start with twice the length of the input.
   uLastReturnValue = 0;
   uFlags = UNDNAME_NAME_ONLY if bNameOnly else UNDNAME_COMPLETE;
-  oDecoratedSymbolNameBuffer = CHAR.foCreateBufferFromString(sDecoratedSymbolName);
+  osbDecoratedSymbolName = CHAR.foCreateString(sDecoratedSymbolName);
   while uSymbolNameBufferLengthInChars < 0x10000: # Just a random sane upper limit.
-    oUndecoratedSymbolNameBuffer = CHAR[uSymbolNameBufferLengthInChars]();
+    osbUndecoratedSymbolName = CHAR[uSymbolNameBufferLengthInChars]();
     odwSymbolNameLengthInCharsExcludingNullTerminator = oDbgHelp.UnDecorateSymbolName(
-      PCSTR(oDecoratedSymbolNameBuffer),
-      PSTR(oUndecoratedSymbolNameBuffer),
+      PCSTR(osbDecoratedSymbolName),
+      PSTR(osbUndecoratedSymbolName),
       uSymbolNameBufferLengthInChars,
       uFlags,
     );
     uSymbolNameLength = odwSymbolNameLengthInCharsExcludingNullTerminator.fuGetValue();
     if 0 < uSymbolNameLength < uSymbolNameBufferLengthInChars - 1:
-      sSymbolName = oUndecoratedSymbolNameBuffer.fsGetValue(u0Length = uSymbolNameLength);
+      sSymbolName = osbUndecoratedSymbolName.fsGetValue(u0Length = uSymbolNameLength);
       assert len(sSymbolName) == uSymbolNameLength, \
           "There are %d bytes in the symbol name (%s), but there should be %d" % \
           (len(sSymbolName), repr(sSymbolName), uSymbolNameLength);

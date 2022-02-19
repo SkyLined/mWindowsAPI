@@ -20,7 +20,7 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
     # Restart cmd.exe and let it wait for input.
     oTestProcess = cProcess.foCreateForBinaryPath(sComSpec, bMinimizedWindow = True);
     time.sleep(1); # Allow process to start
-    oConsole.fOutput("  + Started test process %d..." % oTestProcess.uId);
+    oConsole.fOutput("  + Started test process %d/0x%X..." % (oTestProcess.uId, oTestProcess.uId));
     # cProcess
     assert oTestProcess.sISA == sExpectedChildProcessISA, \
         "cProcess.sISA == %s instead of %s" % (oTestProcess.sISA, sExpectedChildProcessISA);
@@ -65,15 +65,27 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
     oConsole.fOutput("    + There are 0x%X bytes of memory allocated at address 0x%08X." % \
         (oBinaryVirtualAllocation.uSize, oBinaryVirtualAllocation.uStartAddress));
     
-    # fdsGetProcessesExecutableName_by_uId (make sure test process binary is included)
-    oConsole.fOutput("  * Testing fdsGetProcessesExecutableName_by_uId...");
-    dsProcessesExecutableName_by_uId = fdsGetProcessesExecutableName_by_uId();
-    sProcessesExecutableName = dsProcessesExecutableName_by_uId.get(oTestProcess.uId);
-    assert sProcessesExecutableName, \
-        "Test process id %d/0x%X not found in process list (%s)!" % \
-        (oTestProcess.uId, oTestProcess.uId, ", ".join(["0x%X" % uId for uId in dsProcessesExecutableName_by_uId]));
-    assert sProcessesExecutableName.lower() == os.path.basename(sComSpec).lower(), \
-        "Text process %d/0x%X is reported to run %s" % (oTestProcess.uId, oTestProcess.uId, repr(sProcessesExecutableName));
+    # fds0GetProcessesExecutableName_by_uId (make sure test process binary is included)
+    oConsole.fOutput("  * Testing fds0GetProcessesExecutableName_by_uId...");
+    ds0ProcessesExecutableName_by_uId = fds0GetProcessesExecutableName_by_uId();
+    for uId in sorted(ds0ProcessesExecutableName_by_uId.keys()):
+      s0ProcessesExecutableName = ds0ProcessesExecutableName_by_uId[uId];
+      print("%5d/0x%04X: %s" % (uId, uId, repr(s0ProcessesExecutableName) if s0ProcessesExecutableName is not None else "?"));
+      if uId == oTestProcess.uId:
+        assert s0ProcessesExecutableName is not None, \
+            "Text process %d/0x%X (%s) executable name could not be determined in process list" % (
+              oTestProcess.uId, oTestProcess.uId, repr(sExecutableName),
+            );
+        sTestExecutableName = os.path.basename(sComSpec);
+        assert s0ProcessesExecutableName.lower() == sTestExecutableName.lower(), \
+            "Text process %d/0x%X (%s) executable name in process list is %s" % (
+              oTestProcess.uId, oTestProcess.uId, repr(sExecutableName),
+              repr(s0ProcessesExecutableName)
+            );
+    assert oTestProcess.uId in ds0ProcessesExecutableName_by_uId, \
+        "Test process %d/0x%X (%s) not found in process list!" % (
+          oTestProcess.uId, oTestProcess.uId, repr(sExecutableName),
+        );
     # fuGetIntegrityLevelForProcessId
     oConsole.fOutput("  * Testing oTestProcess.uIntegrityLevel...");
     uProcessIntegrityLevel = oTestProcess.uIntegrityLevel;
@@ -138,7 +150,7 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
     assert oTestProcess.bIsTerminated, \
         "Test process was not terminated!";
     # fdsGetProcessesExecutableName_by_uId (make sure test process is removed)
-    assert oTestProcess.uId not in fdsGetProcessesExecutableName_by_uId(), \
+    assert oTestProcess.uId not in fds0GetProcessesExecutableName_by_uId(), \
         "Test process is still reported to exist after being terminated!?";
     oConsole.fOutput("  + Test process was terminated.");
     

@@ -95,14 +95,17 @@ class cSystemInfo(object):
   @property
   def sOSPath(oSelf):
     if oSelf.__sOSPath is None:
-      osBuffer = WCHAR[MAX_PATH]();
+      osPath = WCHAR[MAX_PATH]();
       ouPathSize = oKernel32DLL.GetWindowsDirectoryW(
-        osBuffer.foCreatePointer().foCastTo(PWSTR),
+        osPath.foCreatePointer().foCastTo(PWSTR),
         MAX_PATH
       );
       if ouPathSize == 0:
         fThrowLastError("GetWindowsDirectoryW(..., 0x%X)" % (MAX_PATH,));
-      oSelf.__sPath = osBuffer.fsGetNullTerminatedString();
+      s0Path = osPath.fs0GetNullTerminatedString();
+      assert s0Path, \
+          "GetWindowsDirectoryW did not write a NULL terminated string to the buffer: %s" % repr(osPath);
+      oSelf.__sPath = s0Path;
     return oSelf.__sPath;
   
   @property
