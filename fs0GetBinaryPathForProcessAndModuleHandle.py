@@ -26,6 +26,10 @@ def fs0GetBinaryPathForProcessAndModuleHandle(ohProcess, ohModule):
       uBufferSize,      # nSize
     );
     uBinaryPathLength = odwResult.fuGetValue();
+    if uBinaryPathLength == 0:
+      fThrowLastError("Psapi!GetModuleFileNameExW(%s, %s, &%s, %d) = 0" % (
+        repr(ohProcess), repr(ohModule), repr(oBuffer), uBufferSize, 
+      ));
     if uBinaryPathLength != uBufferSize:
       sBinaryPath = oBuffer.fsGetValue(u0Length = uBinaryPathLength);
       return sBinaryPath;
