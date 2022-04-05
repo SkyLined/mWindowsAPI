@@ -295,7 +295,7 @@ class cVirtualAllocation(object):
         "Cannot modify protection on a virtual allocation that is not allocated";
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_OPERATION);
     try:
-      flOldProtection = DWORD();
+      flOldProtection = DWORD(0);
       if not oKernel32DLL.VirtualProtectEx(
         ohProcess,
         LPVOID(oSelf.__u0StartAddress), # lpAddress,
@@ -303,8 +303,13 @@ class cVirtualAllocation(object):
         DWORD(uNewProtection), # flNewProtection
         PDWORD(flOldProtection), # lpflOldProtection
       ):
-        fThrowLastError("VirtualProtectEx(%s, 0x%08X, 0x%X, 0x%08X, ...)" % \
-            (repr(ohProcess), oSelf.__u0StartAddress, oSelf.__u0Size, uNewProtection,));
+        fThrowLastError("VirtualProtectEx(%s, 0x%08X, 0x%X, 0x%08X, &(0x%08X))" % (
+          repr(ohProcess),
+          oSelf.__u0StartAddress,
+          oSelf.__u0Size,
+          uNewProtection,
+          flOldProtection.fuGetValue(),
+        ));
       oSelf.__u0Protection = uNewProtection;
     finally:
       if not oKernel32DLL.CloseHandle(ohProcess):
@@ -355,15 +360,18 @@ class cVirtualAllocation(object):
     # Read bytes without NULL terminator.
     return oSelf.fsReadStringForOffsetAndLength(uOffset, uSize, bUnicode = False, bNullTerminated = False, bBytes = True);
   def fsReadStringForOffsetAndLength(oSelf, uOffset, uLength, bUnicode = False, bNullTerminated = False, bBytes = False):
-    assert oSelf.bIsValid and not oSelf.bFree, \
-        "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
-        (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
+    assert oSelf.bIsValid and oSelf.bAllocated, \
+        "Virtual Allocation %s is %s, please check 'oSelf.%s == True' before making this call!" % (
+          oSelf,
+          "not valid" if not oSelf.bIsValid else 
+              "free" if oSelf.bFree else
+              "reserved",
+          "bAllocated" if oSelf.bIsValid else "bIsValid",
+        );
     assert not bUnicode or not bBytes, \
         "Unicode strings cannot be returned as a string of bytes";
     # Sanity checks
     uSize = uLength * (2 if bUnicode else 1);
-    assert oSelf.bAllocated, \
-        "Cannot read data from a virtual allocation that is not allocated";
     assert uOffset >= 0, \
         "Offset -0x%X must be positive" % (-uOffset);
     assert uLength >= 0, \
@@ -378,7 +386,11 @@ class cVirtualAllocation(object):
     uOriginalProtection = oSelf.uProtection;
     if "read" not in fasAllowedAccessTypesForProtection(oSelf.uProtection):
       # Temporarily allow reading from this page.
-      oSelf.uProtection = PAGE_READONLY;
+      try:
+        oSelf.uProtection = PAGE_READONLY;
+      except Exception as oException:
+        oException.message += " (oVirtualAllocation = %s)" % repr(oSelf);
+        raise;
     # Open process to read memory
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_READ);
     try:
