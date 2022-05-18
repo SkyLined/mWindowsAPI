@@ -45,6 +45,7 @@ def fasAllowedAccessTypesForProtection(uProtection):
   }[uProtection & uBasicProtectionFlagsMask];
 
 class cVirtualAllocation(object):
+  uPageSize = oSystemInfo.uPageSize;
   @staticmethod
   def fo0CreateForProcessIdAndString(
     uProcessId,
