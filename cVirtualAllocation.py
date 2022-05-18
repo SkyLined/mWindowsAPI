@@ -581,7 +581,7 @@ class cVirtualAllocation(object):
     else:
       uSize = oSelf.uSize - uStartOffset;
     uLineLength = 32;
-    asContents = [("┌──[ offset 0x%X - 0x%X " % (uStartOffset, uStartOffset + uSize)).ljust(80, "─")];
+    asContents = [("┌──[ 0x%X offset 0x%X - 0x%X " % (oSelf.uStartAddress, uStartOffset, uStartOffset + uSize)).ljust(80, "─")];
     asHexBytesBuffer = [];
     sCharsBuffer = "";
     uOffset = uStartOffset;
