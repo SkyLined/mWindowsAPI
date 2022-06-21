@@ -1,3 +1,4 @@
+from .cAvoidSystemSleep import cAvoidSystemSleep;
 from .cConsoleProcess import cConsoleProcess;
 from .cJobObject import cJobObject;
 from .cPipe import cPipe;
@@ -42,6 +43,7 @@ from .oSystemInfo import oSystemInfo;
 from . import mDbgHelp;
 
 __all__ = [
+  "cAvoidSystemSleep",
   "cConsoleProcess",
   "cJobObject",
   "cPipe",
