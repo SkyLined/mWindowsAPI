@@ -10,6 +10,7 @@ from .fbIsRunningForProcessHandle import fbIsRunningForProcessHandle;
 from .fbIsRunningForProcessId import fbIsRunningForProcessId;
 from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
 from .fbIsRunningForThreadId import fbIsRunningForThreadId;
+from .fbIsValidHandle import fbIsValidHandle;
 from .fbResumeForThreadHandle import fbResumeForThreadHandle;
 from .fbResumeForThreadId import fbResumeForThreadId;
 from .fbTerminateForProcessHandle import fbTerminateForProcessHandle;
@@ -53,6 +54,7 @@ __all__ = [
   "fbIsRunningForProcessId",
   "fbIsRunningForThreadHandle",
   "fbIsRunningForThreadId",
+  "fbIsValidHandle",
   "fbResumeForThreadHandle",
   "fbResumeForThreadId",
   "fbTerminateForProcessHandle",
