@@ -17,7 +17,7 @@ guStringReadAheadBlockSize = 0x400;
 
 uBasicProtectionFlagsMask = 0xFF;
 
-def fsProtection(uProtection):
+def fs0Protection(uProtection):
   return " | ".join([s for s in [
     {
       PAGE_NOACCESS: "PAGE_NOACCESS",
@@ -30,7 +30,7 @@ def fsProtection(uProtection):
       PAGE_EXECUTE_WRITECOPY: "PAGE_EXECUTE_WRITECOPY",
     }[uProtection & uBasicProtectionFlagsMask] if uProtection else None,
     "PAGE_GUARD" if uProtection & PAGE_GUARD else None,
-  ] if s]) or "?";
+  ] if s]) or None;
 
 def fasAllowedAccessTypesForProtection(uProtection):
   return {
@@ -78,7 +78,7 @@ class cVirtualAllocation(object):
     if uProtection is None:
       uProtection = PAGE_NOACCESS;
     else:
-      assert fsProtection(uProtection) != "?", \
+      assert fs0Protection(uProtection) is not None, \
           "Unknown uProtection values 0x%08X" % uProtection;
     # Try to open the process...
     ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_VM_OPERATION);
@@ -87,12 +87,12 @@ class cVirtualAllocation(object):
           ohProcess,
           LPVOID(uAddress or 0), # lpAddress
           uSize, # dwSize
-          MEM_RESERVE | (not bReserved and MEM_COMMIT or 0), # flAllocationType
+          MEM_COMMIT if not bReserved else MEM_RESERVE, # flAllocationType
           uProtection, # flProtect
       );
       if opBaseAddress.fbIsNULLPointer():
         fThrowLastError("VirtualAllocEx(%s, 0x%08X, 0x%X, MEM_COMMIT, %s)" % \
-            (repr(ohProcess), uAddress or 0, uSize, fsProtection(uProtection)));
+            (repr(ohProcess), uAddress or 0, uSize, fs0Protection(uProtection) or "0x%X" % uProtection));
       # Return a cVirtualAllocation object that represents the newly allocated memory.
       oVirtualAllocation = cVirtualAllocation(uProcessId, opBaseAddress.fuGetValue());
       if not oVirtualAllocation.bIsValid:
@@ -144,7 +144,7 @@ class cVirtualAllocation(object):
       oMemoryBasicInformation = MEMORY_BASIC_INFORMATION();
       oStoredBytes = oKernel32DLL.VirtualQueryEx(
         ohProcess,
-        LPCVOID(uAddress), # lpAddress
+        uAddress, # lpAddress
         oMemoryBasicInformation.foCreatePointer(), # lpBuffer,
         MEMORY_BASIC_INFORMATION.fuGetSize(), # nLength
       );
@@ -206,7 +206,7 @@ class cVirtualAllocation(object):
     return oSelf.__u0AllocationProtection;
   @property
   def sAllocationProtection(oSelf):
-    return fsProtection(oSelf.__u0AllocationProtection);
+    return fs0Protection(oSelf.__u0AllocationProtection) or "0x%X" % oSelf.__u0AllocationProtection;
   
   # Start/End address and size
   @property
@@ -270,7 +270,7 @@ class cVirtualAllocation(object):
   @property
   def sProtection(oSelf):
    # Only mentions "basic" access protection flags! (not PAGE_GUARD, etc.)
-    return fsProtection(oSelf.uProtection);
+    return fs0Protection(oSelf.uProtection) or "0x%X" % oSelf.uProtection;
   
   @property
   def bReadable(oSelf):
@@ -361,14 +361,10 @@ class cVirtualAllocation(object):
     # Read bytes without NULL terminator.
     return oSelf.fsReadStringForOffsetAndLength(uOffset, uSize, bUnicode = False, bNullTerminated = False, bBytes = True);
   def fsReadStringForOffsetAndLength(oSelf, uOffset, uLength, bUnicode = False, bNullTerminated = False, bBytes = False):
-    assert oSelf.bIsValid and oSelf.bAllocated, \
-        "Virtual Allocation %s is %s, please check 'oSelf.%s == True' before making this call!" % (
-          oSelf,
-          "not valid" if not oSelf.bIsValid else 
-              "free" if oSelf.bFree else
-              "reserved",
-          "bAllocated" if oSelf.bIsValid else "bIsValid",
-        );
+    assert oSelf.bIsValid, \
+        "Please check .bIsValid == True before making this call";
+    assert oSelf.bAllocated, \
+        "Please check .bAllocated == True before making this call";
     assert not bUnicode or not bBytes, \
         "Unicode strings cannot be returned as a string of bytes";
     # Sanity checks
@@ -385,50 +381,54 @@ class cVirtualAllocation(object):
         (uOffset, uSize, oSelf.__u0Size, oSelf.__u0StartAddress);
     # If needed, modify the protection to make sure the pages can be read.
     uOriginalProtection = oSelf.uProtection;
-    if "read" not in fasAllowedAccessTypesForProtection(oSelf.uProtection):
+    if oSelf.uProtection not in [
+      PAGE_READONLY, PAGE_READWRITE, PAGE_WRITECOPY, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY
+    ]:
       # Temporarily allow reading from this page.
       try:
         oSelf.uProtection = PAGE_READONLY;
       except Exception as oException:
         oException.message += " (oVirtualAllocation = %s)" % repr(oSelf);
         raise;
-    # Open process to read memory
-    ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_READ);
     try:
-      osMemoryBuffer = (WCHAR if bUnicode else CHAR)[uLength]();
-      ouBytesRead = SIZE_T(0);
-      opsMemoryBuffer = LPVOID(osMemoryBuffer, bCast = True);
-      opuBytesRead = ouBytesRead.foCreatePointer();
-      if not oKernel32DLL.ReadProcessMemory(
-        ohProcess,
-        oSelf.__u0StartAddress + uOffset, # lpBaseAddress
-        opsMemoryBuffer, # lpBuffer
-        uSize, # nSize
-        opuBytesRead, # lpNumberOfBytesRead
-      ):
-        fThrowLastError("ReadProcessMemory(%s, 0x%08X+0x%X, %s, 0x%X, %s)" % \
-            (repr(ohProcess), oSelf.__u0StartAddress, uOffset, repr(opsMemoryBuffer), uSize, repr(opuBytesRead)));
-      assert ouBytesRead == uSize, \
-          "ReadProcessMemory(%s, 0x%08X+0x%X, %s, 0x%X, %s) => %s bytes read" % \
-          (repr(ohProcess), oSelf.__u0StartAddress, uOffset, repr(opsMemoryBuffer), uSize, repr(opuBytesRead), ouBytesRead.fuGetValue());
-      # Return all of the data in the appropriate type if we do not need to look for a '\0' terminator.
-      if not bNullTerminated:
-        return osMemoryBuffer.fsbGetValue() if bBytes else osMemoryBuffer.fsGetValue();
-      # Look for a '\0' terminator and assert if none is found.
-      x0String = osMemoryBuffer.fsb0GetNullTerminatedBytesString() if bBytes else osMemoryBuffer.fs0GetNullTerminatedString();
-      assert x0String, \
-          "The %s string at address 0x%X in process %d/0x%X is not NULL terminated: %s." % (
-            oSelf.__u0StartAddress + uOffset,
-            oSelf.__uProcessId, oSelf.__uProcessId,
-            repr(osMemoryBuffer.sbGetValue()),
-          );
-      # Return part of the data in the appropriate type up until, but not including, the '\0' terminator.
-      return x0String;
+      # Open process to read memory
+      ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_READ);
+      try:
+        osMemoryBuffer = (WCHAR if bUnicode else CHAR)[uLength]();
+        ouBytesRead = SIZE_T(0);
+        opsMemoryBuffer = LPVOID(osMemoryBuffer, bCast = True);
+        opuBytesRead = ouBytesRead.foCreatePointer();
+        if not oKernel32DLL.ReadProcessMemory(
+          ohProcess,
+          oSelf.__u0StartAddress + uOffset, # lpBaseAddress
+          opsMemoryBuffer, # lpBuffer
+          uSize, # nSize
+          opuBytesRead, # lpNumberOfBytesRead
+        ):
+          fThrowLastError("ReadProcessMemory(%s, 0x%08X+0x%X, %s, 0x%X, %s)" % \
+              (repr(ohProcess), oSelf.__u0StartAddress, uOffset, repr(opsMemoryBuffer), uSize, repr(opuBytesRead)));
+        assert ouBytesRead == uSize, \
+            "ReadProcessMemory(%s, 0x%08X+0x%X, %s, 0x%X, %s) => %s bytes read" % \
+            (repr(ohProcess), oSelf.__u0StartAddress, uOffset, repr(opsMemoryBuffer), uSize, repr(opuBytesRead), ouBytesRead.fuGetValue());
+        # Return all of the data in the appropriate type if we do not need to look for a '\0' terminator.
+        if not bNullTerminated:
+          return osMemoryBuffer.fsbGetValue() if bBytes else osMemoryBuffer.fsGetValue();
+        # Look for a '\0' terminator and assert if none is found.
+        x0String = osMemoryBuffer.fsb0GetNullTerminatedBytesString() if bBytes else osMemoryBuffer.fs0GetNullTerminatedString();
+        assert x0String, \
+            "The %s string at address 0x%X in process %d/0x%X is not NULL terminated: %s." % (
+              oSelf.__u0StartAddress + uOffset,
+              oSelf.__uProcessId, oSelf.__uProcessId,
+              repr(osMemoryBuffer.sbGetValue()),
+            );
+        # Return part of the data in the appropriate type up until, but not including, the '\0' terminator.
+        return x0String;
+      finally:
+        if not oKernel32DLL.CloseHandle(ohProcess):
+          fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
     finally:
-      if not oKernel32DLL.CloseHandle(ohProcess):
-        fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
       # Restore original protection if needed
-      if uOriginalProtection in [PAGE_NOACCESS, PAGE_EXECUTE]:
+      if oSelf.uProtection != uOriginalProtection:
         oSelf.uProtection = uOriginalProtection;
   
   def fs0ReadNullTerminatedStringForOffset(oSelf, uOffset, bUnicode = False):
@@ -483,12 +483,9 @@ class cVirtualAllocation(object):
   def fWriteBytesForOffset(oSelf, sBytes, uOffset):
     return oSelf.fWriteStringForOffset(sBytes, uOffset, bUnicode = False);
   def fWriteStringForOffset(oSelf, sString, uOffset, bUnicode = False):
-    assert oSelf.bIsValid and not oSelf.bFree, \
-        "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
-        (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
-    # Sanity checks
     assert oSelf.bAllocated, \
-        "Cannot write memory that is not allocated!";
+        "Please check .bAllocated == True before making this call";
+    # Sanity checks
     assert uOffset >= 0, \
         "Offset -0x%X must be positive" % (-uOffset);
     uSize = len(sString) * (bUnicode and 2 or 1);
@@ -502,32 +499,34 @@ class cVirtualAllocation(object):
         (uOffset, uSize, oSelf.__u0Size, oSelf.__u0StartAddress);
     # Modify protection to make sure the pages can be read.
     uOriginalProtection = oSelf.uProtection;
-    if oSelf.uProtection in [PAGE_NOACCESS, PAGE_READONLY]:
+    if oSelf.uProtection not in [
+      PAGE_READWRITE, PAGE_WRITECOPY, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY,
+    ]:
       oSelf.uProtection = PAGE_READWRITE;
-    elif oSelf.uProtection in [PAGE_EXECUTE, PAGE_EXECUTE_READ]:
-      oSelf.uProtection = PAGE_EXECUTE_READWRITE;
-    # Open process to read memory
-    ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_WRITE | PROCESS_VM_OPERATION);
     try:
-      oBuffer = (PWCHAR if bUnicode else PCHAR)(sString);
-      ouBytesWritten = SIZE_T(0);
-      if not oKernel32DLL.WriteProcessMemory(
-        ohProcess,
-        oSelf.__u0StartAddress + uOffset, # lpBaseAddress
-        LPVOID(oBuffer, bCast = True), # lpBuffer
-        uSize, # nSize
-        ouBytesWritten.foCreatePointer(), # lpNumberOfBytesRead
-      ):
-        fThrowLastError("WriteProcessMemory(%s, 0x%08X, ..., 0x%X, ...)" % \
-            (repr(ohProcess), oSelf.__u0StartAddress + uOffset, uSize,));
-      assert ouBytesWritten == uSize, \
-          "WriteProcessMemory(%s, 0x%08X, ..., 0x%X, ...) => 0x%X bytes written" % \
-          (repr(ohProcess), oSelf.__u0StartAddress + uOffset, uSize, ouBytesWritten.fuGetValue());
+      # Open process to read memory
+      ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_WRITE | PROCESS_VM_OPERATION);
+      try:
+        oBuffer = (PWCHAR if bUnicode else PCHAR)(sString);
+        ouBytesWritten = SIZE_T(0);
+        if not oKernel32DLL.WriteProcessMemory(
+          ohProcess,
+          oSelf.__u0StartAddress + uOffset, # lpBaseAddress
+          LPVOID(oBuffer, bCast = True), # lpBuffer
+          uSize, # nSize
+          ouBytesWritten.foCreatePointer(), # lpNumberOfBytesRead
+        ):
+          fThrowLastError("WriteProcessMemory(%s, 0x%08X, ..., 0x%X, ...)" % \
+              (repr(ohProcess), oSelf.__u0StartAddress + uOffset, uSize,));
+        assert ouBytesWritten == uSize, \
+            "WriteProcessMemory(%s, 0x%08X, ..., 0x%X, ...) => 0x%X bytes written" % \
+            (repr(ohProcess), oSelf.__u0StartAddress + uOffset, uSize, ouBytesWritten.fuGetValue());
+      finally:
+        if not oKernel32DLL.CloseHandle(ohProcess):
+          fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
     finally:
-      if not oKernel32DLL.CloseHandle(ohProcess):
-        fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
       # Restore original protection if needed
-      if uOriginalProtection in [PAGE_NOACCESS, PAGE_READONLY, PAGE_EXECUTE, PAGE_EXECUTE_READ]:
+      if oSelf.uProtection != uOriginalProtection:
         oSelf.uProtection = uOriginalProtection;
   
   def fasDump(oSelf):
@@ -545,7 +544,7 @@ class cVirtualAllocation(object):
       "uProtection            = 0x%X (%s)" % (oSelf.uProtection, oSelf.sProtection),
       "uType                  = 0x%X (%s)" % (oSelf.uType, oSelf.sType),
     ];
-  def fasDumpContents(oSelf, uStartOffset = 0, u0EndOffset = None, u0Size = None):
+  def fasDumpContents(oSelf, uStartOffset = 0, u0EndOffset = None, u0Size = None, uWordSize = 1):
     assert uStartOffset >= 0, \
         "uStartOffset (-0x%X) must not be negative" % (
           -uStartOffset,
@@ -580,26 +579,38 @@ class cVirtualAllocation(object):
       uSize = u0Size;
     else:
       uSize = oSelf.uSize - uStartOffset;
-    uLineLength = 32;
+    uBytesPerLine = 32;
     asContents = [("┌──[ 0x%X offset 0x%X - 0x%X " % (oSelf.uStartAddress, uStartOffset, uStartOffset + uSize)).ljust(80, "─")];
-    asHexBytesBuffer = [];
+    asHexWordsBuffer = [""];
+    uCurrentWordSize = 0;
     sCharsBuffer = "";
-    uOffset = uStartOffset;
+    uCurrentOffset = uLineStartOffset = uStartOffset;
     def fCopyBuffersToResult():
       asContents.append("│ %4X  %s  %s" % (
-        uOffset,
-        " ".join(asHexBytesBuffer).ljust(uLineLength * 3 - 1),
+        uLineStartOffset,
+        " ".join(asHexWordsBuffer).ljust(uBytesPerLine * 3 - 1),
         sCharsBuffer),
       );
     for uByte in oSelf.fauReadBytesForOffsetAndSize(uStartOffset, uSize):
-      asHexBytesBuffer.append("%02X" % uByte);
       sCharsBuffer += chr(uByte) if 0x20 <= uByte <= 0x7E else ".";
-      if len(sCharsBuffer) == uLineLength:
-        fCopyBuffersToResult();
-        asHexBytesBuffer = [];
-        sCharsBuffer = "";
-        uOffset += uLineLength;
+      uCurrentOffset += 1;
+      asHexWordsBuffer[-1] = ("%02X" % uByte) + asHexWordsBuffer[-1];
+      uCurrentWordSize += 1;
+      if uCurrentWordSize >= uWordSize:
+        uCurrentWordSize = 0;
+        if len(sCharsBuffer) < uBytesPerLine:
+          asHexWordsBuffer.append("");
+        else:
+          fCopyBuffersToResult();
+          asHexWordsBuffer = [""];
+          sCharsBuffer = "";
+          uLineStartOffset = uCurrentOffset;
+      elif uCurrentWordSize % 4 == 0:
+        asHexWordsBuffer[-1] = "`" + asHexWordsBuffer[-1];
     if len(sCharsBuffer) != 0:
+      while uCurrentWordSize < uWordSize:
+        asHexWordsBuffer[-1] = "  " + asHexWordsBuffer[-1];
+        uCurrentWordSize += 1;
       fCopyBuffersToResult();
     return asContents + ["└".ljust(80, "─")];
   
@@ -615,7 +626,7 @@ class cVirtualAllocation(object):
     if uProtection is None:
       uProtection = PAGE_NOACCESS;
     else:
-      assert fsProtection(uProtection) != "?", \
+      assert fs0Protection(uProtection) is not None, \
           "Unknown uProtection values 0x%08X" % uProtection;
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_OPERATION);
     try:
@@ -686,14 +697,20 @@ class cVirtualAllocation(object):
         oSelf.__fUpdate();
   
   def __str__(oSelf):
-    return (
+    return "VirtualAllocation(%s)" % (
       "Invalid @ 0x%X" % (oSelf.__uUserProvidedAddress,) if not oSelf.bIsValid
       else "Free @ 0x%X" % (oSelf.__uUserProvidedAddress,) if oSelf.__u0State == MEM_FREE
-      else "%s %s @ 0x%X (0x%X bytes, %s)" % (
+      else "uState=%s, uType=%s @ 0x%X`%X > 0x%X`%X-0x%X`%X (0x%X bytes, uProtection = %s%s)" % (
         oSelf.sState,
         oSelf.sType,
-        oSelf.uStartAddress,
+        oSelf.uAllocationBaseAddress >> 32,
+        oSelf.uAllocationBaseAddress & 0xFFFFFFFF,
+        oSelf.uStartAddress >> 32,
+        oSelf.uStartAddress & 0xFFFFFFFF,
+        oSelf.uEndAddress >> 32,
+        oSelf.uEndAddress & 0xFFFFFFFF,
         oSelf.uSize,
+        "PAGE_GUARD | " if oSelf.bGuard else "",
         oSelf.sProtection,
       )
     );
