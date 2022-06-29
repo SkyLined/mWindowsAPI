@@ -2,6 +2,7 @@
 
 from mWindowsSDK import *;
 from mWindowsSDK.mKernel32 import oKernel32DLL;
+from .fsHexNumber import fsHexNumber;
 from .fbLastErrorIs import fbLastErrorIs;
 from .fohOpenForProcessIdAndDesiredAccess import fohOpenForProcessIdAndDesiredAccess;
 from .fsGetISAForProcessHandle import fsGetISAForProcessHandle;
@@ -71,7 +72,7 @@ class cVirtualAllocation(object):
   def fo0CreateForProcessId(
     uProcessId,
     uSize,
-    uAddress = None,
+    uAddress = 0,
     bReserved = False,
     uProtection = None,
   ):
@@ -79,20 +80,24 @@ class cVirtualAllocation(object):
       uProtection = PAGE_NOACCESS;
     else:
       assert fs0Protection(uProtection) is not None, \
-          "Unknown uProtection values 0x%08X" % uProtection;
+          "Unknown uProtection values %s" % fsHexNumber(uProtection);
     # Try to open the process...
     ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_VM_OPERATION);
     try:
       opBaseAddress = oKernel32DLL.VirtualAllocEx(
           ohProcess,
-          LPVOID(uAddress or 0), # lpAddress
+          LPVOID(uAddress), # lpAddress
           uSize, # dwSize
           MEM_COMMIT if not bReserved else MEM_RESERVE, # flAllocationType
           uProtection, # flProtect
       );
       if opBaseAddress.fbIsNULLPointer():
-        fThrowLastError("VirtualAllocEx(%s, 0x%08X, 0x%X, MEM_COMMIT, %s)" % \
-            (repr(ohProcess), uAddress or 0, uSize, fs0Protection(uProtection) or "0x%X" % uProtection));
+        fThrowLastError("VirtualAllocEx(%s, %s, %s, MEM_COMMIT, %s)" % (
+          repr(ohProcess),
+          fsHexNumber(uAddress),
+          fsHexNumber(uSize),
+          fs0Protection(uProtection) or fsHexNumber(uProtection),
+        ));
       # Return a cVirtualAllocation object that represents the newly allocated memory.
       oVirtualAllocation = cVirtualAllocation(uProcessId, opBaseAddress.fuGetValue());
       if not oVirtualAllocation.bIsValid:
@@ -139,7 +144,7 @@ class cVirtualAllocation(object):
         # Next we find out if the python process is 32-bit, as this problem can only occur in a 32-bit python process:
       oSelf.__u0PointerSize = {"x86": 4, "x64": 8}[sProcessISA];
     assert 0 <= uAddress < (1 << (oSelf.__u0PointerSize * 8)), \
-        "uAddress 0x%X is not a valid %d-bit pointer!" % (uAddress, oSelf.__u0PointerSize * 8);
+        "uAddress %s is not a valid %d-bit pointer!" % (fsHexNumber(uAddress), oSelf.__u0PointerSize * 8);
     try:
       oMemoryBasicInformation = MEMORY_BASIC_INFORMATION();
       oStoredBytes = oKernel32DLL.VirtualQueryEx(
@@ -152,8 +157,12 @@ class cVirtualAllocation(object):
       oSelf.bIsValid = oStoredBytes == MEMORY_BASIC_INFORMATION.fuGetSize();
       if not oSelf.bIsValid:
         if not fbLastErrorIs(ERROR_INVALID_PARAMETER):
-          foThrowLastError("VirtualQueryEx(%s, 0x%08X, ..., 0x%X) = %s" % \
-              (repr(ohProcess), uAddress, MEMORY_BASIC_INFORMATION.fuGetSize(), repr(oStoredBytes)));
+          foThrowLastError("VirtualQueryEx(%s, %s, ..., %s) = %s" % (
+            repr(ohProcess),
+            fsHexNumber(uAddress),
+            fsHexNumber(MEMORY_BASIC_INFORMATION.fuGetSize()),
+            repr(oStoredBytes),
+          ));
         oSelf.__u0State = None;
       else:
         oSelf.__u0State = oMemoryBasicInformation.State.fuGetValue();
@@ -206,7 +215,7 @@ class cVirtualAllocation(object):
     return oSelf.__u0AllocationProtection;
   @property
   def sAllocationProtection(oSelf):
-    return fs0Protection(oSelf.__u0AllocationProtection) or "0x%X" % oSelf.__u0AllocationProtection;
+    return fs0Protection(oSelf.__u0AllocationProtection) or fsHexNumber("0x%X");
   
   # Start/End address and size
   @property
@@ -270,7 +279,7 @@ class cVirtualAllocation(object):
   @property
   def sProtection(oSelf):
    # Only mentions "basic" access protection flags! (not PAGE_GUARD, etc.)
-    return fs0Protection(oSelf.uProtection) or "0x%X" % oSelf.uProtection;
+    return fs0Protection(oSelf.uProtection) or fsHexNumber(oSelf.uProtection);
   
   @property
   def bReadable(oSelf):
@@ -304,12 +313,12 @@ class cVirtualAllocation(object):
         DWORD(uNewProtection), # flNewProtection
         PDWORD(flOldProtection), # lpflOldProtection
       ):
-        fThrowLastError("VirtualProtectEx(%s, 0x%08X, 0x%X, 0x%08X, &(0x%08X))" % (
+        fThrowLastError("VirtualProtectEx(%s, %s, %s, %s, &(%s))" % (
           repr(ohProcess),
-          oSelf.__u0StartAddress,
-          oSelf.__u0Size,
-          uNewProtection,
-          flOldProtection.fuGetValue(),
+          fsHexNumber(oSelf.__u0StartAddress),
+          fsHexNumber(oSelf.__u0Size),
+          fsHexNumber(uNewProtection),
+          fsHexNumber(flOldProtection.fuGetValue()),
         ));
       oSelf.__u0Protection = uNewProtection;
     finally:
@@ -370,15 +379,15 @@ class cVirtualAllocation(object):
     # Sanity checks
     uSize = uLength * (2 if bUnicode else 1);
     assert uOffset >= 0, \
-        "Offset -0x%X must be positive" % (-uOffset);
+        "Offset %s must be positive" % fsHexNumber(uOffset);
     assert uLength >= 0, \
-        "uLength -0x%X must be positive" % (-uLength);
+        "uLength %s must be positive" % fsHexNumber(uLength);
     assert uOffset < oSelf.__u0Size, \
-        "Offset 0x%X is outside of the virtual allocation of 0x%X bytes at 0x%08X" % \
-        (uOffset, oSelf.__u0Size, oSelf.__u0StartAddress);
+        "Offset %s is outside of the virtual allocation of %s bytes at %s" % \
+        (fsHexNumber(uOffset), fsHexNumber(oSelf.__u0Size), fsHexNumber(oSelf.__u0StartAddress));
     assert uOffset + uSize <= oSelf.__u0Size, \
-        "Offset 0x%X + size 0x%X is outside of the virtual allocation of 0x%X bytes at 0x%08X" % \
-        (uOffset, uSize, oSelf.__u0Size, oSelf.__u0StartAddress);
+        "Offset %s + size %s is outside of the virtual allocation of %s bytes at %s" % \
+        (fsHexNumber(uOffset), fsHexNumber(uSize), fsHexNumber(oSelf.__u0Size), fsHexNumber(oSelf.__u0StartAddress));
     # If needed, modify the protection to make sure the pages can be read.
     uOriginalProtection = oSelf.uProtection;
     if oSelf.uProtection not in [
@@ -405,19 +414,32 @@ class cVirtualAllocation(object):
           uSize, # nSize
           opuBytesRead, # lpNumberOfBytesRead
         ):
-          fThrowLastError("ReadProcessMemory(%s, 0x%08X+0x%X, %s, 0x%X, %s)" % \
-              (repr(ohProcess), oSelf.__u0StartAddress, uOffset, repr(opsMemoryBuffer), uSize, repr(opuBytesRead)));
+          fThrowLastError("ReadProcessMemory(%s, %s+%s, %s, %s, %s)" % (
+            repr(ohProcess),
+            fsHexNumber(oSelf.__u0StartAddress),
+            fsHexNumber(uOffset),
+            repr(opsMemoryBuffer),
+            fsHexNumber(uSize),
+            repr(opuBytesRead))
+          );
         assert ouBytesRead == uSize, \
-            "ReadProcessMemory(%s, 0x%08X+0x%X, %s, 0x%X, %s) => %s bytes read" % \
-            (repr(ohProcess), oSelf.__u0StartAddress, uOffset, repr(opsMemoryBuffer), uSize, repr(opuBytesRead), ouBytesRead.fuGetValue());
+            "ReadProcessMemory(%s, %s+%s, %s, %s, %s) => %s bytes read" % (
+              repr(ohProcess),
+              fsHexNumber(oSelf.__u0StartAddress),
+              fsHexNumber(uOffset),
+              repr(opsMemoryBuffer),
+              fsHexNumber(uSize),
+              repr(opuBytesRead),
+              fsHexNumber(ouBytesRead.fuGetValue()),
+            );
         # Return all of the data in the appropriate type if we do not need to look for a '\0' terminator.
         if not bNullTerminated:
           return osMemoryBuffer.fsbGetValue() if bBytes else osMemoryBuffer.fsGetValue();
         # Look for a '\0' terminator and assert if none is found.
         x0String = osMemoryBuffer.fsb0GetNullTerminatedBytesString() if bBytes else osMemoryBuffer.fs0GetNullTerminatedString();
         assert x0String, \
-            "The %s string at address 0x%X in process %d/0x%X is not NULL terminated: %s." % (
-              oSelf.__u0StartAddress + uOffset,
+            "The %s string at address %s in process %d/0x%X is not NULL terminated: %s." % (
+              fsHexNumber(oSelf.__u0StartAddress + uOffset),
               oSelf.__uProcessId, oSelf.__uProcessId,
               repr(osMemoryBuffer.sbGetValue()),
             );
@@ -487,16 +509,16 @@ class cVirtualAllocation(object):
         "Please check .bAllocated == True before making this call";
     # Sanity checks
     assert uOffset >= 0, \
-        "Offset -0x%X must be positive" % (-uOffset);
+        "Offset %s must be positive" % fsHexNumber(uOffset);
     uSize = len(sString) * (bUnicode and 2 or 1);
     assert uSize, \
         "You must supply data to write";
     assert uOffset < oSelf.__u0Size, \
-        "Offset 0x%X is outside of the virtual allocation of 0x%X bytes at 0x%08X" % \
-        (uOffset, oSelf.__u0Size, oSelf.__u0StartAddress);
+        "Offset %s is outside of the virtual allocation of %s bytes at %s" % \
+        (fsHexNumber(uOffset), fsHexNumber(oSelf.__u0Size), fsHexNumber(oSelf.__u0StartAddress));
     assert uOffset + uSize <= oSelf.__u0Size, \
-        "Offset 0x%X + sString size (0x%X) is outside of the virtual allocation of 0x%X bytes at 0x%08X" % \
-        (uOffset, uSize, oSelf.__u0Size, oSelf.__u0StartAddress);
+        "Offset %s + string size (%s) is outside of the virtual allocation of %s bytes at %s" % \
+        (fsHexNumber(uOffset), fsHexNumber(uSize), fsHexNumber(oSelf.__u0Size), fsHexNumber(oSelf.__u0StartAddress));
     # Modify protection to make sure the pages can be read.
     uOriginalProtection = oSelf.uProtection;
     if oSelf.uProtection not in [
@@ -516,11 +538,18 @@ class cVirtualAllocation(object):
           uSize, # nSize
           ouBytesWritten.foCreatePointer(), # lpNumberOfBytesRead
         ):
-          fThrowLastError("WriteProcessMemory(%s, 0x%08X, ..., 0x%X, ...)" % \
-              (repr(ohProcess), oSelf.__u0StartAddress + uOffset, uSize,));
+          fThrowLastError("WriteProcessMemory(%s, %s, ..., %s, ...)" % (
+            repr(ohProcess),
+            fsHexNumber(oSelf.__u0StartAddress + uOffset),
+            fsHexNumber(uSize),
+          ));
         assert ouBytesWritten == uSize, \
-            "WriteProcessMemory(%s, 0x%08X, ..., 0x%X, ...) => 0x%X bytes written" % \
-            (repr(ohProcess), oSelf.__u0StartAddress + uOffset, uSize, ouBytesWritten.fuGetValue());
+            "WriteProcessMemory(%s, %s, ..., %s, ...) => %s bytes written" % (
+              repr(ohProcess),
+              fsHexNumber(oSelf.__u0StartAddress + uOffset),
+              fsHexNumber(uSize),
+              fsHexNumber(ouBytesWritten.fuGetValue(),
+            ));
       finally:
         if not oKernel32DLL.CloseHandle(ohProcess):
           fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
@@ -532,55 +561,59 @@ class cVirtualAllocation(object):
   def fasDump(oSelf):
     if not oSelf.bIsValid or oSelf.bFree:
       return [
-        "uUserAddress           = 0x%X (%s)" % (oSelf.__uUserProvidedAddress, "free" if oSelf.bIsValid else "invalid"),
+        "uUserAddress           = %s (%s)" % fsHexNumber((oSelf.__uUserProvidedAddress), "free" if oSelf.bIsValid else "invalid"),
       ];
     return [
-      "uAllocationBaseAddress = 0x%X" % (oSelf.uAllocationBaseAddress,),
-      "uAllocationProtection  = 0x%X (%s)" % (oSelf.uAllocationProtection, oSelf.sAllocationProtection),
-      "uStartAddress          = 0x%X" % (oSelf.uStartAddress,),
-      "uSize                  = 0x%X" % (oSelf.uSize,),
-      "uEndAddress            = 0x%X" % (oSelf.uEndAddress,),
-      "uState                 = 0x%X (%s)" % (oSelf.uState, oSelf.sState),
-      "uProtection            = 0x%X (%s)" % (oSelf.uProtection, oSelf.sProtection),
-      "uType                  = 0x%X (%s)" % (oSelf.uType, oSelf.sType),
+      "uAllocationBaseAddress = %s" % (fsHexNumber(oSelf.uAllocationBaseAddress),),
+      "uAllocationProtection  = %s (%s)" % (fsHexNumber(oSelf.uAllocationProtection), oSelf.sAllocationProtection),
+      "uStartAddress          = %s" % (fsHexNumber(oSelf.uStartAddress),),
+      "uSize                  = %s" % (fsHexNumber(oSelf.uSize),),
+      "uEndAddress            = %s" % (fsHexNumber(oSelf.uEndAddress),),
+      "uState                 = %s (%s)" % (fsHexNumber(oSelf.uState), oSelf.sState),
+      "uProtection            = %s (%s)" % (fsHexNumber(oSelf.uProtection), oSelf.sProtection),
+      "uType                  = %s (%s)" % (fsHexNumber(oSelf.uType), oSelf.sType),
     ];
   def fasDumpContents(oSelf, uStartOffset = 0, u0EndOffset = None, u0Size = None, uWordSize = 1):
     assert uStartOffset >= 0, \
-        "uStartOffset (-0x%X) must not be negative" % (
-          -uStartOffset,
+        "uStartOffset (%s) must not be negative" % (
+          fsHexNumber(uStartOffset),
         );
     assert uStartOffset < oSelf.uSize, \
-        "uStartOffset (0x%X) must not be greater than the size of the virtual memory (0x%X)" % (
-          uStartOffset, oSelf.uSize,
+        "uStartOffset (%s) must not be greater than the size of the virtual memory (%s)" % (
+          fsHexNumber(uStartOffset), fsHexNumber(oSelf.uSize),
         );
     if u0EndOffset is not None:
       assert u0Size is None, \
-        "u0EndOffset (0x%X) and u0Size (0x%X) must not both be provided" % (
-          u0EndOffset, u0Size,
+        "u0EndOffset (%s) and u0Size (%s) must not both be provided" % (
+          fsHexNumber(u0EndOffset), fsHexNumber(u0Size),
         );
       assert u0EndOffset <= oSelf.uSize, \
-        "u0EndOffset (0x%X) must not be greater than the size of the virtual memory (0x%X)" % (
-          u0EndOffset, Self.uSize,
+        "u0EndOffset (%s) must not be greater than the size of the virtual memory (%s)" % (
+          fsHexNumber(u0EndOffset), fsHexNumber(Self.uSize),
         );
       assert u0EndOffset > uStartOffset, \
-        "u0EndOffset (0x%X) must be greater than uStartOffset (0x%X)" % (
-          u0EndOffset, uStartOffset,
+        "u0EndOffset (%s) must be greater than uStartOffset (%s)" % (
+          fsHexNumber(u0EndOffset), fsHexNumber(uStartOffset),
         );
       uSize = u0EndOffset - uStartOffset;
     elif u0Size is not None:
       assert u0Size > 0, \
-        "u0Size (0x%X) must be larger than 0" % (
-          u0Size,
+        "u0Size (%s) must be larger than 0" % (
+          fsHexNumber(u0Size),
         );
       assert u0Size <= oSelf.uSize, \
-        "u0Size (0x%X) must not be greater than the size of the virtual memory (0x%X)" % (
-          u0Size, Self.uSize,
+        "u0Size (%s) must not be greater than the size of the virtual memory (%s)" % (
+          fsHexNumber(u0Size), fsHexNumber(Self.uSize),
         );
       uSize = u0Size;
     else:
       uSize = oSelf.uSize - uStartOffset;
     uBytesPerLine = 32;
-    asContents = [("┌──[ 0x%X offset 0x%X - 0x%X " % (oSelf.uStartAddress, uStartOffset, uStartOffset + uSize)).ljust(80, "─")];
+    asContents = [("┌──[ %s offset %s - %s " % (
+      fsHexNumber(oSelf.uStartAddress),
+      fsHexNumber(uStartOffset),
+      fsHexNumber(uStartOffset + uSize),
+    )).ljust(80, "─")];
     asHexWordsBuffer = [""];
     uCurrentWordSize = 0;
     sCharsBuffer = "";
@@ -627,7 +660,7 @@ class cVirtualAllocation(object):
       uProtection = PAGE_NOACCESS;
     else:
       assert fs0Protection(uProtection) is not None, \
-          "Unknown uProtection values 0x%08X" % uProtection;
+          "Unknown uProtection values %s" % (fsHexNumber(uProtection),);
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_OPERATION);
     try:
       opBaseAddress = oKernel32DLL.VirtualAllocEx(
@@ -638,8 +671,12 @@ class cVirtualAllocation(object):
         uProtection, # flProtect
       );
       if opBaseAddress.fbIsNULLPointer():
-        fThrowLastError("VirtualAllocEx(%s, 0x%08X, 0x%X, MEM_COMMIT, 0x%08X)" % \
-            (repr(ohProcess), oSelf.__u0StartAddress, oSelf.__u0Size, uProtection));
+        fThrowLastError("VirtualAllocEx(%s, %s, %s, MEM_COMMIT, %s)" % (
+          repr(ohProcess),
+          fsHexNumber(oSelf.__u0StartAddress),
+          fsHexNumber(oSelf.__u0Size),
+          fsHexNumber(uProtection),
+        ));
       uBaseAddress = opBaseAddress.fuGetValue();
       assert uBaseAddress == oSelf.__u0StartAddress, \
           "Allocating reserved virtual allocation at 0x%08X allocated memory at %08X" % \
@@ -666,8 +703,11 @@ class cVirtualAllocation(object):
         oSelf.__u0Size, # dwSize
         MEM_DECOMMIT, # dwFreeType
       ):
-        fThrowLastError("VirtualFreeEx(%s, 0x%08X, 0, 0x%08X)" % \
-          (repr(ohProcess), oSelf.__u0StartAddress, MEM_DECOMMIT,));
+        fThrowLastError("VirtualFreeEx(%s, %s, 0, %s)" % (
+          repr(ohProcess),
+          fsHexNumber(oSelf.__u0StartAddress),
+          fsHexNumber(MEM_DECOMMIT),
+        ));
     finally:
       try:
         if not oKernel32DLL.CloseHandle(ohProcess):
@@ -687,8 +727,11 @@ class cVirtualAllocation(object):
         0, # dwSize
         MEM_RELEASE, # dwFreeType
       ):
-        fThrowLastError("VirtualFreeEx(%s, 0x%08X, 0, 0x%08X)" % \
-            (repr(ohProcess), oSelf.__u0StartAddress, MEM_RELEASE,));
+        fThrowLastError("VirtualFreeEx(%s, %s, 0, %s)" % (
+          repr(ohProcess),
+          fsHexNumber(oSelf.__u0StartAddress),
+          fsHexNumber(MEM_RELEASE),
+        ));
     finally:
       try:
         if not oKernel32DLL.CloseHandle(ohProcess):
@@ -698,18 +741,27 @@ class cVirtualAllocation(object):
   
   def __str__(oSelf):
     return "VirtualAllocation(%s)" % (
-      "Invalid @ 0x%X" % (oSelf.__uUserProvidedAddress,) if not oSelf.bIsValid
-      else "Free @ 0x%X" % (oSelf.__uUserProvidedAddress,) if oSelf.__u0State == MEM_FREE
-      else "uState=%s, uType=%s @ 0x%X`%X > 0x%X`%X-0x%X`%X (0x%X bytes, uProtection = %s%s)" % (
+      "Invalid @ %s" % (
+        fsHexNumber(oSelf.__uUserProvidedAddress),
+      ) if not oSelf.bIsValid else 
+      "Free @ %s, [%s-%s]" % (
+        fsHexNumber(oSelf.__uUserProvidedAddress),
+        fsHexNumber(oSelf.uStartAddress),
+        fsHexNumber(oSelf.uEndAddress),
+      ) if oSelf.bFree else
+      "Reserved, base @ %s, [%s-%s] (%s bytes)" % (
+        fsHexNumber(oSelf.uAllocationBaseAddress),
+        fsHexNumber(oSelf.uStartAddress),
+        fsHexNumber(oSelf.uEndAddress),
+        fsHexNumber(oSelf.uSize),
+      ) if oSelf.bReserved else
+      "Allocated, uState=%s, uType=%s, base @ %s, [%s-%s] (%s bytes, uProtection = %s%s)" % (
         oSelf.sState,
         oSelf.sType,
-        oSelf.uAllocationBaseAddress >> 32,
-        oSelf.uAllocationBaseAddress & 0xFFFFFFFF,
-        oSelf.uStartAddress >> 32,
-        oSelf.uStartAddress & 0xFFFFFFFF,
-        oSelf.uEndAddress >> 32,
-        oSelf.uEndAddress & 0xFFFFFFFF,
-        oSelf.uSize,
+        fsHexNumber(oSelf.uAllocationBaseAddress),
+        fsHexNumber(oSelf.uStartAddress),
+        fsHexNumber(oSelf.uEndAddress),
+        fsHexNumber(oSelf.uSize),
         "PAGE_GUARD | " if oSelf.bGuard else "",
         oSelf.sProtection,
       )
