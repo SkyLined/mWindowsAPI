@@ -30,6 +30,7 @@ from .fSendCtrlCForProcessId import fSendCtrlCForProcessId;
 from .fsGetISAForProcessId import fsGetISAForProcessId;
 from .fsGetISAForProcessHandle import fsGetISAForProcessHandle;
 from .fsGetPythonISA import fsGetPythonISA;
+from .fsHexNumber import fsHexNumber;
 from .fStartDebuggingForProcessId import fStartDebuggingForProcessId;
 from .fStopDebuggingForProcessId import fStopDebuggingForProcessId;
 from .fSuspendForProcessId import fSuspendForProcessId;
@@ -75,6 +76,7 @@ __all__ = [
   "fsGetISAForProcessId",
   "fsGetISAForProcessHandle",
   "fsGetPythonISA",
+  "fsHexNumber",
   "fStartDebuggingForProcessId",
   "fStopDebuggingForProcessId",
   "fSuspendForProcessId",
