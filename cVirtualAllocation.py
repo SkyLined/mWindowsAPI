@@ -1,6 +1,14 @@
 ﻿import math, struct;
 
-from mWindowsSDK import *;
+from mWindowsSDK import \
+  ERROR_INVALID_PARAMETER, \
+  MEMORY_BASIC_INFORMATION, \
+  MEM_COMMIT, MEM_DECOMMIT, MEM_FREE, MEM_IMAGE, MEM_MAPPED, MEM_PRIVATE, MEM_RELEASE, MEM_RESERVE, \
+  PAGE_NOACCESS, PAGE_READONLY, PAGE_READWRITE, PAGE_WRITECOPY, PAGE_GUARD, \
+  PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY, \
+  PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE, PROCESS_QUERY_INFORMATION, \
+  CHAR, PCHAR, WCHAR, PWCHAR, DWORD, PDWORD, LPVOID, SIZE_T, \
+  foThrowLastError;
 from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fsHexNumber import fsHexNumber;
 from .fbLastErrorIs import fbLastErrorIs;
@@ -397,7 +405,7 @@ class cVirtualAllocation(object):
       try:
         oSelf.uProtection = PAGE_READONLY;
       except Exception as oException:
-        oException.message += " (oVirtualAllocation = %s)" % repr(oSelf);
+        oException.args[0] += " (oVirtualAllocation = %s)" % repr(oSelf);
         raise;
     try:
       # Open process to read memory
@@ -589,7 +597,7 @@ class cVirtualAllocation(object):
         );
       assert u0EndOffset <= oSelf.uSize, \
         "u0EndOffset (%s) must not be greater than the size of the virtual memory (%s)" % (
-          fsHexNumber(u0EndOffset), fsHexNumber(Self.uSize),
+          fsHexNumber(u0EndOffset), fsHexNumber(oSelf.uSize),
         );
       assert u0EndOffset > uStartOffset, \
         "u0EndOffset (%s) must be greater than uStartOffset (%s)" % (
@@ -603,7 +611,7 @@ class cVirtualAllocation(object):
         );
       assert u0Size <= oSelf.uSize, \
         "u0Size (%s) must not be greater than the size of the virtual memory (%s)" % (
-          fsHexNumber(u0Size), fsHexNumber(Self.uSize),
+          fsHexNumber(u0Size), fsHexNumber(oSelf.uSize),
         );
       uSize = u0Size;
     else:
@@ -739,6 +747,8 @@ class cVirtualAllocation(object):
       finally:
         oSelf.__fUpdate();
   
+  def __repr__(oSelf):
+    return "<%s at 0x%X>" % (oSelf, id(oSelf));
   def __str__(oSelf):
     return "VirtualAllocation(%s)" % (
       "Invalid @ %s" % (
