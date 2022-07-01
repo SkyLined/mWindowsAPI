@@ -7,8 +7,7 @@ from mWindowsSDK import \
   PAGE_NOACCESS, PAGE_READONLY, PAGE_READWRITE, PAGE_WRITECOPY, PAGE_GUARD, \
   PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY, \
   PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE, PROCESS_QUERY_INFORMATION, \
-  CHAR, PCHAR, WCHAR, PWCHAR, DWORD, PDWORD, LPVOID, SIZE_T, \
-  foThrowLastError;
+  CHAR, PCHAR, WCHAR, PWCHAR, DWORD, PDWORD, LPVOID, SIZE_T;
 from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fsHexNumber import fsHexNumber;
 from .fbLastErrorIs import fbLastErrorIs;
@@ -165,7 +164,7 @@ class cVirtualAllocation(object):
       oSelf.bIsValid = oStoredBytes == MEMORY_BASIC_INFORMATION.fuGetSize();
       if not oSelf.bIsValid:
         if not fbLastErrorIs(ERROR_INVALID_PARAMETER):
-          foThrowLastError("VirtualQueryEx(%s, %s, ..., %s) = %s" % (
+          fThrowLastError("VirtualQueryEx(%s, %s, ..., %s) = %s" % (
             repr(ohProcess),
             fsHexNumber(uAddress),
             fsHexNumber(MEMORY_BASIC_INFORMATION.fuGetSize()),
