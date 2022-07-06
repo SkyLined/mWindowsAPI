@@ -1,6 +1,6 @@
-from mWindowsSDK import *;
+from mWindowsSDK import \
+    fsGetStringAtAddress, HLOCAL, PWSTR;
 from mWindowsSDK.mKernel32 import oKernel32DLL;
-from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
 from .fThrowLastError import fThrowLastError;
 
 def fsGetDescriptionForThreadHandle(ohThread):

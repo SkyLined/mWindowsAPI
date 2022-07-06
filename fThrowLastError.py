@@ -1,4 +1,3 @@
-from mWindowsSDK import *;
 from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fThrowWin32Error import fThrowWin32Error;
 

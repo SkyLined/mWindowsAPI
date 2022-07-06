@@ -1,4 +1,4 @@
-from mWindowsSDK import *;
+from mWindowsSDK import SYNCHRONIZE;
 from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fbIsRunningForProcessHandle import fbIsRunningForProcessHandle;
 from .fbIsValidHandle import fbIsValidHandle;
