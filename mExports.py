@@ -1,6 +1,7 @@
 from .cAvoidSystemSleep import cAvoidSystemSleep;
 from .cConsoleProcess import cConsoleProcess;
 from .cJobObject import cJobObject;
+from .cModule import cModule;
 from .cPipe import cPipe;
 from .cProcess import cProcess;
 from .cUWPApplication import cUWPApplication;
@@ -47,6 +48,7 @@ __all__ = [
   "cAvoidSystemSleep",
   "cConsoleProcess",
   "cJobObject",
+  "cModule",
   "cPipe",
   "cProcess",
   "cUWPApplication",

@@ -1,6 +1,18 @@
 import os, time;
-from mWindowsAPI import *;
-from mWindowsSDK import SECURITY_MANDATORY_MEDIUM_RID;
+from mWindowsAPI import \
+    cJobObject, \
+    cModule, \
+    cProcess, \
+    cVirtualAllocation, \
+    fbTerminateForProcessId, \
+    fds0GetProcessesExecutableName_by_uId, \
+    fsGetISAForProcessId, \
+    fsHexNumber, \
+    fuGetMemoryUsageForProcessId;
+from mWindowsSDK import \
+    SECURITY_MANDATORY_MEDIUM_RID, \
+    PROCESS_QUERY_LIMITED_INFORMATION, \
+    PROCESS_VM_READ;
 from mConsole import oConsole;
 
 def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
@@ -11,7 +23,7 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
   oConsole.fStatus("  * Calling cProcess.foCreateForBinaryPath(%s, [\"/K\", \"EXIT %s\"], bHidden = True)..." % (repr(sComSpec), uExitCode));
   oTestProcess = cProcess.foCreateForBinaryPathAndArguments(sComSpec, ["/K", "EXIT %s" % uExitCode], bHidden = True);
   try:
-    oConsole.fOutput("  + cProcess.foCreateForBinaryPath(%s, [\"/K\", \"EXIT %s\"], bHidden = True) = <cProcess #%X>" % (repr(sComSpec), uExitCode, oTestProcess.uId));
+    oConsole.fOutput("  + cProcess.foCreateForBinaryPath(%s, [\"/K\", \"EXIT %s\"], bHidden = True) = %s" % (repr(sComSpec), uExitCode, repr(oTestProcess)));
     oTestProcess.fbWait();
     assert not oTestProcess.bIsRunning, \
         "Expected process not to be running.";
@@ -20,7 +32,7 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
     # Restart cmd.exe and let it wait for input.
     oTestProcess = cProcess.foCreateForBinaryPath(sComSpec, bMinimizedWindow = True);
     time.sleep(1); # Allow process to start
-    oConsole.fOutput("  + Started test process %d/0x%X..." % (oTestProcess.uId, oTestProcess.uId));
+    oConsole.fOutput("  + Started test process %s" % (repr(oTestProcess),));
     # cProcess
     assert oTestProcess.sISA == sExpectedChildProcessISA, \
         "cProcess.sISA == %s instead of %s" % (oTestProcess.sISA, sExpectedChildProcessISA);
@@ -42,15 +54,29 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
     assert oTestProcess.uIntegrityLevel == SECURITY_MANDATORY_MEDIUM_RID, \
         "Expected process integrity level 0, got %d" % oTestProcess.uIntegrityLevel;
     oConsole.fOutput("    + Integrity level = 0x%X" % oTestProcess.uIntegrityLevel);
+    
     oConsole.fOutput("  * Testing cProcess.fbSuspendThreads()...");
     assert oTestProcess.fbSuspendThreads(), \
         "Cannot suspend threads";
-    oConsole.fOutput("  * Testing cProcess.fbResumeThreads()...");
-    assert oTestProcess.fbResumeThreads(), \
-        "Cannot resume threads";
+    
+    oConsole.fOutput("  * Testing cModule.faoGetForProcessId...");
+    aoModules = cModule.faoGetForProcessId(oTestProcess.uId);
+    oConsole.fOutput("    | Found %d modules:" % len(aoModules));
+    for oModule in aoModules:
+      oConsole.fOutput("    |   %s @ %s (%s)" % (
+        repr(oModule.s0Name),
+        fsHexNumber(oModule.uStartAddress),
+        repr(oModule.s0BinaryPath),
+      ));
+    
     oConsole.fOutput("  * Testing cProcess.foGetPEB()...");
     for sLine in oTestProcess.foGetPEB().fasDump("Process %d/0x%X PEB" % (oTestProcess.uId, oTestProcess.uId)):
       oConsole.fOutput("    | " + sLine);
+    
+    oConsole.fOutput("  * Testing cProcess.fbResumeThreads()...");
+    assert oTestProcess.fbResumeThreads(), \
+        "Cannot resume threads";
+    
     oConsole.fOutput("  * Testing cProcess.foGetProcessParameters()...");
     for sLine in oTestProcess.foGetProcessParameters().fasDump("Process %d/0x%X ProcessParameters" % (oTestProcess.uId, oTestProcess.uId)):
       oConsole.fOutput("    | " + sLine);
@@ -74,17 +100,17 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
       if uId == oTestProcess.uId:
         assert s0ProcessesExecutableName is not None, \
             "Text process %d/0x%X (%s) executable name could not be determined in process list" % (
-              oTestProcess.uId, oTestProcess.uId, repr(sExecutableName),
+              oTestProcess.uId, oTestProcess.uId, repr(s0ProcessesExecutableName),
             );
         sTestExecutableName = os.path.basename(sComSpec);
         assert s0ProcessesExecutableName.lower() == sTestExecutableName.lower(), \
             "Text process %d/0x%X (%s) executable name in process list is %s" % (
-              oTestProcess.uId, oTestProcess.uId, repr(sExecutableName),
+              oTestProcess.uId, oTestProcess.uId, repr(s0ProcessesExecutableName),
               repr(s0ProcessesExecutableName)
             );
     assert oTestProcess.uId in ds0ProcessesExecutableName_by_uId, \
         "Test process %d/0x%X (%s) not found in process list!" % (
-          oTestProcess.uId, oTestProcess.uId, repr(sExecutableName),
+          oTestProcess.uId, oTestProcess.uId, repr(s0ProcessesExecutableName),
         );
     # fuGetIntegrityLevelForProcessId
     oConsole.fOutput("  * Testing oTestProcess.uIntegrityLevel...");
