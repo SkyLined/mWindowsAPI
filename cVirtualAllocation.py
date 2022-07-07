@@ -171,24 +171,20 @@ class cVirtualAllocation(object):
             repr(oStoredBytes),
           ));
         oSelf.__u0State = None;
-      else:
-        oSelf.__u0State = oMemoryBasicInformation.State.fuGetValue();
-      if not oSelf.bIsValid or oSelf.bFree:
         oSelf.__u0AllocationBaseAddress = None;
         oSelf.__u0AllocationProtection = None;
         oSelf.__u0StartAddress = None;
         oSelf.__u0Size = None;
         oSelf.__u0Protection = None;
-        oSelf.__u0EndAddress = None;
         oSelf.__u0Type = None;
       else:
+        oSelf.__u0State = oMemoryBasicInformation.State.fuGetValue();
         oSelf.__u0AllocationBaseAddress = oMemoryBasicInformation.AllocationBase.fuGetValue();
         oSelf.__u0AllocationProtection = oMemoryBasicInformation.AllocationProtect.fuGetValue();
         oSelf.__u0StartAddress = oMemoryBasicInformation.BaseAddress.fuGetValue();
         oSelf.__u0Size = oMemoryBasicInformation.RegionSize.fuGetValue();
         oSelf.__u0Protection = oMemoryBasicInformation.Protect.fuGetValue();
         oSelf.__u0Type = oMemoryBasicInformation.Type.fuGetValue();
-      oSelf.__s0Bytes = None;
     finally:
       if not oKernel32DLL.CloseHandle(ohProcess):
         fThrowLastError("CloseHandle(%s)" % (repr(ohProcess),));
@@ -232,21 +228,18 @@ class cVirtualAllocation(object):
     return oSelf.__u0StartAddress;
   @property
   def uStartAddress(oSelf):
-    assert oSelf.bIsValid and not oSelf.bFree, \
-        "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
-        (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
+    assert oSelf.bIsValid, \
+        "The virtual allocation is not valid, please check 'oSelf.bIsValid' before making this call!";
     return oSelf.__u0StartAddress;
   @property
   def uSize(oSelf):
-    assert oSelf.bIsValid and not oSelf.bFree, \
-        "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
-        (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
+    assert oSelf.bIsValid, \
+        "The virtual allocation is not valid, please check 'oSelf.bIsValid' before making this call!";
     return oSelf.__u0Size;
   @property
   def uEndAddress(oSelf):
-    assert oSelf.bIsValid and not oSelf.bFree, \
-        "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
-        (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
+    assert oSelf.bIsValid, \
+        "The virtual allocation is not valid, please check 'oSelf.bIsValid' before making this call!";
     return oSelf.__u0StartAddress + oSelf.__u0Size;
   
   # State
@@ -753,24 +746,25 @@ class cVirtualAllocation(object):
       "Invalid @ %s" % (
         fsHexNumber(oSelf.__uUserProvidedAddress),
       ) if not oSelf.bIsValid else 
-      "Free @ %s, [%s-%s]" % (
+      "Free @ %s, [%s-%s] (%s bytes)" % (
         fsHexNumber(oSelf.__uUserProvidedAddress),
-        fsHexNumber(oSelf.uStartAddress),
-        fsHexNumber(oSelf.uEndAddress),
+        fsHexNumber(oSelf.__u0StartAddress) if oSelf.__u0StartAddress else "??",
+        fsHexNumber(oSelf.__u0StartAddress + oSelf.__u0Size) if oSelf.__u0StartAddress and oSelf.__u0Size else "??",
+        fsHexNumber(oSelf.__u0Size) if oSelf.__u0Size else "??",
       ) if oSelf.bFree else
       "Reserved, base @ %s, [%s-%s] (%s bytes)" % (
         fsHexNumber(oSelf.uAllocationBaseAddress),
-        fsHexNumber(oSelf.uStartAddress),
-        fsHexNumber(oSelf.uEndAddress),
-        fsHexNumber(oSelf.uSize),
+        fsHexNumber(oSelf.__u0StartAddress) if oSelf.__u0StartAddress else "??",
+        fsHexNumber(oSelf.__u0StartAddress + oSelf.__u0Size) if oSelf.__u0StartAddress and oSelf.__u0Size else "??",
+        fsHexNumber(oSelf.__u0Size) if oSelf.__u0Size else "??",
       ) if oSelf.bReserved else
       "Allocated, uState=%s, uType=%s, base @ %s, [%s-%s] (%s bytes, uProtection = %s%s)" % (
         oSelf.sState,
         oSelf.sType,
         fsHexNumber(oSelf.uAllocationBaseAddress),
-        fsHexNumber(oSelf.uStartAddress),
-        fsHexNumber(oSelf.uEndAddress),
-        fsHexNumber(oSelf.uSize),
+        fsHexNumber(oSelf.__u0StartAddress) if oSelf.__u0StartAddress else "??",
+        fsHexNumber(oSelf.__u0StartAddress + oSelf.__u0Size) if oSelf.__u0StartAddress and oSelf.__u0Size else "??",
+        fsHexNumber(oSelf.__u0Size) if oSelf.__u0Size else "??",
         "PAGE_GUARD | " if oSelf.bGuard else "",
         oSelf.sProtection,
       )
