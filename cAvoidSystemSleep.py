@@ -8,6 +8,7 @@ from mWindowsSDK import \
   REASON_CONTEXT;
 
 from .fbIsValidHandle import fbIsValidHandle;
+from .fsHexNumber import fsHexNumber;
 from .fThrowLastError import fThrowLastError;
 
 class cAvoidSystemSleep(object):
@@ -23,7 +24,10 @@ class cAvoidSystemSleep(object):
       poReasonContext,
     );
     if not fbIsValidHandle(oSelf.__hPowerRequest):
-      fThrowLastError("PowerCreateRequest(%s) == 0x%X" % (repr(poReasonContext), oSelf.__hPowerRequest));
+      fThrowLastError("PowerCreateRequest(%s) == %s" % ( \
+        repr(poReasonContext),
+        fsHexNumber(oSelf.__hPowerRequest.fuGetValue()),
+      ));
     oSelf.__bEnabled = False;
   def fEnable(oSelf):
     assert not oSelf.__bEnabled, \
@@ -32,12 +36,14 @@ class cAvoidSystemSleep(object):
       oSelf.__hPowerRequest,
       PowerRequestSystemRequired,
     ):
-      fThrowLastError("PowerSetRequest(%s, PowerRequestSystemRequired) == FALSE" % repr(oSelf.__hPowerRequest));
+      fThrowLastError("PowerSetRequest(%s, PowerRequestSystemRequired) == FALSE" % \
+          fsHexNumber(oSelf.__hPowerRequest.fuGetValue()));
     if oSelf.__bKeepDisplayOn and not oKernel32DLL.PowerSetRequest(
       oSelf.__hPowerRequest,
       PowerRequestDisplayRequired,
     ):
-      fThrowLastError("PowerSetRequest(%s, PowerRequestDisplayRequired) == FALSE" % repr(oSelf.__hPowerRequest));
+      fThrowLastError("PowerSetRequest(%s, PowerRequestDisplayRequired) == FALSE" % \
+          fsHexNumber(oSelf.__hPowerRequest.fuGetValue()));
     oSelf.__bEnabled = True;
   
   def fDisable(oSelf):
@@ -47,10 +53,12 @@ class cAvoidSystemSleep(object):
       oSelf.__hPowerRequest,
       PowerRequestSystemRequired,
     ):
-      fThrowLastError("PowerClearRequest(%s, PowerRequestSystemRequired) == FALSE" % repr(oSelf.__hPowerRequest));
+      fThrowLastError("PowerClearRequest(%s, PowerRequestSystemRequired) == FALSE" % \
+          fsHexNumber(oSelf.__hPowerRequest.fuGetValue()));
     if oSelf.__bKeepDisplayOn and not oKernel32DLL.PowerClearRequest(
       oSelf.__hPowerRequest,
       PowerRequestDisplayRequired,
     ):
-      fThrowLastError("PowerClearRequest(%s, PowerRequestDisplayRequired) == FALSE" % repr(oSelf.__hPowerRequest));
+      fThrowLastError("PowerClearRequest(%s, PowerRequestDisplayRequired) == FALSE" % \
+          fsHexNumber(oSelf.__hPowerRequest.fuGetValue()));
     oSelf.__bEnabled = False;
