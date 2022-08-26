@@ -1,6 +1,21 @@
 import re;
-from mWindowsSDK import *;
+from mWindowsSDK import \
+  CONTEXT_ALL, CONTEXT32, CONTEXT64, \
+  ERROR_ACCESS_DENIED, ERROR_GEN_FAILURE, ERROR_INVALID_HANDLE, \
+  foLoadNTDLL, \
+  HANDLE, \
+  iIntegerBaseType, INVALID_HANDLE_VALUE, \
+  M128A, \
+  NT_SUCCESS, \
+  PVOID, \
+  SYNCHRONIZE, \
+  TEB32, TEB64, \
+  ThreadBasicInformation, THREAD_BASIC_INFORMATION32, THREAD_BASIC_INFORMATION64, \
+  THREAD_GET_CONTEXT, THREAD_QUERY_INFORMATION, THREAD_QUERY_LIMITED_INFORMATION, \
+  THREAD_SET_CONTEXT, THREAD_SUSPEND_RESUME, THREAD_TERMINATE, \
+  ULONG;
 from mWindowsSDK.mKernel32 import oKernel32DLL;
+
 from .cVirtualAllocation import cVirtualAllocation;
 from .fbIsRunningForThreadHandle import fbIsRunningForThreadHandle;
 from .fbResumeForThreadHandle import fbResumeForThreadHandle;
@@ -16,6 +31,15 @@ from .fbSuspendForThreadHandle import fbSuspendForThreadHandle;
 from .fThrowLastError import fThrowLastError;
 from .fThrowNTStatusError import fThrowNTStatusError;
 from .fuGetExitCodeForThreadHandle import fuGetExitCodeForThreadHandle;
+
+gsbInstructionPointerRegisterName_by_sISA = {
+  "x86": b"eip",
+  "x64": b"rip",
+}
+gsbStackPointerRegisterName_by_sISA = {
+  "x86": b"esp",
+  "x64": b"rsp",
+}
 
 gddtxThreadContextMemberNameBitSizeAndOffset_by_sbRegisterName_by_sISA = {
   "x86": {
@@ -439,7 +463,7 @@ class cThread(object):
       else:
         sGetThreadContextFunctionName = "Wow64GetThreadContext";
         uRequiredAccessRightFlags |= THREAD_QUERY_INFORMATION;
-        uErrorWhenThreadIsTerminated = ERROR_ACCESS_DENIED
+        uErrorWhenThreadIsTerminated = ERROR_ACCESS_DENIED;
     oThreadContext = cThreadContext();
     oh0Thread = oSelf.foh0OpenWithFlags(uRequiredAccessRightFlags, bMustExist = False, bMustGetAccess = False);
     if not fbIsValidHandle(oh0Thread):
@@ -523,6 +547,24 @@ class cThread(object):
     else:
       raise NotImplementedError("Really not looking forward to this...");
   
+  def fsbGetInstructionPointerRegisterName(oSelf):
+    return gsbInstructionPointerRegisterName_by_sISA[oSelf.oProcess.sISA];
+  def ftxGetInstructionPointerRegisterNameAndValue(oSelf):
+    sbRegisterName = oSelf.fsbGetInstructionPointerRegisterName();
+    return (sbRegisterName, oSelf.fu0GetRegister(sbRegisterName));
+  def fu0GetInstructionPointerRegisterValue(oSelf):
+    sbRegisterName = oSelf.fsbGetInstructionPointerRegisterName();
+    return oSelf.fu0GetRegister(sbRegisterName);
+  
+  def fsbGetStackPointerRegisterName(oSelf):
+    return gsbStackPointerRegisterName_by_sISA[oSelf.oProcess.sISA];
+  def ftxGetStackPointerRegisterNameAndValue(oSelf):
+    sbRegisterName = oSelf.fsbGetStackPointerRegisterName();
+    return (sbRegisterName, oSelf.fu0GetRegister(sbRegisterName));
+  def fu0GetStackPointerRegisterValue(oSelf):
+    sbRegisterName = oSelf.fsbGetStackPointerRegisterName();
+    return oSelf.fu0GetRegister(sbRegisterName);
+
   def fd0uGetRegisterValueByName(oSelf):
     o0ThreadContext = oSelf.__fo0GetThreadContext();
     if o0ThreadContext is None: return None;
