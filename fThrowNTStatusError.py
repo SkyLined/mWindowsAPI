@@ -1,6 +1,9 @@
-from mWindowsSDK import *;
+from mWindowsSDK import \
+    fsGetNTStatusDescription, \
+    STATUS_NO_MEMORY;
 
 def fThrowNTStatusError(sFailedOperation, uNTStatus):
+  mDebugOutput_HideInCallStack = True; # Hide this helper function in the call stack.
   sErrorMessage = "%s => %s." % (sFailedOperation, fsGetNTStatusDescription(uNTStatus));
   if uNTStatus in [STATUS_NO_MEMORY]:
     raise MemoryError(sErrorMessage);
