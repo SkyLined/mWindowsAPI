@@ -397,7 +397,8 @@ class cVirtualAllocation(object):
       try:
         oSelf.uProtection = PAGE_READONLY;
       except Exception as oException:
-        oException.args[0] += " (oVirtualAllocation = %s)" % repr(oSelf);
+        if isinstance(oException.args[0], str):
+          oException.args[0] += " (oVirtualAllocation = %s)" % repr(oSelf);
         raise;
     try:
       # Open process to read memory
