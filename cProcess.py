@@ -128,17 +128,18 @@ class cProcess(object):
     assert isinstance(uId, int), \
         "uId must be an integer not %s" % repr(uId);
     oSelf.uId = uId;
-    if ohProcess:
+    if ohProcess is None:
+      assert uProcessHandleFlags is None, \
+          "You cannot provide uProcessHandleFlags without ohProcess";
+      uProcessHandleFlags = 0;
+      ohProcess = HANDLE(INVALID_HANDLE_VALUE);
+    else:
       assert isinstance(ohProcess, HANDLE), \
           "ohProcess (%s) is not a valid handle" % repr(ohProcess);
       assert uProcessHandleFlags is not None, \
           "You must provide uProcessHandleFlags when you provide ohProcess";
-      # Try to open the process if no handle is provided...
-      oSelf.__ohProcess = ohProcess;
-      oSelf.__uProcessHandleFlags = uProcessHandleFlags;
-    else:
-      oSelf.__uProcessHandleFlags = 0;
-      oSelf.__ohProcess = None;
+    oSelf.__ohProcess = ohProcess;
+    oSelf.__uProcessHandleFlags = uProcessHandleFlags;
     oSelf.bTerminateAutomatically = bTerminateAutomatically;
     # If we are running in 64-bit Python, NtQueryInformationProcess will return a pointer to the 64-bit PEB of
     # another process in the PROCESS_BASIC_INFORMATION struct. If we are running in 32-bit Python, we cannot get
@@ -155,28 +156,25 @@ class cProcess(object):
   
   def fohOpenWithFlags(oSelf, uRequiredFlags):
     # See if we have an open handle
-    if oSelf.__ohProcess and oSelf.__ohProcess != INVALID_HANDLE_VALUE:
+    if oSelf.__ohProcess != INVALID_HANDLE_VALUE:
       # if it already has the required flags, return it:
       if oSelf.__uProcessHandleFlags & uRequiredFlags == uRequiredFlags:
         return oSelf.__ohProcess;
-      ohOldProcessHandle = oSelf.__ohProcess;
-    else:
-      ohOldProcessHandle = None;
+    ohOldProcessHandle = oSelf.__ohProcess;
     # Open a new handle with the required flags and all other flags we've used before.
     # This allows the new handle to be used for anything it was used for before as well
     # as anything new the caller wants to do:
     uFlags = oSelf.__uProcessHandleFlags | uRequiredFlags;
-    ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.uId, uFlags);
-    oSelf.__ohProcess = ohProcess;
+    ohProcess = oSelf.__ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.uId, uFlags);
     oSelf.__uProcessHandleFlags = uFlags if ohProcess != INVALID_HANDLE_VALUE else 0;
-    if ohOldProcessHandle:
+    if ohOldProcessHandle != INVALID_HANDLE_VALUE:
       # Close the old process handle:
       if not oKernel32DLL.CloseHandle(ohOldProcessHandle):
         fThrowLastError("CloseHandle(%s)" % (repr(ohOldProcessHandle),));
     return ohProcess;
   
   def fs0GetAccessRightsFlagsDescription(oSelf):
-    if oSelf.__ohProcess is None or oSelf.__ohProcess == INVALID_HANDLE_VALUE:
+    if oSelf.__ohProcess == INVALID_HANDLE_VALUE:
       return None;
     if oSelf.__uProcessHandleFlags == PROCESS_ALL_ACCESS:
       return "PROCESS_ALL_ACCESS";
