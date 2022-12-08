@@ -343,7 +343,7 @@ class cProcess(object):
     return oSelf.__n0RunDurationInSeconds;
   
   def __fGetProcessTimes(oSelf):
-    ohProccess = oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION);
+    ohProcess = oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION);
     # FILETIME has two 32-bit values that represent to lower and higher parts of a 64-bit count of 100 nanosecond
     # intervals.
     oCreationTime = FILETIME();
@@ -351,7 +351,7 @@ class cProcess(object):
     oKernelTime = FILETIME();
     oUserTime = FILETIME();
     if not oKernel32DLL.GetProcessTimes(
-      ohProccess, 
+      ohProcess, 
       oCreationTime.foCreatePointer(),
       oExitTime.foCreatePointer(),
       oKernelTime.foCreatePointer(),
