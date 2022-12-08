@@ -277,20 +277,29 @@ class cProcess(object):
     return oSelf.__sCommandLine;
   
   def __del__(oSelf):
-    if oSelf.bTerminateAutomatically:
-      # See if we have an open handle with PROCESS_TERMINATE rights and use that to terminate.
-      # Otherwise terminate by process id.
-      if (
-        oSelf.__ohProcess and oSelf.__ohProcess != INVALID_HANDLE_VALUE
-        and oSelf.__uProcessHandleFlags & PROCESS_TERMINATE == PROCESS_TERMINATE
-      ):
-        fbTerminateForProcessHandle(oSelf.__ohProcess);
-      else:
-        fbTerminateForProcessId(oSelf.uId);
     try:
+      # attrbutes may no longer be available when we terminate.
+      # We will try to make a copy. If this succeeds, we can try
+      # to clean up. If it does not, we will simply return.
+      bTerminateAutomatically = oSelf.bTerminateAutomatically;
       ohProcess = oSelf.__ohProcess;
+      uProcessHandleFlags = oSelf.__uProcessHandleFlags;
+      uId = oSelf.uId;
     except AttributeError:
       return;
+    if bTerminateAutomatically:
+      try:
+        # See if we have an open handle with PROCESS_TERMINATE rights and use that to terminate.
+        # Otherwise terminate by process id.
+        if (
+          ohProcess != INVALID_HANDLE_VALUE
+          and uProcessHandleFlags & PROCESS_TERMINATE == PROCESS_TERMINATE
+        ):
+          fbTerminateForProcessHandle(ohProcess);
+        else:
+          fbTerminateForProcessId(uId);
+      except WindowsError as oError:
+        pass;
     if ohProcess != INVALID_HANDLE_VALUE and not oKernel32DLL.CloseHandle(ohProcess):
       # If the process is already terminated we can see a ERROR_INVALID_HANDLE error, which we'll ignore.
       # Any other, unexpected errors are reported:
