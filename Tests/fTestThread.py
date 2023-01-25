@@ -1,3 +1,4 @@
+import re, time;
 from mConsole import oConsole;
 from mWindowsAPI import \
     cConsoleProcess, \
@@ -127,7 +128,7 @@ def fTestThread(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
     assert oTestProcess.bIsTerminated, \
         "Test process was not terminated!";
     try:
-      fohOpenForThreadIdAndDesiredAccess(0, THREAD_ALL_ACCESS);
+      foh0OpenForThreadIdAndDesiredAccess(0, THREAD_ALL_ACCESS);
     except:
       pass;
     else:
