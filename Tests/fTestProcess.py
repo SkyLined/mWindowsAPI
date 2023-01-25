@@ -1,4 +1,5 @@
 import os, time;
+from mConsole import oConsole;
 from mWindowsAPI import \
     cJobObject, \
     cModule, \
@@ -10,10 +11,7 @@ from mWindowsAPI import \
     fsHexNumber, \
     fuGetMemoryUsageForProcessId;
 from mWindowsSDK import \
-    SECURITY_MANDATORY_MEDIUM_RID, \
-    PROCESS_QUERY_LIMITED_INFORMATION, \
-    PROCESS_VM_READ;
-from mConsole import oConsole;
+    SECURITY_MANDATORY_MEDIUM_RID;
 
 def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
   oConsole.fOutput("=== Testing process related functions ", sPadding = "=");

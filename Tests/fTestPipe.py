@@ -1,5 +1,5 @@
-from mWindowsAPI import *;
 from mConsole import oConsole;
+from mWindowsAPI import cPipe;
 
 def fTestPipeHelper(oPipe):
   # Write a line with LF and a line with crlf, then read both back

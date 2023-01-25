@@ -1,6 +1,7 @@
-from mWindowsAPI import *;
-from mWindowsSDK import SECURITY_MANDATORY_MEDIUM_RID;
 from mConsole import oConsole;
+from mWindowsAPI import \
+    fsGetPythonISA, \
+    oSystemInfo;
 
 def fTestSystemInfo():
   oConsole.fOutput("* Testing system info...");

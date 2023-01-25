@@ -87,8 +87,7 @@ try:
       "Cannot test both quick and full!";
   
   #Import the test subject
-  from mWindowsAPI import *;
-  from mWindowsAPI.fThrowLastError import fThrowLastError;
+  from mWindowsAPI import fsGetPythonISA;
   
   from fTestConsole import fTestConsole;
   from fTestDbgHelp import fTestDbgHelp;

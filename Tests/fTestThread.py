@@ -1,7 +1,9 @@
-import re, sys, time;
-from mWindowsAPI import *;
-from mWindowsSDK import *;
 from mConsole import oConsole;
+from mWindowsAPI import \
+    cConsoleProcess, \
+    foh0OpenForThreadIdAndDesiredAccess;
+from mWindowsSDK import \
+    THREAD_ALL_ACCESS;
 
 def fDumpThreadInfo(oThread, sISA, bDumpContext):
   oConsole.fOutput("  * Thread: %s" % (repr(oThread),));

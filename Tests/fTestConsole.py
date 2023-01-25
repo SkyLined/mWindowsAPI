@@ -1,6 +1,8 @@
-from mWindowsAPI import *;
-from mWindowsSDK import *;
 from mConsole import oConsole;
+from mWindowsAPI import fThrowLastError;
+from mWindowsSDK import \
+    CONSOLE_SCREEN_BUFFER_INFO, \
+    STD_OUTPUT_HANDLE;
 
 def fTestConsole():
   # Test console functions

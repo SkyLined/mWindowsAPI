@@ -1,6 +1,10 @@
 import threading, time;
-from mWindowsAPI import *;
+
 from mConsole import oConsole;
+from mWindowsAPI import \
+    cConsoleProcess, \
+    fbTerminateForProcessId, \
+    fSuspendForProcessId;
 
 def fTestConsoleProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
   oConsole.fOutput("=== Testing console process related functions ", sPadding = "=");
