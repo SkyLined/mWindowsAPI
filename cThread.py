@@ -490,7 +490,7 @@ class cThread(object):
   def __fxGetRegisterFromThreadContext(oSelf, oThreadContext, sThreadContextMemberName, uBitOffset, uBitSize):
     # Walk down the "sThreadContextMemberName" path to get the value from oThreadContext.
     xValue = oThreadContext;
-    for sMemberName in re.split("[\.\[]", sThreadContextMemberName):
+    for sMemberName in re.split(r"[\.\[]", sThreadContextMemberName):
       if sMemberName[-1] == "]":
         xValue = xValue[int(sMemberName[:-1])];
       else:
@@ -521,7 +521,7 @@ class cThread(object):
     # Walk down the "sThreadContextMemberName" path to find the parent of the value from oThreadContext.
     xValue = oThreadContext;
     xParent = None;
-    for sMemberName in re.split("[\.\[]", sThreadContextMemberName):
+    for sMemberName in re.split(r"[\.\[]", sThreadContextMemberName):
       xParent = xValue;
       if sMemberName[-1] == "]":
         xValue = xValue[int(sMemberName[:-1])];
