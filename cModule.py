@@ -34,9 +34,9 @@ class cModule(object):
         continue;
       if fbLastErrorIs(ERROR_PARTIAL_COPY):
         assert fsGetISAForProcessId(uProcessId) == "x64", \
-            "ERROR_PARTIAL_COPY should only happend if the target process is 64-bit!?";
+            "ERROR_PARTIAL_COPY should only happened if the target process is 64-bit!?";
         assert fsGetPythonISA() == "x86", \
-            "ERROR_PARTIAL_COPY should only happend if the Python process is 32-bit!\n" \
+            "ERROR_PARTIAL_COPY should only happened if the Python process is 32-bit!\n" \
             "You may be attempting to get information from a process that is not fully initialized.";
         raise AssertionError("You cannot use this function from a 32-bit process to query a 64-bit process.");
       fThrowLastError("CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, 0x%X)" % (
