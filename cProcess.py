@@ -148,7 +148,10 @@ class cProcess(object):
     oSelf.sISA = fsGetISAForProcessHandle(oSelf.fohOpenWithFlags(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ));
     assert oSelf.sISA == "x86" or fsGetPythonISA() == "x64", \
         "You cannot get information on a 64-bit process from 32-bit Python";
-    oSelf.uPointerSize = {"x86": 4, "x64": 8}[oSelf.sISA];
+    oSelf.uPointerSizeInBytes = {"x86": 4, "x64": 8}[oSelf.sISA];
+    oSelf.uPointerSizeInBits = {"x86": 32, "x64": 64}[oSelf.sISA];
+    # to be deprecated - use is not recommended because of ambiguity.
+    oSelf.uPointerSize = oSelf.uPointerSizeInBytes;
     # Cache for dynamically retrieved properties:
     oSelf.__s0BinaryPath = None;
     oSelf.__sCommandLine = None;
