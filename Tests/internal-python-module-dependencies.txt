@@ -13,3 +13,4 @@ struct
 threading
 token
 tokenize
+weakref
