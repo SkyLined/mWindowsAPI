@@ -456,14 +456,16 @@ class cThread(object):
     cThreadContext = CONTEXT32;
     sGetThreadContextFunctionName = "GetThreadContext";
     uRequiredAccessRightFlags = THREAD_GET_CONTEXT;
-    uErrorWhenThreadIsTerminated = ERROR_GEN_FAILURE;
+    # ERROR_GEN_FAILURE is normal, ERROR_ACCESS_DENIED happens with Wow64
+    # on certain OS versions. I haven't figured out which but assume both
+    # mean the same thing.
+    auErrorsWhenThreadIsTerminated = [ERROR_GEN_FAILURE, ERROR_ACCESS_DENIED];
     if fsGetPythonISA() == "x64":
       if oSelf.oProcess.sISA == "x64":
         cThreadContext = CONTEXT64;
       else:
         sGetThreadContextFunctionName = "Wow64GetThreadContext";
         uRequiredAccessRightFlags |= THREAD_QUERY_INFORMATION;
-        uErrorWhenThreadIsTerminated = ERROR_ACCESS_DENIED;
     oThreadContext = cThreadContext();
     oh0Thread = oSelf.foh0OpenWithFlags(uRequiredAccessRightFlags, bMustExist = False, bMustGetAccess = False);
     if not fbIsValidHandle(oh0Thread):
@@ -476,13 +478,15 @@ class cThread(object):
       oh0Thread, # hThread
       opoThreadContext, # lpContext
     ):
-      if oSelf.bIsTerminated and fbLastErrorIs(uErrorWhenThreadIsTerminated): # This happens when a thread is terminated.
-#        print "oThreadContext = None (Thread terminated)";
-        return None;
+      if oSelf.bIsTerminated:
+        for uErrorWhenThreadIsTerminated in auErrorsWhenThreadIsTerminated:
+          if fbLastErrorIs(uErrorWhenThreadIsTerminated): # This happens when a thread is terminated.
+#            print "oThreadContext = None (Thread terminated)";
+            return None;
       fThrowLastError("%s(%s (%s), 0x%X)" % (
         sGetThreadContextFunctionName,
         repr(oh0Thread), oSelf.fs0GetAccessRightsFlagsDescription(),
-        repr(opoThreadContext)
+        opoThreadContext.fuGetTargetAddress(),
       ));
 #    print "oThreadContext = %s" % repr(oThreadContext);
     return oThreadContext;
