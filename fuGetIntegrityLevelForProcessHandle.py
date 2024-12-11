@@ -55,7 +55,7 @@ def fuGetIntegrityLevelForProcessHandle(ohProcess):
     
     # Get the last Sid Sub Authority
     uLastSidSubAuthorityIndex = opuSidSubAuthorityCount.fo0GetTarget().fuGetValue() - 1;
-    opdwLastSidSubAuthority= oAdvAPI32.GetSidSubAuthority(oTokenMandatoryLabel.Label.Sid, uLastSidSubAuthorityIndex);
+    opdwLastSidSubAuthority = oAdvAPI32.GetSidSubAuthority(oTokenMandatoryLabel.Label.Sid, uLastSidSubAuthorityIndex);
     # Again, the return value of GetSidSubAuthority is "undefined" in case of an error. So we will check the return
     # value of GetlastError to make sure it succeeded.
     if fbLastErrorFailed():

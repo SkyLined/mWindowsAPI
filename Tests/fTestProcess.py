@@ -49,9 +49,18 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
         "Expected binary name %s, got %s" % (os.path.basename(sComSpec), oTestProcess.sBinaryName);
     oConsole.fOutput("    + Binary Path = %s" % repr(oTestProcess.sBinaryPath));
     oConsole.fOutput("    + Command line = %s" % repr(oTestProcess.sCommandLine));
-    assert oTestProcess.uIntegrityLevel == SECURITY_MANDATORY_MEDIUM_RID, \
-        "Expected process integrity level 0, got %d" % oTestProcess.uIntegrityLevel;
-    oConsole.fOutput("    + Integrity level = 0x%X" % oTestProcess.uIntegrityLevel);
+    s0IntegrityLevel = {
+      0x00000000: "SECURITY_MANDATORY_UNTRUSTED_RID",
+      0x00001000: "SECURITY_MANDATORY_LOW_RID",
+      0x00002000: "SECURITY_MANDATORY_MEDIUM_RID",
+      0x00002100: "SECURITY_MANDATORY_MEDIUM_PLUS_RID",
+      0X00003000: "SECURITY_MANDATORY_HIGH_RID",
+      0x00004000: "SECURITY_MANDATORY_SYSTEM_RID",
+      0x00005000: "SECURITY_MANDATORY_PROTECTED_PROCESS_RID",
+    }.get(oTestProcess.uIntegrityLevel);
+    assert s0IntegrityLevel is not None, \
+        "Invalid/unknown process integrity level %d" % oTestProcess.uIntegrityLevel;
+    oConsole.fOutput("    + Integrity level = 0x%X (%s)" % (oTestProcess.uIntegrityLevel, s0IntegrityLevel));
     
     oConsole.fOutput("  * Testing cProcess.fbSuspendThreads()...");
     assert oTestProcess.fbSuspendThreads(), \
