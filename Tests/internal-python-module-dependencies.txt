@@ -10,7 +10,9 @@ math
 opcode
 platform
 struct
+textwrap
 threading
 token
 tokenize
+traceback
 weakref
