@@ -193,7 +193,7 @@ class cVirtualAllocation(object):
     assert oSelf.bIsValid, \
         "The virtual allocation is not valid, please check 'oSelf.bIsValid' before making this call!";
     return (
-      not oSelf.bFree
+      not oSelf.bIsFree
       and oSelf.__u0StartAddress <= uAddress
       and oSelf.uEndAddress >= uAddress + uSize
     );
@@ -206,15 +206,15 @@ class cVirtualAllocation(object):
   # Allocation start address and protection
   @property
   def uAllocationBaseAddress(oSelf):
-    assert oSelf.bIsValid and not oSelf.bFree, \
+    assert oSelf.bIsValid and not oSelf.bIsFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
-        (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
+        (oSelf, "free" if oSelf.bIsValid else "not valid", "bIsFree" if oSelf.bIsValid else "bIsValid");
     return oSelf.__u0AllocationBaseAddress;
   @property
   def uAllocationProtection(oSelf):
-    assert oSelf.bIsValid and not oSelf.bFree, \
+    assert oSelf.bIsValid and not oSelf.bIsFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
-        (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
+        (oSelf, "free" if oSelf.bIsValid else "not valid", "bIsFree" if oSelf.bIsValid else "bIsValid");
     return oSelf.__u0AllocationProtection;
   @property
   def sAllocationProtection(oSelf):
@@ -257,51 +257,75 @@ class cVirtualAllocation(object):
       None: None,
     }[oSelf.uState];
   @property
-  def bAllocated(oSelf):
+  def bAllocated(oSelf): # This should be deprecated
+    return oSelf.bIsAllocated
+  @property
+  def bIsAllocated(oSelf):
     return oSelf.bIsValid and oSelf.uState == MEM_COMMIT;
   @property
-  def bReserved(oSelf):
+  def bReserved(oSelf): # This should be deprecated
+    return oSelf.bIsReserved;
+  @property
+  def bIsReserved(oSelf):
     return oSelf.bIsValid and oSelf.uState == MEM_RESERVE;
   @property
-  def bFree(oSelf):
+  def bFree(oSelf): # This should be deprecated
+    return oSelf.bIsFree;
+  @property
+  def bIsFree(oSelf):
     return oSelf.bIsValid and oSelf.uState == MEM_FREE;
   @property
-  def bInvalid(oSelf):
+  def bInvalid(oSelf): # This should be deprecated
+    return oSelf.bIsInvalid;
+  @property
+  def bIsInvalid(oSelf):
     return not oSelf.bIsValid;
   
   # Protection
   @property
   def uProtection(oSelf):
-    assert oSelf.bIsValid and not oSelf.bFree, \
+    assert oSelf.bIsValid and not oSelf.bIsFree, \
         "Virtual allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
-        (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
+        (oSelf, "free" if oSelf.bIsValid else "not valid", "bIsFree" if oSelf.bIsValid else "bIsValid");
     return oSelf.__u0Protection;
   @property
   def sProtection(oSelf):
-   # Only mentions "basic" access protection flags! (not PAGE_GUARD, etc.)
+    # Only mentions "basic" access protection flags! (not PAGE_GUARD, etc.)
     return fs0Protection(oSelf.uProtection) or fsHexNumber(oSelf.uProtection);
   
   @property
-  def bReadable(oSelf):
-    return oSelf.bAllocated and not oSelf.bGuard and "read" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
+  def bReadable(oSelf): # This should be deprecated
+    return oSelf.bIsReadable;
   @property
-  def bWritable(oSelf):
-    return oSelf.bAllocated and not oSelf.bGuard and "write" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
+  def bIsReadable(oSelf):
+    return oSelf.bIsAllocated and not oSelf.bIsGuardPage and "read" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
   @property
-  def bExecutable(oSelf):
-    return oSelf.bAllocated and not oSelf.bGuard and "execute" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
+  def bWritable(oSelf): # This should be deprecated
+    return oSelf.bIsWritable;
   @property
-  def bGuard(oSelf):
-    return oSelf.bAllocated and (oSelf.uAllocationProtection & PAGE_GUARD);
+  def bIsWritable(oSelf):
+    return oSelf.bIsAllocated and not oSelf.bIsGuardPage and "write" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
+  @property
+  def bExecutable(oSelf): # This should be deprecated
+    return oSelf.bIsExecutable;
+  @property
+  def bIsExecutable(oSelf):
+    return oSelf.bIsAllocated and not oSelf.bIsGuardPage and "execute" in fasAllowedAccessTypesForProtection(oSelf.uProtection);
+  @property
+  def bGuard(oSelf): # This should be deprecated
+    return oSelf.bIsGuardPage;
+  @property
+  def bIsGuardPage(oSelf):
+    return oSelf.bIsAllocated and (oSelf.uAllocationProtection & PAGE_GUARD);
   
   @uProtection.setter
   def uProtection(oSelf, uNewProtection):
-    assert oSelf.bIsValid and not oSelf.bFree, \
+    assert oSelf.bIsValid and not oSelf.bIsFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
-        (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
+        (oSelf, "free" if oSelf.bIsValid else "not valid", "bIsFree" if oSelf.bIsValid else "bIsValid");
     assert isinstance(uNewProtection, int) and uNewProtection > 0, \
         "Cannot set uProtection to %s" % repr(uNewProtection);
-    assert oSelf.bAllocated, \
+    assert oSelf.bIsAllocated, \
         "Cannot modify protection on a virtual allocation that is not allocated";
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_OPERATION);
     try:
@@ -355,15 +379,24 @@ class cVirtualAllocation(object):
       MEM_MAPPED: "MEM_MAPPED",
       MEM_PRIVATE: "MEM_PRIVATE",
       None: None,
-    }[oSelf.uType];
+    }.get(oSelf.uType, "unknown(0x%X)" % oSelf.uType);
   @property
-  def bImage(oSelf):
+  def bImage(oSelf): # this should be deprecated
+    return oSelf.bIsImage;
+  @property
+  def bIsImage(oSelf):
     return oSelf.uType == MEM_IMAGE;
   @property
-  def bMapped(oSelf):
+  def bMapped(oSelf): # this should be deprecated
+    return oSelf.bIsMapped;
+  @property
+  def bIsMapped(oSelf):
     return oSelf.uType == MEM_MAPPED;
   @property
-  def bPrivate(oSelf):
+  def bPrivate(oSelf): # this should be deprecated
+    return oSelf.bIsPrivate;
+  @property
+  def bIsPrivate(oSelf):
     return oSelf.uType == MEM_PRIVATE;
   
   def fsbReadBytesStringForOffsetAndSize(oSelf, uOffset, uSize):
@@ -372,8 +405,8 @@ class cVirtualAllocation(object):
   def fsReadStringForOffsetAndLength(oSelf, uOffset, uLength, bUnicode = False, bNullTerminated = False, bBytes = False):
     assert oSelf.bIsValid, \
         "Please check .bIsValid == True before making this call";
-    assert oSelf.bAllocated, \
-        "Please check .bAllocated == True before making this call";
+    assert oSelf.bIsAllocated, \
+        "Please check .bIsAllocated == True before making this call";
     assert not bUnicode or not bBytes, \
         "Unicode strings cannot be returned as a string of bytes";
     # Sanity checks
@@ -506,8 +539,8 @@ class cVirtualAllocation(object):
   def fWriteBytesForOffset(oSelf, sBytes, uOffset):
     return oSelf.fWriteStringForOffset(sBytes, uOffset, bUnicode = False);
   def fWriteStringForOffset(oSelf, sString, uOffset, bUnicode = False):
-    assert oSelf.bAllocated, \
-        "Please check .bAllocated == True before making this call";
+    assert oSelf.bIsAllocated, \
+        "Please check .bIsAllocated == True before making this call";
     # Sanity checks
     assert uOffset >= 0, \
         "Offset %s must be positive" % fsHexNumber(uOffset);
@@ -560,7 +593,7 @@ class cVirtualAllocation(object):
         oSelf.uProtection = uOriginalProtection;
   
   def fasDump(oSelf):
-    if not oSelf.bIsValid or oSelf.bFree:
+    if not oSelf.bIsValid or oSelf.bIsFree:
       return [
         "uUserAddress           = %s (%s)" % fsHexNumber((oSelf.__uUserProvidedAddress), "free" if oSelf.bIsValid else "invalid"),
       ];
@@ -651,11 +684,11 @@ class cVirtualAllocation(object):
   def fCommit(oSelf, uProtection = None):
     # This function can be used to commit memory to a reserved virtual allocation.
     # It cannot be used on a freed virtual allocation; since it has no size defined.
-    assert oSelf.bIsValid and not oSelf.bFree, \
+    assert oSelf.bIsValid and not oSelf.bIsFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
-        (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
+        (oSelf, "free" if oSelf.bIsValid else "not valid", "bIsFree" if oSelf.bIsValid else "bIsValid");
     # Commit this virtual allocation if it is reserved
-    assert oSelf.bReserved, \
+    assert oSelf.bIsReserved, \
         "You can only allocate a reserved virtual allocation";
     if uProtection is None:
       uProtection = PAGE_NOACCESS;
@@ -690,11 +723,11 @@ class cVirtualAllocation(object):
         oSelf.__fUpdate();
   
   def fReserve(oSelf):
-    assert oSelf.bIsValid and not oSelf.bFree, \
+    assert oSelf.bIsValid and not oSelf.bIsFree, \
         "Virtual Allocation %s is %s, please check 'oSelf.%s' before making this call!" % \
-        (oSelf, "free" if oSelf.bIsValid else "not valid", "bFree" if oSelf.bIsValid else "bIsValid");
+        (oSelf, "free" if oSelf.bIsValid else "not valid", "bIsFree" if oSelf.bIsValid else "bIsValid");
     # Decommit this virtual allocation if it is committed
-    assert oSelf.bAllocated, \
+    assert oSelf.bIsAllocated, \
         "You can only reserve an allocated virtual allocation";
     ohProcess = fohOpenForProcessIdAndDesiredAccess(oSelf.__uProcessId, PROCESS_VM_OPERATION);
     try:
@@ -752,21 +785,20 @@ class cVirtualAllocation(object):
         fsHexNumber(oSelf.__u0StartAddress) if oSelf.__u0StartAddress else "??",
         fsHexNumber(oSelf.__u0StartAddress + oSelf.__u0Size) if oSelf.__u0StartAddress and oSelf.__u0Size else "??",
         fsHexNumber(oSelf.__u0Size) if oSelf.__u0Size else "??",
-      ) if oSelf.bFree else
+      ) if oSelf.bIsFree else
       "Reserved, base @ %s, [%s-%s] (%s bytes)" % (
         fsHexNumber(oSelf.uAllocationBaseAddress),
         fsHexNumber(oSelf.__u0StartAddress) if oSelf.__u0StartAddress else "??",
         fsHexNumber(oSelf.__u0StartAddress + oSelf.__u0Size) if oSelf.__u0StartAddress and oSelf.__u0Size else "??",
         fsHexNumber(oSelf.__u0Size) if oSelf.__u0Size else "??",
-      ) if oSelf.bReserved else
-      "Allocated, uState=%s, uType=%s, base @ %s, [%s-%s] (%s bytes, uProtection = %s%s)" % (
-        oSelf.sState,
+      ) if oSelf.bIsReserved else
+      "Allocated, uType=%s, base @ %s, [%s-%s] (%s bytes, uProtection = %s%s)" % (
         oSelf.sType,
         fsHexNumber(oSelf.uAllocationBaseAddress),
         fsHexNumber(oSelf.__u0StartAddress) if oSelf.__u0StartAddress else "??",
         fsHexNumber(oSelf.__u0StartAddress + oSelf.__u0Size) if oSelf.__u0StartAddress and oSelf.__u0Size else "??",
         fsHexNumber(oSelf.__u0Size) if oSelf.__u0Size else "??",
-        "PAGE_GUARD | " if oSelf.bGuard else "",
+        "PAGE_GUARD | " if oSelf.bIsGuardPage else "",
         oSelf.sProtection,
       )
     );
