@@ -35,10 +35,10 @@ class cJobObject(object):
     # We cannot add the process to the job, but maybe it is already added?
     ohProcess = fohOpenForProcessIdAndDesiredAccess(uProcessId, PROCESS_QUERY_LIMITED_INFORMATION);
     try:
-      obProcessInJob = BOOLEAN();
+      obProcessInJob = BOOL();
       if not oKernel32DLL.IsProcessInJob(ohProcess, oSelf.__ohJob, obProcessInJob.foCreatePointer()):
         fThrowLastError("IsProcessInJob(0x%X, ..., ...)" % (ohProcess,));
-      return obProcessInJob != 0;
+      return obProcessInJob.fbGetValue();
     finally:
       if not oKernel32DLL.CloseHandle(ohProcess):
         fThrowLastError("CloseHandle(0x%X)" % (ohProcess,));
