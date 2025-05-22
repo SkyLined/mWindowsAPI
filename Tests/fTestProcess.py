@@ -126,16 +126,14 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
         "Test process %d/0x%X integrity level could not be determined!" % (oTestProcess.uId, oTestProcess.uId);
     oConsole.fOutput("    + IntegrityLevel = 0x%X." % uProcessIntegrityLevel);
     # fuGetMemoryUsageForProcessId
-    # cVirtualAllocation.fo0CreateForProcessId()
+    # cVirtualAllocation.foCreateForProcessId()
     # cVirtualAllocation.fCommit()
     # cVirtualAllocation.fFree()
     oConsole.fOutput("  * Testing Memory management functions...");
     uProcessMemoryUsage = fuGetMemoryUsageForProcessId(oTestProcess.uId);
     oConsole.fOutput("    + Memory usage = 0x%X." % uProcessMemoryUsage);
     uMemoryAllocationSize = 0x1230000;
-    oVirtualAllocation = cVirtualAllocation.fo0CreateForProcessId(oTestProcess.uId, uMemoryAllocationSize, bReserved = True);
-    assert oVirtualAllocation is not None, \
-        "Attempt to reserve 0x%X bytes failed" % uMemoryAllocationSize;
+    oVirtualAllocation = cVirtualAllocation.foCreateForProcessId(oTestProcess.uId, uMemoryAllocationSize, bReserved = True);
     assert oVirtualAllocation.uSize == uMemoryAllocationSize, \
         "Attempted to reserve 0x%X bytes, but got 0x%X" % (uMemoryAllocationSize, oVirtualAllocation.uSize);
     uProcessMemoryUsageAfterReservation = oTestProcess.uMemoryUsage;
@@ -165,7 +163,7 @@ def fTestProcess(sComSpec, sThisProcessISA, sExpectedChildProcessISA):
     oJobObject = cJobObject(oTestProcess.uId);
     oJobObject.fSetMaxTotalMemoryUse(uProcessMemoryUsageAfterFree + uMemoryAllocationSize / 2);
     try:
-      cVirtualAllocation.fo0CreateForProcessId(oTestProcess.uId, uMemoryAllocationSize);
+      cVirtualAllocation.foCreateForProcessId(oTestProcess.uId, uMemoryAllocationSize);
     except MemoryError as oMemoryError:
       pass;
     else:

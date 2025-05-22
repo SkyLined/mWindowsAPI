@@ -1,13 +1,39 @@
 ﻿import math, struct;
 
-from mWindowsSDK import \
-  ERROR_INVALID_PARAMETER, \
-  MEMORY_BASIC_INFORMATION, \
-  MEM_COMMIT, MEM_DECOMMIT, MEM_FREE, MEM_IMAGE, MEM_MAPPED, MEM_PRIVATE, MEM_RELEASE, MEM_RESERVE, \
-  PAGE_NOACCESS, PAGE_READONLY, PAGE_READWRITE, PAGE_WRITECOPY, PAGE_GUARD, \
-  PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY, \
-  PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE, PROCESS_QUERY_INFORMATION, \
-  CHAR, PCHAR, WCHAR, PWCHAR, DWORD, PDWORD, LPVOID, SIZE_T;
+from mWindowsSDK import (
+  CHAR,
+  DWORD,
+  ERROR_INVALID_PARAMETER,
+  ERROR_NOT_ENOUGH_MEMORY,
+  LPVOID,
+  MEM_COMMIT,
+  MEM_DECOMMIT,
+  MEM_FREE,
+  MEM_IMAGE,
+  MEM_MAPPED,
+  MEM_PRIVATE,
+  MEM_RELEASE,
+  MEM_RESERVE,
+  MEMORY_BASIC_INFORMATION,
+  PAGE_EXECUTE,
+  PAGE_EXECUTE_READ,
+  PAGE_EXECUTE_READWRITE,
+  PAGE_EXECUTE_WRITECOPY,
+  PAGE_GUARD,
+  PAGE_NOACCESS,
+  PAGE_READONLY,
+  PAGE_READWRITE,
+  PAGE_WRITECOPY,
+  PCHAR,
+  PDWORD,
+  PROCESS_QUERY_INFORMATION,
+  PROCESS_VM_OPERATION,
+  PROCESS_VM_READ,
+  PROCESS_VM_WRITE,
+  PWCHAR,
+  SIZE_T,
+  WCHAR,
+);
 from mWindowsSDK.mKernel32 import oKernel32DLL;
 from .fsHexNumber import fsHexNumber;
 from .fbLastErrorIs import fbLastErrorIs;
@@ -55,28 +81,27 @@ def fasAllowedAccessTypesForProtection(uProtection):
 class cVirtualAllocation(object):
   uPageSize = oSystemInfo.uPageSize;
   @staticmethod
-  def fo0CreateForProcessIdAndString(
+  def foCreateForProcessIdAndString(
     uProcessId,
     sString,
     bUnicode = False,
     uAddress = None,
     uProtection = None,
   ):
-    o0VirtualAllocation = cVirtualAllocation.fo0CreateForProcessId(
+    oVirtualAllocation = cVirtualAllocation.foCreateForProcessId(
       uProcessId = uProcessId,
       uSize = len(sString) * (bUnicode and 2 or 1),
       uAddress = uAddress,
       uProtection = uProtection,
     );
-    if o0VirtualAllocation:
-      o0VirtualAllocation.fWriteStringForOffset(
-        sString = sString,
-        uOffset = 0,
-        bUnicode = bUnicode
-      );
-    return o0VirtualAllocation;
+    oVirtualAllocation.fWriteStringForOffset(
+      sString = sString,
+      uOffset = 0,
+      bUnicode = bUnicode
+    );
+    return oVirtualAllocation;
   @staticmethod
-  def fo0CreateForProcessId(
+  def foCreateForProcessId(
     uProcessId,
     uSize,
     uAddress = 0,
@@ -99,6 +124,17 @@ class cVirtualAllocation(object):
           uProtection, # flProtect
       );
       if opBaseAddress.fbIsNULLPointer():
+        if fbLastErrorIs(ERROR_NOT_ENOUGH_MEMORY):
+          # This can happen when the address is not valid, which is acceptable.
+          raise MemoryError(
+            "VirtualAllocEx(%s, %s, %s, MEM_COMMIT, %s) = 0" % (
+              repr(ohProcess),
+              fsHexNumber(uAddress),
+              fsHexNumber(uSize),
+              fs0Protection(uProtection) or fsHexNumber(uProtection),
+            )
+          );
+        # OOM throw an exception
         fThrowLastError("VirtualAllocEx(%s, %s, %s, MEM_COMMIT, %s)" % (
           repr(ohProcess),
           fsHexNumber(uAddress),
@@ -108,7 +144,14 @@ class cVirtualAllocation(object):
       # Return a cVirtualAllocation object that represents the newly allocated memory.
       oVirtualAllocation = cVirtualAllocation(uProcessId, opBaseAddress.fuGetValue());
       if not oVirtualAllocation.bIsValid:
-        return None; # invalid address.
+        raise ValueError(
+          "VirtualAllocEx(%s, %s, %s, MEM_COMMIT, %s) => INVALID ADDRESS" % (
+            repr(ohProcess),
+            fsHexNumber(uAddress),
+            fsHexNumber(uSize),
+            fs0Protection(uProtection) or fsHexNumber(uProtection),
+          ),
+        ); # invalid address.
       return oVirtualAllocation;
     finally:
       if not oKernel32DLL.CloseHandle(ohProcess):
@@ -595,7 +638,7 @@ class cVirtualAllocation(object):
   def fasDump(oSelf):
     if not oSelf.bIsValid or oSelf.bIsFree:
       return [
-        "uUserAddress           = %s (%s)" % fsHexNumber((oSelf.__uUserProvidedAddress), "free" if oSelf.bIsValid else "invalid"),
+        "uUserAddress           = %s (%s)" % (fsHexNumber(oSelf.__uUserProvidedAddress), "free" if oSelf.bIsValid else "invalid"),
       ];
     return [
       "uAllocationBaseAddress = %s" % (fsHexNumber(oSelf.uAllocationBaseAddress),),

@@ -381,8 +381,8 @@ class cProcess(object):
     uEndTime = (oExitTime.dwHighDateTime << 32) + oExitTime.dwLowDateTime;
     oSelf.__n0RunDurationInSeconds = (uEndTime - uStartTime) * 0.0000001;
   
-  def fo0CreateVirtualAllocation(oSelf, uSize, uAddress = None, bReserved = False, uProtection = None):
-    return cVirtualAllocation.fo0CreateForProcessId(
+  def foCreateVirtualAllocation(oSelf, uSize, uAddress = None, bReserved = False, uProtection = None):
+    return cVirtualAllocation.foCreateForProcessId(
       oSelf.uId,
       uSize,
       uAddress,
